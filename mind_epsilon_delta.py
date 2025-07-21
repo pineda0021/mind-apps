@@ -74,12 +74,10 @@ st.latex(r"\lim_{x \to a} f(x) = L")
 st.markdown(f"""
 We say that
 
-\[
-\lim_{{x \to {a}}} f(x) = {L:.4f}
-\]
+st.latex(r"\lim_{{x \to {a}}} f(x) = {L:.4f}")
 
-if for every \( \varepsilon > 0 \), there exists a \( \delta > 0 \) such that whenever \( 0 < |x - {a}| < \delta \),  
-we have \( |f(x) - {L:.4f}| < \varepsilon \).
+if for every st.latex(r"\varepsilon > 0"), there exists a st.latex(r"\delta > 0 ") such that whenever st.latex(r"\( 0 < |x - {a}| < \delta "),  
+we have st.latex(r"|f(x) - {L:.4f}| < \varepsilon ").
 """)
 
 st.markdown("""
