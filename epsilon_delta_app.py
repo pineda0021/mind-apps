@@ -63,7 +63,7 @@ st.latex(r"\delta > 0")
 st.markdown("such that whenever:")
 st.latex(r"0 < |x - {a}| < \delta")
 st.markdown("we have:")
-st.latex(r"|f(x) - {L:.4f}| < \epsilon")
+st.latex(r"|f(x) - L| < \epsilon")
 
 st.markdown("---")
 st.markdown("🔎 This tool helps you see how choosing a value of δ affects which x-values keep f(x) within an ε-band around L.")
