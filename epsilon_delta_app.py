@@ -57,11 +57,11 @@ st.latex(r"\lim_{x \to a} f(x) = L")
 st.latex(fr"\lim_{{x \to {a}}} f(x) = {L:.4f}")
 
 st.markdown("If for every:")
-st.latex(r"arepsilon > 0")
+st.latex(r"\arepsilon > 0")
 st.markdown("there exists a:")
 st.latex(r"\delta > 0")
 st.markdown("such that whenever:")
-st.latex(fr"0 < |x - {a}| < \delta")
+st.latex(r"0 < |x - {a}| < \delta")
 st.markdown("we have:")
 st.latex(fr"|f(x) - {L:.4f}| < arepsilon")
 
