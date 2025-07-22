@@ -2,5 +2,5 @@ streamlit
 numpy
 matplotlib
 scipy
-pip install streamlit matplotlib sympy numpy
-streamlit run mind_riemann_app.py
+sympy
+
