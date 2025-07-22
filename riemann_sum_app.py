@@ -118,7 +118,7 @@ if sum_type != "Upper/Lower":
 with st.expander("📘 What does this mean?"):
     st.markdown(f"""
     - This app shows how **Riemann sums** estimate the **area under a curve**.
-    - As \n \to \infty , the approximation becomes more accurate.
+    - As infinity, the approximation becomes more accurate.
     - Different types (left, right, midpoint, trapezoid) use different sample points.
     - The **absolute error** is the difference from the exact area.
     - The **relative error** shows how significant that difference is.
