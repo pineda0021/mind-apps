@@ -14,7 +14,6 @@ st.markdown("""
 Explore the meaning of area under a curve using <strong>Riemann sums</strong>. Adjust functions, intervals, and the number of rectangles to visually compare <em>Left</em>, <em>Right</em>, <em>Midpoint</em>, <em>Trapezoidal</em>, and <em>Upper/Lower</em> approximations with the exact integral.
 </p>
 """, unsafe_allow_html=True)
-""", unsafe_allow_html=True)
 
 # Sidebar inputs
 st.sidebar.header("🔧 Parameters")
