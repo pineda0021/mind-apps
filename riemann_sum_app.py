@@ -8,10 +8,11 @@ from matplotlib.patches import Rectangle
 st.set_page_config(page_title="MIND: Riemann Sum Explorer", layout="centered")
 st.title("📊 MIND: Riemann Sum Explorer")
 st.markdown("""
-Created by **Professor Edward Pineda-Castro**, Los Angeles City College — built with the students in **MIND**.
-
-This tool helps visualize Riemann sums and how they estimate the area under a curve. Explore lower sums, upper sums, midpoint approximations, and true area with your own function.
-""")
+<p style='font-size: 18px; line-height: 1.6;'>
+Created by <strong>Professor Edward Pineda-Castro</strong>, <em>Los Angeles City College</em> — proudly built for and with the students in <strong>MIND</strong>.<br><br>
+Explore the meaning of area under a curve using <strong>Riemann sums</strong>. Adjust functions, intervals, and the number of rectangles to visually compare <em>Left</em>, <em>Right</em>, <em>Midpoint</em>, <em>Trapezoidal</em>, and <em>Upper/Lower</em> approximations with the exact integral.
+</p>
+""", unsafe_allow_html=True)
 
 # Sidebar inputs
 st.sidebar.header("🔧 Parameters")
@@ -115,9 +116,10 @@ if sum_type != "Upper/Lower":
 # Reflection box
 with st.expander("📘 What does this mean?"):
     st.markdown(f"""
-    - This app shows how Riemann sums estimate the **definite integral**.
-    - As \(n \to \infty\), all estimates approach the true area.
-    - **Absolute Error** is the difference between the estimate and true value.
-    - **Relative Error** is the proportion of that error relative to the true area.
-    - Try adjusting the sum type and interval size!
+    - This app shows how **Riemann sums** estimate the **area under a curve**.
+    - As \(n \to \infty\), the approximation becomes more accurate.
+    - Different types (left, right, midpoint, trapezoid) use different sample points.
+    - The **absolute error** is the difference from the exact area.
+    - The **relative error** shows how significant that difference is.
+    - Try changing the function, interval, and number of rectangles!
     """)
