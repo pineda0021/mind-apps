@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 st.set_page_config(layout="wide")
-st.title("ε–δ Limit Visualization Tool")
+st.title("🧠 MIND: ε–δ Limit Visualization Tool")
 st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College — built with the students in MIND.")
 
 # Define available functions
