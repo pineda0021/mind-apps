@@ -5,11 +5,10 @@ import sympy as sp
 from sympy.abc import x
 from matplotlib.patches import Rectangle
 
-st.set_page_config(page_title="MIND: Riemann Sum Explorer", layout="centered")
+st.set_page_config(layout="wide")
 st.title("🧠 MIND: Riemann Sum Visualization Tool")
-st.markdown("""
-<p style='font-size: 18px; line-height: 1.6;'>
-Created by <strong>Professor Edward Pineda-Castro</strong>, <em>Los Angeles City College</em> — proudly built for and with the students in <strong>MIND</strong>.<br><br>
+st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College — built with the students in MIND.")
+
 Explore the meaning of area under a curve using <strong>Riemann sums</strong>. Adjust functions, intervals, and the number of rectangles to visually compare <em>Left</em>, <em>Right</em>, <em>Midpoint</em>, <em>Trapezoidal</em>, and <em>Upper/Lower</em> approximations with the exact integral.
 </p>
 """, unsafe_allow_html=True)
