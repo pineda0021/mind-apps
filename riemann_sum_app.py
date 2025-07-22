@@ -9,8 +9,8 @@ st.set_page_config(layout="wide")
 st.title("🧠 MIND: Riemann Sum Visualization Tool")
 st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College — built with the students in MIND.")
 
-<\p> Explore the meaning of area under a curve using <strong>Riemann sums</strong>. Adjust functions, intervals, and the number of rectangles to visually compare <em>Left</em>, <em>Right</em>, <em>Midpoint</em>, <em>Trapezoidal</em>, and <em>Upper/Lower</em> approximations with the exact integral.
-</p>
+Explore the meaning of area under a curve using <strong>Riemann sums</strong>. Adjust functions, intervals, and the number of rectangles to visually compare <em>Left</em>, <em>Right</em>, <em>Midpoint</em>, <em>Trapezoidal</em>, and <em>Upper/Lower</em> approximations with the exact integral.
+
 """, unsafe_allow_html=True)
 
 # Sidebar inputs
