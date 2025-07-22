@@ -6,7 +6,7 @@ from sympy.abc import x
 from matplotlib.patches import Rectangle
 
 st.set_page_config(page_title="MIND: Riemann Sum Explorer", layout="centered")
-st.title("📊 MIND: Riemann Sum Explorer")
+st.title("🧠 MIND: Riemann Sum Visualization Tool")
 st.markdown("""
 <p style='font-size: 18px; line-height: 1.6;'>
 Created by <strong>Professor Edward Pineda-Castro</strong>, <em>Los Angeles City College</em> — proudly built for and with the students in <strong>MIND</strong>.<br><br>
