@@ -2,7 +2,7 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import quad
-from sympy import symbols, integrate, pi
+from sympy import symbols, integrate, pi, simplify, latex
 
 # --- Page config ---
 st.set_page_config(page_title="MIND: Solid Revolution Tool", layout="wide")
@@ -80,26 +80,49 @@ def show_formula(method, axis, f_expr, g_expr):
 
 # --- Step-by-step integral solution ---
 def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
-    # Use sympy for symbolic integration
-    x = symbols('x')
-    f_top_sym = parse_function(top_expr)
-    f_bot_sym = parse_function(bottom_expr)
+    st.markdown("### 📋 Step-by-Step Solution:")
 
+    x = symbols('x')
+    f_top = eval(top_expr, {"x": x})
+    f_bot = eval(bottom_expr, {"x": x})
+
+    # Step 1: Setup
+    st.markdown("#### 🧮 Step 1: Set up the integral using the chosen method")
+    
     if method == "Disk/Washer":
         if axis == "x-axis":
-            integral_expr = pi * integrate(f_top_sym(x)**2 - f_bot_sym(x)**2, (x, a, b))
+            integrand = f_top**2 - f_bot**2
+            symbolic_integral = pi * integrate(integrand, (x, a, b))
+            formula_str = r"\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} \left[" + latex(f_top**2) + " - " + latex(f_bot**2) + r"\right] \, dx"
         else:
-            integral_expr = pi * integrate(f_top_sym(x)**2 - f_bot_sym(x)**2, (x, a, b))
-    else:
-        if axis == "x-axis":
-            integral_expr = 2 * pi * integrate(x * (f_top_sym(x) - f_bot_sym(x)), (x, a, b))
+            # Assume y in terms of x for simplicity
+            integrand = f_top**2 - f_bot**2
+            symbolic_integral = pi * integrate(integrand, (x, a, b))
+            formula_str = r"\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} \left[" + latex(f_top**2) + " - " + latex(f_bot**2) + r"\right] \, dx"
+    else:  # Cylindrical Shell
+        if axis == "y-axis":
+            integrand = x * (f_top - f_bot)
+            symbolic_integral = 2 * pi * integrate(integrand, (x, a, b))
+            formula_str = r"2\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} x\left(" + latex(f_top) + " - " + latex(f_bot) + r"\right) dx"
         else:
-            integral_expr = 2 * pi * integrate(x * (f_top_sym(x) - f_bot_sym(x)), (x, a, b))
+            integrand = x * (f_top - f_bot)
+            symbolic_integral = 2 * pi * integrate(integrand, (x, a, b))
+            formula_str = r"2\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} y\left(" + latex(f_top) + " - " + latex(f_bot) + r"\right) dy"
 
-    st.markdown("### 📋 Step-by-Step Solution:")
-    st.latex(f"Step 1: Set up the integral using the chosen method:")
-    st.latex(str(integral_expr))
-    st.latex(f"Step 2: Perform the integration and compute the result:")
+    st.latex(formula_str)
+
+    # Step 2: Simplify and result
+    st.markdown("#### ✅ Step 2: Perform the integration and compute the result")
+    simplified_expr = simplify(symbolic_integral)
+
+    # Display result in terms of pi and decimal
+    if simplified_expr.has(pi):
+        coeff = simplified_expr / pi
+        st.latex(f"= {latex(coeff)} \cdot \pi")
+        st.markdown(f"**Exact Volume:** {float(coeff):.4f}π ≈ {float(symbolic_integral):.4f}")
+    else:
+        st.latex(f"= {latex(symbolic_integral)}")
+        st.markdown(f"**Exact Volume:** {float(symbolic_integral):.4f}")
 
 # --- 3D plot function ---
 def plot_solid(top_expr, bottom_expr, method, axis):
@@ -194,4 +217,3 @@ if compute:
                 "- **Cylindrical Shell Method**: wraps vertical slices around the axis.\n\n"
                 "This helps visualize how integrals compute volume — just like Riemann sums approximate area!"
             )
-
