@@ -28,6 +28,7 @@ else:
     method = st.sidebar.selectbox("Method:", ["Disk/Washer", "Cylindrical Shell"])
     axis = st.sidebar.selectbox("Axis of rotation:", ["x-axis", "y-axis"])
 
+show_animation = st.sidebar.checkbox("Show 3D Animation (for 1 function)", value=True)
 a = st.sidebar.number_input("Start of interval (a):", value=0.0)
 b = st.sidebar.number_input("End of interval (b):", value=1.0)
 compute = st.sidebar.button("🔄 Compute and Visualize")
@@ -117,11 +118,11 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
     if method == "Disk/Washer":
         integrand = f_top**2 if not f_bot else f_top**2 - f_bot**2
         symbolic_integral = pi * integrate(integrand, (x, a, b))
-        st.latex(f"V = \pi \int_{{{a}}}^{{{b}}} {latex(integrand)} \, dx")
+        st.latex(f"V = \pi \int_{{{a}}}^{{{b}}} {latex(integrand)} \\, dx")
     else:
         integrand = x * f_top
         symbolic_integral = 2 * pi * integrate(integrand, (x, a, b))
-        st.latex(f"V = 2\pi \int_{{{a}}}^{{{b}}} x \cdot {latex(f_top)} \, dx")
+        st.latex(f"V = 2\pi \int_{{{a}}}^{{{b}}} x \\cdot {latex(f_top)} \\, dx")
 
     st.markdown("#### ✅ Step 2: Evaluate the integral")
     simplified_expr = simplify(symbolic_integral)
@@ -129,7 +130,7 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
         coeff = simplified_expr / pi
         fraction_result = Rational(coeff).limit_denominator()
         numer, denom = fraction_result.as_numer_denom()
-        st.latex(f"= \\frac{{{numer}}}{{{denom}}} \pi")
+        st.latex(f"= \\frac{{{numer}}}{{{denom}}} \\pi")
         st.markdown(f"**Exact Volume:** {numer}/{denom}π ≈ {float(symbolic_integral):.4f}")
     else:
         st.latex(f"= {latex(symbolic_integral)}")
@@ -158,7 +159,7 @@ if compute:
         step_by_step_solution(top_expr, bottom_expr, method, axis, a, b)
         exact_volume = compute_exact_volume(top_expr, bottom_expr, method, axis, a, b)
         st.markdown(f"### ✅ Exact Volume: {exact_volume:.4f}")
-        if method == "Cylindrical Shell" and axis == "y-axis" and bottom_expr is None:
+        if show_animation and bottom_expr is None:
             animate_solid(top_expr)
 
     with col_right:
