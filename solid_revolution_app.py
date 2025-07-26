@@ -7,15 +7,15 @@ from matplotlib import animation
 import tempfile
 import os
 import matplotlib
-matplotlib.use("Agg")  # Prevent display issues in headless environments
+matplotlib.use("Agg")
 
 # --- Page config ---
 st.set_page_config(page_title="MIND: Solid Revolution Tool", layout="wide")
-st.title("\U0001F9E0 MIND: Solid of Revolution Tool")
+st.title("🧠 MIND: Solid of Revolution Tool")
 st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College — built with the students in MIND.")
 
 # --- Sidebar inputs ---
-st.sidebar.header("\U0001F527 Parameters")
+st.sidebar.header("🔧 Parameters")
 
 function_option = st.sidebar.selectbox("Do you have one function or two functions?", ["One Function", "Two Functions"])
 
@@ -33,7 +33,7 @@ else:
 show_animation = st.sidebar.checkbox("Show 3D Animation", value=True)
 a = st.sidebar.number_input("Start of interval (a):", value=0.0)
 b = st.sidebar.number_input("End of interval (b):", value=1.0)
-compute = st.sidebar.button("\U0001F504 Compute and Visualize")
+compute = st.sidebar.button("🔄 Compute and Visualize")
 
 # --- Function parser ---
 def parse_function(expr):
@@ -60,26 +60,32 @@ def plot_functions(top_expr, bottom_expr=None):
 def animate_solid(f_expr, g_expr=None):
     try:
         x_vals = np.linspace(a, b, 200)
-        theta_vals = np.linspace(0, 2 * np.pi, 90)
+        theta_vals = np.linspace(0, 2 * np.pi, 60)
         f = parse_function(f_expr)
         g = parse_function(g_expr) if g_expr else (lambda x: 0)
 
         fig = plt.figure(figsize=(6, 6))
         ax = fig.add_subplot(111, projection='3d')
 
+        Y_outer_vals = np.nan_to_num(f(x_vals))
+        Y_inner_vals = np.nan_to_num(g(x_vals))
+
+        if len(Y_outer_vals) != len(x_vals) or len(Y_inner_vals) != len(x_vals):
+            raise ValueError("Function evaluations produced mismatched lengths.")
+
         def update(i):
             ax.cla()
             theta = theta_vals[i % len(theta_vals)]
             X = x_vals
-            Y_outer = f(X) * np.cos(theta)
-            Z_outer = f(X) * np.sin(theta)
-            Y_inner = g(X) * np.cos(theta)
-            Z_inner = g(X) * np.sin(theta)
+            Y_outer = Y_outer_vals * np.cos(theta)
+            Z_outer = Y_outer_vals * np.sin(theta)
+            Y_inner = Y_inner_vals * np.cos(theta)
+            Z_inner = Y_inner_vals * np.sin(theta)
             for j in range(len(X)):
                 ax.plot([X[j], X[j]], [Y_inner[j], Y_outer[j]], [Z_inner[j], Z_outer[j]], color='blue')
-            ax.set_xlim([0, b])
-            ax.set_ylim([-1, 1])
-            ax.set_zlim([-1, 1])
+            ax.set_xlim([a, b])
+            ax.set_ylim([-1.5, 1.5])
+            ax.set_zlim([-1.5, 1.5])
             ax.set_title("Revolving Region Around Axis")
             ax.set_xlabel("x")
             ax.set_ylabel("y")
@@ -108,18 +114,18 @@ def compute_exact_volume(top_expr, bottom_expr, method, axis, a, b):
 
 # --- Display formula ---
 def show_formula(method, axis, f_expr, g_expr=None):
-    st.markdown("### \U0001F4D8 Setup and Formula")
+    st.markdown("### 📘 Setup and Formula")
     st.latex(f"f(x) = {f_expr}")
     if g_expr:
         st.latex(f"g(x) = {g_expr}")
     if method == "Disk/Washer":
-        st.latex(r"V = \pi \int_a^b [f(x)^2 - g(x)^2]\\,dx" if g_expr else r"V = \pi \int_a^b [f(x)^2]\\,dx")
+        st.latex(r"V = \pi \int_a^b [f(x)^2 - g(x)^2] \,dx" if g_expr else r"V = \pi \int_a^b [f(x)^2] \,dx")
     else:
-        st.latex(r"V = 2\pi \int_a^b x f(x)\\,dx")
+        st.latex(r"V = 2\pi \int_a^b x f(x)\,dx")
 
 # --- Step-by-step ---
 def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
-    st.markdown("### \U0001F4CB Step-by-Step Solution:")
+    st.markdown("### 📋 Step-by-Step Solution:")
     x = symbols('x')
     f_top = sympify(top_expr)
     f_bot = sympify(bottom_expr) if bottom_expr else None
@@ -127,11 +133,11 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
     if method == "Disk/Washer":
         integrand = f_top**2 if not f_bot else f_top**2 - f_bot**2
         symbolic_integral = pi * integrate(integrand, (x, a, b))
-        st.latex(f"V = \pi \int_{{{a}}}^{{{b}}} {latex(integrand)} \\, dx")
+        st.latex(f"V = \pi \int_{{{a}}}^{{{b}}} {latex(integrand)} \, dx")
     else:
         integrand = x * f_top
         symbolic_integral = 2 * pi * integrate(integrand, (x, a, b))
-        st.latex(f"V = 2\pi \int_{{{a}}}^{{{b}}} x \\cdot {latex(f_top)} \\, dx")
+        st.latex(f"V = 2\pi \int_{{{a}}}^{{{b}}} x \cdot {latex(f_top)} \, dx")
 
     st.markdown("#### ✅ Step 2: Evaluate the integral")
     simplified_expr = simplify(symbolic_integral)
@@ -173,7 +179,7 @@ if compute:
 
     with col_right:
         show_method_tip(method, axis)
-        with st.expander("\U0001FAA9 What does this visualization mean?", expanded=True):
+        with st.expander("🪞 What does this visualization mean?", expanded=True):
             st.info(
                 "This tool helps visualize solids of revolution.\n\n"
                 "- **Disk/Washer Method**: uses horizontal/vertical slices perpendicular to the axis.\n"
