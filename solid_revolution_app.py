@@ -1,8 +1,8 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from scipy.integrate import quad
+from sympy import symbols, integrate, pi
 
 # --- Page config ---
 st.set_page_config(page_title="MIND: Solid Revolution Tool", layout="wide")
@@ -26,6 +26,21 @@ compute = st.sidebar.button("🔄 Compute and Visualize")
 # --- Function parser ---
 def parse_function(expr):
     return lambda x: eval(expr, {"x": x, "np": np})
+
+# --- Dynamic Plotting of Functions ---
+def plot_functions(top_expr, bottom_expr):
+    x_vals = np.linspace(a, b, 200)
+    f_top = parse_function(top_expr)
+    f_bot = parse_function(bottom_expr)
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.plot(x_vals, f_top(x_vals), label=f"Top: f(x) = {top_expr}", color="blue", linewidth=2)
+    ax.plot(x_vals, f_bot(x_vals), label=f"Bottom: g(x) = {bottom_expr}", color="red", linewidth=2)
+    ax.fill_between(x_vals, f_top(x_vals), f_bot(x_vals), color='gray', alpha=0.5)
+    ax.set_xlabel("x")
+    ax.set_ylabel("f(x), g(x)")
+    ax.legend()
+    st.pyplot(fig)
 
 # --- Compute exact volume ---
 def compute_exact_volume(top_expr, bottom_expr, method, axis, a, b):
@@ -62,6 +77,29 @@ def show_formula(method, axis, f_expr, g_expr):
             st.latex(r"V = 2\pi \int_a^b y(f(y) - g(y)) \, dy")
         else:
             st.latex(r"V = 2\pi \int_a^b x(f(x) - g(x)) \, dx")
+
+# --- Step-by-step integral solution ---
+def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
+    # Use sympy for symbolic integration
+    x = symbols('x')
+    f_top_sym = parse_function(top_expr)
+    f_bot_sym = parse_function(bottom_expr)
+
+    if method == "Disk/Washer":
+        if axis == "x-axis":
+            integral_expr = pi * integrate(f_top_sym(x)**2 - f_bot_sym(x)**2, (x, a, b))
+        else:
+            integral_expr = pi * integrate(f_top_sym(x)**2 - f_bot_sym(x)**2, (x, a, b))
+    else:
+        if axis == "x-axis":
+            integral_expr = 2 * pi * integrate(x * (f_top_sym(x) - f_bot_sym(x)), (x, a, b))
+        else:
+            integral_expr = 2 * pi * integrate(x * (f_top_sym(x) - f_bot_sym(x)), (x, a, b))
+
+    st.markdown("### 📋 Step-by-Step Solution:")
+    st.latex(f"Step 1: Set up the integral using the chosen method:")
+    st.latex(str(integral_expr))
+    st.latex(f"Step 2: Perform the integration and compute the result:")
 
 # --- 3D plot function ---
 def plot_solid(top_expr, bottom_expr, method, axis):
@@ -142,6 +180,9 @@ if compute:
         # Compute exact volume and display result
         exact_volume = compute_exact_volume(top_expr, bottom_expr, method, axis, a, b)
         st.markdown(f"### ✅ Exact Volume: {exact_volume:.4f}")
+        
+        # Display step-by-step solution
+        step_by_step_solution(top_expr, bottom_expr, method, axis, a, b)
 
     with col_right:
         show_method_tip(method, axis)
@@ -152,4 +193,3 @@ if compute:
                 "- **Cylindrical Shell Method**: wraps vertical slices around the axis.\n\n"
                 "This helps visualize how integrals compute volume — just like Riemann sums approximate area!"
             )
-
