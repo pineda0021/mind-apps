@@ -4,5 +4,4 @@ matplotlib
 scipy
 sympy
 pillow
-tempfile
-os
+
