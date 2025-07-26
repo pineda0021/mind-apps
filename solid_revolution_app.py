@@ -58,36 +58,36 @@ def plot_functions(top_expr, bottom_expr=None):
 
 # --- Animate solid ---
 def animate_solid(f_expr, g_expr=None):
-    x_vals = np.linspace(a, b, 200)
-    theta_vals = np.linspace(0, 2 * np.pi, 90)
-    f = parse_function(f_expr)
-    g = parse_function(g_expr) if g_expr else (lambda x: 0)
-
-    fig = plt.figure(figsize=(6, 6))
-    ax = fig.add_subplot(111, projection='3d')
-
-    def update(i):
-        ax.cla()
-        theta = theta_vals[i % len(theta_vals)]
-        X = x_vals
-        Y_outer = f(X) * np.cos(theta)
-        Z_outer = f(X) * np.sin(theta)
-        Y_inner = g(X) * np.cos(theta)
-        Z_inner = g(X) * np.sin(theta)
-        for j in range(len(X)):
-            ax.plot([X[j], X[j]], [Y_inner[j], Y_outer[j]], [Z_inner[j], Z_outer[j]], color='blue')
-        ax.set_xlim([0, b])
-        ax.set_ylim([-1, 1])
-        ax.set_zlim([-1, 1])
-        ax.set_title("Revolving Region Around Axis")
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_zlabel("z")
-
-    ani = animation.FuncAnimation(fig, update, frames=len(theta_vals), interval=100)
     try:
+        x_vals = np.linspace(a, b, 200)
+        theta_vals = np.linspace(0, 2 * np.pi, 90)
+        f = parse_function(f_expr)
+        g = parse_function(g_expr) if g_expr else (lambda x: 0)
+
+        fig = plt.figure(figsize=(6, 6))
+        ax = fig.add_subplot(111, projection='3d')
+
+        def update(i):
+            ax.cla()
+            theta = theta_vals[i % len(theta_vals)]
+            X = x_vals
+            Y_outer = f(X) * np.cos(theta)
+            Z_outer = f(X) * np.sin(theta)
+            Y_inner = g(X) * np.cos(theta)
+            Z_inner = g(X) * np.sin(theta)
+            for j in range(len(X)):
+                ax.plot([X[j], X[j]], [Y_inner[j], Y_outer[j]], [Z_inner[j], Z_outer[j]], color='blue')
+            ax.set_xlim([0, b])
+            ax.set_ylim([-1, 1])
+            ax.set_zlim([-1, 1])
+            ax.set_title("Revolving Region Around Axis")
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
+            ax.set_zlabel("z")
+
+        ani = animation.FuncAnimation(fig, update, frames=len(theta_vals), interval=100)
         temp_gif_path = os.path.join(tempfile.gettempdir(), "temp_solid.gif")
-        ani.save(temp_gif_path, writer='pillow')
+        ani.save(temp_gif_path, writer=animation.PillowWriter(fps=10))
         st.image(temp_gif_path, caption="Volume Formation Animation")
     except Exception as e:
         st.warning("⚠️ Unable to render animation (pillow or ffmpeg may be missing).")
