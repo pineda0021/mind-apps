@@ -84,7 +84,7 @@ def animate_solid(f_expr):
     buf = io.BytesIO()
 
     try:
-        ani.save(buf, writer='pillow', format='gif')
+        ani.save(buf, writer='pillow')
         gif_bytes = buf.getvalue()
         st.image(gif_bytes, caption="Volume Formation Animation")
     except Exception as e:
@@ -111,9 +111,9 @@ def show_formula(method, axis, f_expr, g_expr=None):
     if g_expr:
         st.latex(f"g(x) = {g_expr}")
     if method == "Disk/Washer":
-        st.latex(r"V = \pi \int_a^b [f(x)^2 - g(x)^2]\,dx" if g_expr else r"V = \pi \int_a^b [f(x)^2]\,dx")
+        st.latex(r"V = \pi \int_a^b [f(x)^2 - g(x)^2]\\,dx" if g_expr else r"V = \pi \int_a^b [f(x)^2]\\,dx")
     else:
-        st.latex(r"V = 2\pi \int_a^b x f(x)\,dx")
+        st.latex(r"V = 2\pi \int_a^b x f(x)\\,dx")
 
 # --- Step-by-step ---
 def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
