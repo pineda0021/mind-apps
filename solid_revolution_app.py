@@ -3,6 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import quad
 from sympy import symbols, integrate, pi, Rational, latex, simplify, sympify
+from matplotlib import animation
+import io
+import base64
 
 # --- Page config ---
 st.set_page_config(page_title="MIND: Solid Revolution Tool", layout="wide")
@@ -12,17 +15,13 @@ st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College 
 # --- Sidebar inputs ---
 st.sidebar.header("🔧 Parameters")
 
-# Option for selecting one or two functions
 function_option = st.sidebar.selectbox("Do you have one function or two functions?", ["One Function", "Two Functions"])
 
 if function_option == "One Function":
     top_expr = st.sidebar.text_input("Function f(x):", value="x**(1/2)")
     bottom_expr = None
     method = st.sidebar.selectbox("Method:", ["Disk/Washer", "Cylindrical Shell"])
-    if method == "Cylindrical Shell":
-        axis = "y-axis"
-    else:
-        axis = st.sidebar.selectbox("Axis of rotation:", ["x-axis", "y-axis"])
+    axis = "y-axis" if method == "Cylindrical Shell" else st.sidebar.selectbox("Axis of rotation:", ["x-axis", "y-axis"])
 else:
     top_expr = st.sidebar.text_input("Top function f(x):", value="x")
     bottom_expr = st.sidebar.text_input("Bottom function g(x):", value="x**2")
@@ -54,23 +53,47 @@ def plot_functions(top_expr, bottom_expr=None):
     ax.legend()
     st.pyplot(fig)
 
+# --- Animate solid ---
+def animate_solid(f_expr):
+    x_vals = np.linspace(a, b, 200)
+    theta_vals = np.linspace(0, 2 * np.pi, 90)
+    f = parse_function(f_expr)
+
+    fig = plt.figure(figsize=(6, 6))
+    ax = fig.add_subplot(111, projection='3d')
+
+    def update(i):
+        ax.cla()
+        theta = theta_vals[i]
+        X = x_vals
+        Y = f(X) * np.cos(theta)
+        Z = f(X) * np.sin(theta)
+        ax.plot3D(X, Y, Z, color='blue')
+        ax.set_xlim([0, b])
+        ax.set_ylim([-1, 1])
+        ax.set_zlim([-1, 1])
+        ax.set_title("Revolving Curve Around Axis")
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_zlabel("z")
+
+    ani = animation.FuncAnimation(fig, update, frames=len(theta_vals), interval=100)
+    buf = io.BytesIO()
+    ani.save(buf, format='gif')
+    gif_bytes = buf.getvalue()
+    st.image(gif_bytes, caption="Volume Formation Animation")
+
 # --- Compute volume ---
 def compute_exact_volume(top_expr, bottom_expr, method, axis, a, b):
     f_top = parse_function(top_expr)
     f_bot = parse_function(bottom_expr) if bottom_expr else None
 
     if method == "Disk/Washer":
-        if axis == "x-axis":
-            integrand = lambda x: np.pi * (f_top(x)**2) if not f_bot else np.pi * (f_top(x)**2 - f_bot(x)**2)
-        else:
-            integrand = lambda y: np.pi * (f_top(y)**2) if not f_bot else np.pi * (f_top(y)**2 - f_bot(y)**2)
+        integrand = (lambda x: np.pi * (f_top(x)**2)) if not f_bot else (lambda x: np.pi * (f_top(x)**2 - f_bot(x)**2))
     else:
-        if axis == "y-axis":
-            integrand = lambda x: 2 * np.pi * x * f_top(x)
-        else:
-            integrand = lambda y: 2 * np.pi * y * f_top(y)
+        integrand = lambda x: 2 * np.pi * x * f_top(x)
 
-    volume, error = quad(integrand, a, b)
+    volume, _ = quad(integrand, a, b)
     return volume
 
 # --- Display formula ---
@@ -80,15 +103,9 @@ def show_formula(method, axis, f_expr, g_expr=None):
     if g_expr:
         st.latex(f"g(x) = {g_expr}")
     if method == "Disk/Washer":
-        if axis == "x-axis":
-            st.latex(r"V = \pi \int_a^b \left[f(x)^2 - g(x)^2\right] \, dx" if g_expr else r"V = \pi \int_a^b \left[f(x)^2\right] \, dx")
-        else:
-            st.latex(r"V = \pi \int_c^d \left[f(y)^2 - g(y)^2\right] \, dy" if g_expr else r"V = \pi \int_c^d \left[f(y)^2\right] \, dy")
+        st.latex(r"V = \pi \int_a^b [f(x)^2 - g(x)^2]\,dx" if g_expr else r"V = \pi \int_a^b [f(x)^2]\,dx")
     else:
-        if axis == "y-axis":
-            st.latex(r"V = 2\pi \int_a^b x f(x) \, dx")
-        else:
-            st.latex(r"V = 2\pi \int_a^b y f(y) \, dy")
+        st.latex(r"V = 2\pi \int_a^b x f(x)\,dx")
 
 # --- Step-by-step ---
 def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
@@ -141,6 +158,8 @@ if compute:
         step_by_step_solution(top_expr, bottom_expr, method, axis, a, b)
         exact_volume = compute_exact_volume(top_expr, bottom_expr, method, axis, a, b)
         st.markdown(f"### ✅ Exact Volume: {exact_volume:.4f}")
+        if method == "Cylindrical Shell" and axis == "y-axis" and bottom_expr is None:
+            animate_solid(top_expr)
 
     with col_right:
         show_method_tip(method, axis)
