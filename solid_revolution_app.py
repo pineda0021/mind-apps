@@ -121,11 +121,13 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
         # Convert the coefficient to a rational number and display it
         fraction_result = Rational(coeff).limit_denominator()  # Simplify to fraction
 
+        numer, denom = fraction_result.as_numer_denom()  # Safe fraction conversion
+
         # Show result in terms of pi
-        st.latex(f"= \\frac{{{fraction_result.numerator()}}}{{{fraction_result.denominator()}}} \\pi")
+        st.latex(f"= \\frac{{{numer}}}{{{denom}}} \\pi")
         
         # Show decimal approximation as well
-        st.markdown(f"**Exact Volume:** {fraction_result.numerator()}/{fraction_result.denominator()}π ≈ {float(symbolic_integral):.4f}")
+        st.markdown(f"**Exact Volume:** {numer}/{denom}π ≈ {float(symbolic_integral):.4f}")
     else:
         st.latex(f"= {latex(symbolic_integral)}")
         st.markdown(f"**Exact Volume:** {float(symbolic_integral):.4f}")
@@ -223,4 +225,3 @@ if compute:
                 "- **Cylindrical Shell Method**: wraps vertical slices around the axis.\n\n"
                 "This helps visualize how integrals compute volume — just like Riemann sums approximate area!"
             )
-
