@@ -67,9 +67,6 @@ def animate_solid(f_expr, g_expr=None):
         Y_outer_vals = np.nan_to_num(f(x_vals))
         Y_inner_vals = np.nan_to_num(g(x_vals))
 
-        if len(Y_outer_vals) != len(x_vals) or len(Y_inner_vals) != len(x_vals):
-            raise ValueError("Mismatch in function evaluation lengths.")
-
         fig = plt.figure(figsize=(6, 6))
         ax = fig.add_subplot(111, projection='3d')
 
@@ -95,9 +92,9 @@ def animate_solid(f_expr, g_expr=None):
 
         ani = animation.FuncAnimation(fig, update, frames=len(theta_vals), interval=100)
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".gif") as tmpfile:
-            ani.save(tmpfile.name, writer=animation.PillowWriter(fps=10))
-            st.image(tmpfile.name, caption="Volume Formation Animation")
+        tmpfile_path = os.path.join(tempfile.gettempdir(), "animation.gif")
+        ani.save(tmpfile_path, writer=animation.PillowWriter(fps=10))
+        st.image(tmpfile_path, caption="Volume Formation Animation")
 
     except Exception as e:
         st.warning("⚠️ Animation failed to render.")
@@ -149,7 +146,7 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
         coeff = simplified_expr / pi
         fraction_result = Rational(coeff).limit_denominator()
         numer, denom = fraction_result.as_numer_denom()
-        st.latex(f"= \\\\frac{{{numer}}}{{{denom}}} \\pi")
+        st.latex(f"= \\frac{{{numer}}}{{{denom}}} \\pi")
         st.markdown(f"**Exact Volume:** {numer}/{denom}π ≈ {float(symbolic_integral):.4f}")
     else:
         st.latex(f"= {latex(symbolic_integral)}")
@@ -190,4 +187,3 @@ if compute:
                 "- **Cylindrical Shell Method**: wraps vertical slices around the axis.\n\n"
                 "Integrals here compute volume — just like Riemann sums approximate area!"
             )
-
