@@ -92,9 +92,9 @@ def animate_solid(f_expr, g_expr=None):
 
         ani = animation.FuncAnimation(fig, update, frames=len(theta_vals), interval=100)
 
-        tmpfile_path = os.path.join(tempfile.gettempdir(), "animation.gif")
-        ani.save(tmpfile_path, writer=animation.PillowWriter(fps=10))
-        st.image(tmpfile_path, caption="Volume Formation Animation")
+        with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as tmpfile:
+            ani.save(tmpfile.name, writer=animation.PillowWriter(fps=10))
+            st.image(tmpfile.name, caption="Volume Formation Animation")
 
     except Exception as e:
         st.warning("⚠️ Animation failed to render.")
