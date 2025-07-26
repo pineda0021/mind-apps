@@ -3,11 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import quad
 from sympy import symbols, integrate, pi, Rational, latex, simplify, sympify
-from matplotlib import animation
-import tempfile
-import os
-import matplotlib
-matplotlib.use("Agg")
+from matplotlib import cm
+from mpl_toolkits.mplot3d import Axes3D
 
 # --- Page config ---
 st.set_page_config(page_title="MIND: Solid Revolution Tool", layout="wide")
@@ -30,7 +27,7 @@ else:
     method = st.sidebar.selectbox("Method:", ["Disk/Washer", "Cylindrical Shell"])
     axis = st.sidebar.selectbox("Axis of rotation:", ["x-axis", "y-axis"])
 
-show_animation = st.sidebar.checkbox("Show 3D Animation", value=True)
+show_3d = st.sidebar.checkbox("Show 3D Plot", value=True)
 a = st.sidebar.number_input("Start of interval (a):", value=0.0)
 b = st.sidebar.number_input("End of interval (b):", value=1.0)
 compute = st.sidebar.button("🔄 Compute and Visualize")
@@ -59,49 +56,46 @@ def plot_functions(top_expr, bottom_expr=None):
     ax.legend()
     st.pyplot(fig)
 
-# --- Animate solid ---
-def animate_solid(f_expr, g_expr=None):
-    try:
-        x_vals = np.linspace(a, b, 150)
-        theta_vals = np.linspace(0, 2 * np.pi, 60)
-        f = parse_function(f_expr)
-        g = parse_function(g_expr) if g_expr else (lambda x: 0)
+# --- Static 3D Plot ---
+def plot_3d_solid(top_expr, bottom_expr=None, method="Disk/Washer", axis="x-axis"):
+    f_top = parse_function(top_expr)
+    f_bot = parse_function(bottom_expr) if bottom_expr else (lambda x: 0)
 
-        Y_outer_vals = np.nan_to_num(f(x_vals))
-        Y_inner_vals = np.nan_to_num(g(x_vals))
+    x_vals = np.linspace(a, b, 200)
+    theta_vals = np.linspace(0, 2 * np.pi, 100)
+    X, T = np.meshgrid(x_vals, theta_vals)
 
-        fig = plt.figure(figsize=(6, 6))
-        ax = fig.add_subplot(111, projection='3d')
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111, projection="3d")
 
-        def update(i):
-            ax.cla()
-            theta = theta_vals[i]
-            X = x_vals
-            Y_outer = Y_outer_vals * np.cos(theta)
-            Z_outer = Y_outer_vals * np.sin(theta)
-            Y_inner = Y_inner_vals * np.cos(theta)
-            Z_inner = Y_inner_vals * np.sin(theta)
+    if method == "Disk/Washer" and axis == "x-axis":
+        R_outer = f_top(X)
+        R_inner = f_bot(X)
+        Y_outer = R_outer * np.cos(T)
+        Z_outer = R_outer * np.sin(T)
+        Y_inner = R_inner * np.cos(T)
+        Z_inner = R_inner * np.sin(T)
 
-            for j in range(len(X)):
-                ax.plot([X[j], X[j]], [Y_inner[j], Y_outer[j]], [Z_inner[j], Z_outer[j]], color='blue', alpha=0.6)
+        ax.plot_surface(X, Y_outer, Z_outer, cmap=cm.coolwarm, alpha=0.8)
+        if bottom_expr:
+            ax.plot_surface(X, Y_inner, Z_inner, color='white', alpha=1)
 
-            ax.set_xlim([a, b])
-            ax.set_ylim([-1.5, 1.5])
-            ax.set_zlim([-1.5, 1.5])
-            ax.set_title("Solid of Revolution")
-            ax.set_xlabel("x")
-            ax.set_ylabel("y")
-            ax.set_zlabel("z")
+    elif method == "Cylindrical Shell" and axis == "y-axis":
+        R = f_top(X)
+        Y = X
+        X_shell = R * np.cos(T)
+        Z_shell = R * np.sin(T)
+        ax.plot_surface(X_shell, Y, Z_shell, cmap=cm.viridis, alpha=0.8)
 
-        ani = animation.FuncAnimation(fig, update, frames=len(theta_vals), interval=100)
+    else:
+        st.warning("3D plot only supported for specific method/axis combinations.")
+        return
 
-        with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as tmpfile:
-            ani.save(tmpfile.name, writer=animation.PillowWriter(fps=10))
-            st.image(tmpfile.name, caption="Volume Formation Animation")
-
-    except Exception as e:
-        st.warning("⚠️ Animation failed to render.")
-        st.code(str(e), language='python')
+    ax.set_title(f"{method} about the {axis}")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("z")
+    st.pyplot(fig)
 
 # --- Compute volume ---
 def compute_exact_volume(top_expr, bottom_expr, method, axis, a, b):
@@ -137,11 +131,11 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
     if method == "Disk/Washer":
         integrand = f_top**2 if not f_bot else f_top**2 - f_bot**2
         symbolic_integral = pi * integrate(integrand, (x, a, b))
-        st.latex(f"V = \\pi \\int_{{{a}}}^{{{b}}} {latex(integrand)} \\, dx")
+        st.latex(f"V = \pi \int_{{{a}}}^{{{b}}} {latex(integrand)} \\, dx")
     else:
         integrand = x * f_top
         symbolic_integral = 2 * pi * integrate(integrand, (x, a, b))
-        st.latex(f"V = 2\\pi \\int_{{{a}}}^{{{b}}} x \\cdot {latex(f_top)} \\, dx")
+        st.latex(f"V = 2\pi \int_{{{a}}}^{{{b}}} x \cdot {latex(f_top)} \\, dx")
 
     st.markdown("#### ✅ Step 2: Evaluate the integral")
     simplified_expr = simplify(symbolic_integral)
@@ -178,8 +172,8 @@ if compute:
         step_by_step_solution(top_expr, bottom_expr, method, axis, a, b)
         exact_volume = compute_exact_volume(top_expr, bottom_expr, method, axis, a, b)
         st.markdown(f"### ✅ Exact Volume: {exact_volume:.4f}")
-        if show_animation:
-            animate_solid(top_expr, bottom_expr)
+        if show_3d:
+            plot_3d_solid(top_expr, bottom_expr, method, axis)
 
     with col_right:
         show_method_tip(method, axis)
