@@ -194,3 +194,4 @@ if compute:
                 "- **Cylindrical Shell Method**: wraps vertical slices around the axis.\n\n"
                 "This helps visualize how integrals compute volume — just like Riemann sums approximate area!"
             )
+
