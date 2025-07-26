@@ -2,7 +2,7 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import quad
-from sympy import symbols, integrate, pi, Rational, latex, simplify
+from sympy import symbols, integrate, pi, Rational, latex, simplify, sympify
 
 # --- Page config ---
 st.set_page_config(page_title="MIND: Solid Revolution Tool", layout="wide")
@@ -16,7 +16,7 @@ st.sidebar.header("🔧 Parameters")
 function_option = st.sidebar.selectbox("Do you have one function or two functions?", ["One Function", "Two Functions"])
 
 if function_option == "One Function":
-    top_expr = st.sidebar.text_input("Function f(x):", value="x**(1/2)")  # Default function y = sqrt(x)
+    top_expr = st.sidebar.text_input("Function f(x):", value="x**(1/2)")
     bottom_expr = None
     method = st.sidebar.selectbox("Method:", ["Disk/Washer", "Cylindrical Shell"])
     if method == "Cylindrical Shell":
@@ -94,26 +94,25 @@ def show_formula(method, axis, f_expr, g_expr=None):
 def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
     st.markdown("### 📋 Step-by-Step Solution:")
     x = symbols('x')
-    f_top = eval(top_expr, {"x": x})
-    f_bot = eval(bottom_expr, {"x": x}) if bottom_expr else None
+    f_top = sympify(top_expr)
+    f_bot = sympify(bottom_expr) if bottom_expr else None
 
     if method == "Disk/Washer":
         integrand = f_top**2 if not f_bot else f_top**2 - f_bot**2
         symbolic_integral = pi * integrate(integrand, (x, a, b))
-        formula_str = r"\pi \int_{}^{} [ {}{} ] \, dx".format(a, b, latex(f_top**2), f" - {latex(f_bot**2)}" if f_bot else "")
+        st.latex(f"V = \pi \int_{{{a}}}^{{{b}}} {latex(integrand)} \, dx")
     else:
         integrand = x * f_top
         symbolic_integral = 2 * pi * integrate(integrand, (x, a, b))
-        formula_str = r"2\pi \int_{}^{} x f(x) \, dx".format(a, b)
+        st.latex(f"V = 2\pi \int_{{{a}}}^{{{b}}} x \cdot {latex(f_top)} \, dx")
 
-    st.latex(formula_str)
     st.markdown("#### ✅ Step 2: Evaluate the integral")
     simplified_expr = simplify(symbolic_integral)
     if simplified_expr.has(pi):
         coeff = simplified_expr / pi
         fraction_result = Rational(coeff).limit_denominator()
         numer, denom = fraction_result.as_numer_denom()
-        st.latex(f"= \\frac{{{numer}}}{{{denom}}} \\pi")
+        st.latex(f"= \\frac{{{numer}}}{{{denom}}} \pi")
         st.markdown(f"**Exact Volume:** {numer}/{denom}π ≈ {float(symbolic_integral):.4f}")
     else:
         st.latex(f"= {latex(symbolic_integral)}")
