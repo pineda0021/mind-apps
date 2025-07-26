@@ -1,4 +1,3 @@
-
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
@@ -21,9 +20,9 @@ def compute_volume_display(top_expr, bottom_expr, method, axis):
 
     if method == "Disk/Washer":
         if axis == "x-axis":
-            steps.append(r"Volume formula: $V = \pi \int_a^b \left[f(x)^2 - g(x)^2ight] \, dx$")
+            steps.append(r"Volume formula: $V = \pi \int_a^b \left[f(x)^2 - g(x)^2\right] \, dx$")
         else:
-            steps.append(r"Volume formula: $V = \pi \int_c^d \left[f(y)^2 - g(y)^2ight] \, dy$")
+            steps.append(r"Volume formula: $V = \pi \int_c^d \left[f(y)^2 - g(y)^2\right] \, dy$")
     else:
         if axis == "x-axis":
             steps.append(r"Volume formula: $V = 2\pi \int_a^b y(f(y) - g(y)) \, dy$")
@@ -108,14 +107,10 @@ with col1:
 with col2:
     st.markdown("### 🪞 Reflection")
     st.info(
-        "What does this visualization mean?
-
-"
+        "What does this visualization mean?\n\n"
         "You're seeing the 3D solid created by revolving the area between two curves "
         "around a specified axis. The `Disk/Washer` method slices the region perpendicular to the axis, "
-        "while the `Cylindrical Shell` method wraps vertical slices around the axis.
-
-"
+        "while the `Cylindrical Shell` method wraps vertical slices around the axis.\n\n"
         "This helps you visualize how volume is accumulated using integration — "
         "just like Riemann sums stack rectangles to approximate area."
     )
