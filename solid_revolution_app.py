@@ -1,4 +1,3 @@
-
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
@@ -26,9 +25,9 @@ def compute_volume_display(top_expr, bottom_expr, method, axis):
             steps.append(r"Volume formula: $V = \pi \int_c^d \left[f(y)^2 - g(y)^2\right] \, dy$")
     else:
         if axis == "x-axis":
-            steps.append(r"Volume formula: $V = 2\pi \int_a^b (y)(f(y) - g(y)) \, dy$")
+            steps.append(r"Volume formula: $V = 2\pi \int_a^b y(f(y) - g(y)) \, dy$")
         else:
-            steps.append(r"Volume formula: $V = 2\pi \int_a^b (x)(f(x) - g(x)) \, dx$")
+            steps.append(r"Volume formula: $V = 2\pi \int_a^b x(f(x) - g(x)) \, dx$")
     return steps
 
 # --- 3D Plot Function ---
@@ -107,4 +106,4 @@ with col1:
 
 with col2:
     st.markdown("### 🎯 Example Visual (GeoGebra Style)")
-    st.image("47f80030-9dfb-4598-ac06-ee0b135d745d.png", caption="Solid of Revolution", use_column_width=True)
+    st.image("solid_example.png", caption="Solid of Revolution Example", use_column_width=True)
