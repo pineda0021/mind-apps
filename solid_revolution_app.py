@@ -174,6 +174,7 @@ if compute:
     col_left, col_right = st.columns([1.2, 0.8])
 
     with col_left:
+        plot_functions(top_expr, bottom_expr)
         show_formula(method, axis, top_expr, bottom_expr)
         plot_solid(top_expr, bottom_expr, method, axis)
         
