@@ -59,44 +59,48 @@ def plot_functions(top_expr, bottom_expr=None):
 # --- Animate solid ---
 def animate_solid(f_expr, g_expr=None):
     try:
-        x_vals = np.linspace(a, b, 200)
+        x_vals = np.linspace(a, b, 150)
         theta_vals = np.linspace(0, 2 * np.pi, 60)
         f = parse_function(f_expr)
         g = parse_function(g_expr) if g_expr else (lambda x: 0)
-
-        fig = plt.figure(figsize=(6, 6))
-        ax = fig.add_subplot(111, projection='3d')
 
         Y_outer_vals = np.nan_to_num(f(x_vals))
         Y_inner_vals = np.nan_to_num(g(x_vals))
 
         if len(Y_outer_vals) != len(x_vals) or len(Y_inner_vals) != len(x_vals):
-            raise ValueError("Function evaluations produced mismatched lengths.")
+            raise ValueError("Mismatch in function evaluation lengths.")
+
+        fig = plt.figure(figsize=(6, 6))
+        ax = fig.add_subplot(111, projection='3d')
 
         def update(i):
             ax.cla()
-            theta = theta_vals[i % len(theta_vals)]
+            theta = theta_vals[i]
             X = x_vals
             Y_outer = Y_outer_vals * np.cos(theta)
             Z_outer = Y_outer_vals * np.sin(theta)
             Y_inner = Y_inner_vals * np.cos(theta)
             Z_inner = Y_inner_vals * np.sin(theta)
+
             for j in range(len(X)):
-                ax.plot([X[j], X[j]], [Y_inner[j], Y_outer[j]], [Z_inner[j], Z_outer[j]], color='blue')
+                ax.plot([X[j], X[j]], [Y_inner[j], Y_outer[j]], [Z_inner[j], Z_outer[j]], color='blue', alpha=0.6)
+
             ax.set_xlim([a, b])
             ax.set_ylim([-1.5, 1.5])
             ax.set_zlim([-1.5, 1.5])
-            ax.set_title("Revolving Region Around Axis")
+            ax.set_title("Solid of Revolution")
             ax.set_xlabel("x")
             ax.set_ylabel("y")
             ax.set_zlabel("z")
 
         ani = animation.FuncAnimation(fig, update, frames=len(theta_vals), interval=100)
-        temp_gif_path = os.path.join(tempfile.gettempdir(), "temp_solid.gif")
-        ani.save(temp_gif_path, writer=animation.PillowWriter(fps=10))
-        st.image(temp_gif_path, caption="Volume Formation Animation")
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".gif") as tmpfile:
+            ani.save(tmpfile.name, writer=animation.PillowWriter(fps=10))
+            st.image(tmpfile.name, caption="Volume Formation Animation")
+
     except Exception as e:
-        st.warning("⚠️ Unable to render animation (pillow or ffmpeg may be missing).")
+        st.warning("⚠️ Animation failed to render.")
         st.code(str(e), language='python')
 
 # --- Compute volume ---
@@ -133,11 +137,11 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
     if method == "Disk/Washer":
         integrand = f_top**2 if not f_bot else f_top**2 - f_bot**2
         symbolic_integral = pi * integrate(integrand, (x, a, b))
-        st.latex(f"V = \pi \int_{{{a}}}^{{{b}}} {latex(integrand)} \, dx")
+        st.latex(f"V = \\pi \\int_{{{a}}}^{{{b}}} {latex(integrand)} \\, dx")
     else:
         integrand = x * f_top
         symbolic_integral = 2 * pi * integrate(integrand, (x, a, b))
-        st.latex(f"V = 2\pi \int_{{{a}}}^{{{b}}} x \cdot {latex(f_top)} \, dx")
+        st.latex(f"V = 2\\pi \\int_{{{a}}}^{{{b}}} x \\cdot {latex(f_top)} \\, dx")
 
     st.markdown("#### ✅ Step 2: Evaluate the integral")
     simplified_expr = simplify(symbolic_integral)
@@ -145,7 +149,7 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
         coeff = simplified_expr / pi
         fraction_result = Rational(coeff).limit_denominator()
         numer, denom = fraction_result.as_numer_denom()
-        st.latex(f"= \\frac{{{numer}}}{{{denom}}} \\pi")
+        st.latex(f"= \\\\frac{{{numer}}}{{{denom}}} \\pi")
         st.markdown(f"**Exact Volume:** {numer}/{denom}π ≈ {float(symbolic_integral):.4f}")
     else:
         st.latex(f"= {latex(symbolic_integral)}")
@@ -186,3 +190,4 @@ if compute:
                 "- **Cylindrical Shell Method**: wraps vertical slices around the axis.\n\n"
                 "Integrals here compute volume — just like Riemann sums approximate area!"
             )
+
