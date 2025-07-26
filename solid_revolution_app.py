@@ -4,18 +4,18 @@ import matplotlib.pyplot as plt
 from scipy.integrate import quad
 from sympy import symbols, integrate, pi, Rational, latex, simplify, sympify
 from matplotlib import animation
-import io
-import base64
+import tempfile
+import os
 import matplotlib
 matplotlib.use("Agg")  # Prevent display issues in headless environments
 
 # --- Page config ---
 st.set_page_config(page_title="MIND: Solid Revolution Tool", layout="wide")
-st.title("🧠 MIND: Solid of Revolution Tool")
+st.title("\U0001F9E0 MIND: Solid of Revolution Tool")
 st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College — built with the students in MIND.")
 
 # --- Sidebar inputs ---
-st.sidebar.header("🔧 Parameters")
+st.sidebar.header("\U0001F527 Parameters")
 
 function_option = st.sidebar.selectbox("Do you have one function or two functions?", ["One Function", "Two Functions"])
 
@@ -30,10 +30,10 @@ else:
     method = st.sidebar.selectbox("Method:", ["Disk/Washer", "Cylindrical Shell"])
     axis = st.sidebar.selectbox("Axis of rotation:", ["x-axis", "y-axis"])
 
-show_animation = st.sidebar.checkbox("Show 3D Animation (for 1 function)", value=True)
+show_animation = st.sidebar.checkbox("Show 3D Animation", value=True)
 a = st.sidebar.number_input("Start of interval (a):", value=0.0)
 b = st.sidebar.number_input("End of interval (b):", value=1.0)
-compute = st.sidebar.button("🔄 Compute and Visualize")
+compute = st.sidebar.button("\U0001F504 Compute and Visualize")
 
 # --- Function parser ---
 def parse_function(expr):
@@ -57,10 +57,11 @@ def plot_functions(top_expr, bottom_expr=None):
     st.pyplot(fig)
 
 # --- Animate solid ---
-def animate_solid(f_expr):
+def animate_solid(f_expr, g_expr=None):
     x_vals = np.linspace(a, b, 200)
     theta_vals = np.linspace(0, 2 * np.pi, 90)
     f = parse_function(f_expr)
+    g = parse_function(g_expr) if g_expr else (lambda x: 0)
 
     fig = plt.figure(figsize=(6, 6))
     ax = fig.add_subplot(111, projection='3d')
@@ -69,24 +70,28 @@ def animate_solid(f_expr):
         ax.cla()
         theta = theta_vals[i]
         X = x_vals
-        Y = f(X) * np.cos(theta)
-        Z = f(X) * np.sin(theta)
-        ax.plot3D(X, Y, Z, color='blue')
+        Y_outer = f(X) * np.cos(theta)
+        Z_outer = f(X) * np.sin(theta)
+        Y_inner = g(X) * np.cos(theta)
+        Z_inner = g(X) * np.sin(theta)
+        for j in range(len(X)):
+            ax.plot([X[j], X[j]], [Y_inner[j], Y_outer[j]], [Z_inner[j], Z_outer[j]], color='blue')
         ax.set_xlim([0, b])
         ax.set_ylim([-1, 1])
         ax.set_zlim([-1, 1])
-        ax.set_title("Revolving Curve Around Axis")
+        ax.set_title("Revolving Region Around Axis")
         ax.set_xlabel("x")
         ax.set_ylabel("y")
         ax.set_zlabel("z")
 
     ani = animation.FuncAnimation(fig, update, frames=len(theta_vals), interval=100)
-    buf = io.BytesIO()
-
     try:
-        ani.save(buf, writer='pillow')
-        gif_bytes = buf.getvalue()
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".gif") as temp_gif:
+            ani.save(temp_gif.name, writer='pillow')
+            temp_gif.seek(0)
+            gif_bytes = temp_gif.read()
         st.image(gif_bytes, caption="Volume Formation Animation")
+        os.remove(temp_gif.name)
     except Exception as e:
         st.warning("⚠️ Unable to render animation (pillow or ffmpeg may be missing).")
         st.code(str(e), language='python')
@@ -106,7 +111,7 @@ def compute_exact_volume(top_expr, bottom_expr, method, axis, a, b):
 
 # --- Display formula ---
 def show_formula(method, axis, f_expr, g_expr=None):
-    st.markdown("### 📘 Setup and Formula")
+    st.markdown("### \U0001F4D8 Setup and Formula")
     st.latex(f"f(x) = {f_expr}")
     if g_expr:
         st.latex(f"g(x) = {g_expr}")
@@ -117,7 +122,7 @@ def show_formula(method, axis, f_expr, g_expr=None):
 
 # --- Step-by-step ---
 def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
-    st.markdown("### 📋 Step-by-Step Solution:")
+    st.markdown("### \U0001F4CB Step-by-Step Solution:")
     x = symbols('x')
     f_top = sympify(top_expr)
     f_bot = sympify(bottom_expr) if bottom_expr else None
@@ -166,12 +171,12 @@ if compute:
         step_by_step_solution(top_expr, bottom_expr, method, axis, a, b)
         exact_volume = compute_exact_volume(top_expr, bottom_expr, method, axis, a, b)
         st.markdown(f"### ✅ Exact Volume: {exact_volume:.4f}")
-        if show_animation and bottom_expr is None:
-            animate_solid(top_expr)
+        if show_animation:
+            animate_solid(top_expr, bottom_expr)
 
     with col_right:
         show_method_tip(method, axis)
-        with st.expander("🪞 What does this visualization mean?", expanded=True):
+        with st.expander("\U0001FAA9 What does this visualization mean?", expanded=True):
             st.info(
                 "This tool helps visualize solids of revolution.\n\n"
                 "- **Disk/Washer Method**: uses horizontal/vertical slices perpendicular to the axis.\n"
