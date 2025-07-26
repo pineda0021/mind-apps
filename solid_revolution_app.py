@@ -6,6 +6,8 @@ from sympy import symbols, integrate, pi, Rational, latex, simplify, sympify
 from matplotlib import animation
 import io
 import base64
+import matplotlib
+matplotlib.use("Agg")  # Prevent display issues in headless environments
 
 # --- Page config ---
 st.set_page_config(page_title="MIND: Solid Revolution Tool", layout="wide")
@@ -80,9 +82,14 @@ def animate_solid(f_expr):
 
     ani = animation.FuncAnimation(fig, update, frames=len(theta_vals), interval=100)
     buf = io.BytesIO()
-    ani.save(buf, format='gif')
-    gif_bytes = buf.getvalue()
-    st.image(gif_bytes, caption="Volume Formation Animation")
+
+    try:
+        ani.save(buf, writer='pillow', format='gif')
+        gif_bytes = buf.getvalue()
+        st.image(gif_bytes, caption="Volume Formation Animation")
+    except Exception as e:
+        st.warning("⚠️ Unable to render animation (pillow or ffmpeg may be missing).")
+        st.code(str(e), language='python')
 
 # --- Compute volume ---
 def compute_exact_volume(top_expr, bottom_expr, method, axis, a, b):
@@ -122,7 +129,7 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
     else:
         integrand = x * f_top
         symbolic_integral = 2 * pi * integrate(integrand, (x, a, b))
-        st.latex(f"V = 2\pi \int_{{{a}}}^{{{b}}} x \\cdot {latex(f_top)} \\, dx")
+        st.latex(f"V = 2\pi \int_{{{a}}}^{{{b}}} x \cdot {latex(f_top)} \\, dx")
 
     st.markdown("#### ✅ Step 2: Evaluate the integral")
     simplified_expr = simplify(symbolic_integral)
