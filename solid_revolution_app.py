@@ -51,6 +51,9 @@ def plot_functions(top_expr, bottom_expr=None):
     if f_bot:
         ax.plot(x_vals, f_bot(x_vals), label=f"Bottom: g(x) = {bottom_expr}", color="red", linewidth=2)
         ax.fill_between(x_vals, f_top(x_vals), f_bot(x_vals), color='gray', alpha=0.5)
+    else:
+        ax.fill_between(x_vals, f_top(x_vals), color='gray', alpha=0.3)
+
     ax.set_xlabel("x")
     ax.set_ylabel("f(x), g(x)")
     ax.legend()
