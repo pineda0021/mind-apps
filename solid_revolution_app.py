@@ -12,10 +12,19 @@ st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College 
 # --- Sidebar inputs ---
 st.sidebar.header("🔧 Parameters")
 
-top_expr = st.sidebar.text_input("Top function f(x):", value="x")
-bottom_expr = st.sidebar.text_input("Bottom function g(x):", value="x**2")
-method = st.sidebar.selectbox("Method:", ["Disk/Washer", "Cylindrical Shell"])
-axis = st.sidebar.selectbox("Axis of rotation:", ["x-axis", "y-axis"])
+# Option for selecting one or two functions
+function_option = st.sidebar.selectbox("Do you have one function or two functions?", ["One Function", "Two Functions"])
+
+if function_option == "One Function":
+    top_expr = st.sidebar.text_input("Function f(x):", value="x**(1/2)")  # Default function y = sqrt(x)
+    bottom_expr = None
+    method = "Disk/Washer"  # Automatically set to Disk/Washer since it's a single function
+    axis = st.sidebar.selectbox("Axis of rotation:", ["x-axis", "y-axis"])
+else:
+    top_expr = st.sidebar.text_input("Top function f(x):", value="x")
+    bottom_expr = st.sidebar.text_input("Bottom function g(x):", value="x**2")
+    method = st.sidebar.selectbox("Method:", ["Disk/Washer", "Cylindrical Shell"])
+    axis = st.sidebar.selectbox("Axis of rotation:", ["x-axis", "y-axis"])
 
 # Students can enter custom intervals a, b
 a = st.sidebar.number_input("Start of interval (a):", value=0.0)
@@ -28,15 +37,17 @@ def parse_function(expr):
     return lambda x: eval(expr, {"x": x, "np": np})
 
 # --- Dynamic Plotting of Functions ---
-def plot_functions(top_expr, bottom_expr):
+def plot_functions(top_expr, bottom_expr=None):
     x_vals = np.linspace(a, b, 200)
     f_top = parse_function(top_expr)
-    f_bot = parse_function(bottom_expr)
+    f_bot = parse_function(bottom_expr) if bottom_expr else None
 
     fig, ax = plt.subplots(figsize=(8, 6))
     ax.plot(x_vals, f_top(x_vals), label=f"Top: f(x) = {top_expr}", color="blue", linewidth=2)
-    ax.plot(x_vals, f_bot(x_vals), label=f"Bottom: g(x) = {bottom_expr}", color="red", linewidth=2)
-    ax.fill_between(x_vals, f_top(x_vals), f_bot(x_vals), color='gray', alpha=0.5)
+
+    if f_bot:
+        ax.plot(x_vals, f_bot(x_vals), label=f"Bottom: g(x) = {bottom_expr}", color="red", linewidth=2)
+        ax.fill_between(x_vals, f_top(x_vals), f_bot(x_vals), color='gray', alpha=0.5)
     ax.set_xlabel("x")
     ax.set_ylabel("f(x), g(x)")
     ax.legend()
@@ -45,13 +56,13 @@ def plot_functions(top_expr, bottom_expr):
 # --- Compute exact volume ---
 def compute_exact_volume(top_expr, bottom_expr, method, axis, a, b):
     f_top = parse_function(top_expr)
-    f_bot = parse_function(bottom_expr)
+    f_bot = parse_function(bottom_expr) if bottom_expr else None
 
     if method == "Disk/Washer":
         if axis == "x-axis":
-            integrand = lambda x: np.pi * (f_top(x)**2 - f_bot(x)**2)
+            integrand = lambda x: np.pi * (f_top(x)**2) if not f_bot else np.pi * (f_top(x)**2 - f_bot(x)**2)
         else:
-            integrand = lambda y: np.pi * (f_top(y)**2 - f_bot(y)**2)
+            integrand = lambda y: np.pi * (f_top(y)**2) if not f_bot else np.pi * (f_top(y)**2 - f_bot(y)**2)
     else:
         if axis == "x-axis":
             integrand = lambda x: 2 * np.pi * x * (f_top(x) - f_bot(x))
@@ -63,20 +74,21 @@ def compute_exact_volume(top_expr, bottom_expr, method, axis, a, b):
     return volume
 
 # --- Display formula ---
-def show_formula(method, axis, f_expr, g_expr):
+def show_formula(method, axis, f_expr, g_expr=None):
     st.markdown("### 📘 Setup and Formula")
     st.latex(f"f(x) = {f_expr}")
-    st.latex(f"g(x) = {g_expr}")
+    if g_expr:
+        st.latex(f"g(x) = {g_expr}")
     if method == "Disk/Washer":
         if axis == "x-axis":
-            st.latex(r"V = \pi \int_a^b \left[f(x)^2 - g(x)^2\right] \, dx")
+            st.latex(r"V = \pi \int_a^b \left[f(x)^2 - g(x)^2\right] \, dx" if g_expr else r"V = \pi \int_a^b \left[f(x)^2\right] \, dx")
         else:
-            st.latex(r"V = \pi \int_c^d \left[f(y)^2 - g(y)^2\right] \, dy")
+            st.latex(r"V = \pi \int_c^d \left[f(y)^2 - g(y)^2\right] \, dy" if g_expr else r"V = \pi \int_c^d \left[f(y)^2\right] \, dy")
     else:
         if axis == "x-axis":
-            st.latex(r"V = 2\pi \int_a^b y(f(y) - g(y)) \, dy")
-        else:
             st.latex(r"V = 2\pi \int_a^b x(f(x) - g(x)) \, dx")
+        else:
+            st.latex(r"V = 2\pi \int_a^b y(f(y) - g(y)) \, dy")
 
 # --- Step-by-step integral solution ---
 def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
@@ -84,30 +96,29 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
 
     x = symbols('x')
     f_top = eval(top_expr, {"x": x})
-    f_bot = eval(bottom_expr, {"x": x})
+    f_bot = eval(bottom_expr, {"x": x}) if bottom_expr else None
 
     # Step 1: Setup
     st.markdown("#### 🧮 Step 1: Set up the integral using the chosen method")
     
     if method == "Disk/Washer":
         if axis == "x-axis":
-            integrand = f_top**2 - f_bot**2
+            integrand = f_top**2 if not f_bot else f_top**2 - f_bot**2
             symbolic_integral = pi * integrate(integrand, (x, a, b))
-            formula_str = r"\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} \left[" + latex(f_top**2) + " - " + latex(f_bot**2) + r"\right] \, dx"
+            formula_str = r"\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} \left[" + latex(f_top**2) + (" - " + latex(f_bot**2) if f_bot else "") + r"\right] \, dx"
         else:
-            # Assume y in terms of x for simplicity
-            integrand = f_top**2 - f_bot**2
+            integrand = f_top**2 if not f_bot else f_top**2 - f_bot**2
             symbolic_integral = pi * integrate(integrand, (x, a, b))
-            formula_str = r"\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} \left[" + latex(f_top**2) + " - " + latex(f_bot**2) + r"\right] \, dx"
+            formula_str = r"\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} \left[" + latex(f_top**2) + (" - " + latex(f_bot**2) if f_bot else "") + r"\right] \, dx"
     else:  # Cylindrical Shell
         if axis == "y-axis":
             integrand = x * (f_top - f_bot)
             symbolic_integral = 2 * pi * integrate(integrand, (x, a, b))
-            formula_str = r"2\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} x\left(" + latex(f_top) + " - " + latex(f_bot) + r"\right) dx"
+            formula_str = r"2\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} x\left(" + latex(f_top) + " - " + latex(f_bot) + r"\right) dx" if f_bot else r"2\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} x\left(" + latex(f_top) + r"\right) dx"
         else:
             integrand = x * (f_top - f_bot)
             symbolic_integral = 2 * pi * integrate(integrand, (x, a, b))
-            formula_str = r"2\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} y\left(" + latex(f_top) + " - " + latex(f_bot) + r"\right) dy"
+            formula_str = r"2\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} y\left(" + latex(f_top) + " - " + latex(f_bot) + r"\right) dy" if f_bot else r"2\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} y\left(" + latex(f_top) + r"\right) dy"
 
     st.latex(formula_str)
 
@@ -115,18 +126,11 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
     st.markdown("#### ✅ Step 2: Perform the integration and compute the result")
     simplified_expr = simplify(symbolic_integral)
 
-    # Simplify the result into a fraction
     if simplified_expr.has(pi):
         coeff = simplified_expr / pi
-        # Convert the coefficient to a rational number and display it
-        fraction_result = Rational(coeff).limit_denominator()  # Simplify to fraction
-
-        numer, denom = fraction_result.as_numer_denom()  # Safe fraction conversion
-
-        # Show result in terms of pi
+        fraction_result = Rational(coeff).limit_denominator()
+        numer, denom = fraction_result.as_numer_denom()
         st.latex(f"= \\frac{{{numer}}}{{{denom}}} \\pi")
-        
-        # Show decimal approximation as well
         st.markdown(f"**Exact Volume:** {numer}/{denom}π ≈ {float(symbolic_integral):.4f}")
     else:
         st.latex(f"= {latex(symbolic_integral)}")
@@ -135,7 +139,7 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
 # --- 3D plot function ---
 def plot_solid(top_expr, bottom_expr, method, axis):
     f_top = parse_function(top_expr)
-    f_bot = parse_function(bottom_expr)
+    f_bot = parse_function(bottom_expr) if bottom_expr else None
     x = np.linspace(0, 1, 200)
     theta = np.linspace(0, 2 * np.pi, 100)
     fig = plt.figure(figsize=(8, 6))
@@ -146,38 +150,23 @@ def plot_solid(top_expr, bottom_expr, method, axis):
         Y_top = f_top(X) * np.cos(T)
         Z_top = f_top(X) * np.sin(T)
         ax.plot_surface(X, Y_top, Z_top, alpha=0.7, cmap="coolwarm", edgecolor="none")
-        Y_bot = f_bot(X) * np.cos(T)
-        Z_bot = f_bot(X) * np.sin(T)
-        ax.plot_surface(X, Y_bot, Z_bot, alpha=1, color="white", edgecolor="none")
+        if f_bot:
+            Y_bot = f_bot(X) * np.cos(T)
+            Z_bot = f_bot(X) * np.sin(T)
+            ax.plot_surface(X, Y_bot, Z_bot, alpha=1, color="white", edgecolor="none")
 
     elif method == "Disk/Washer" and axis == "y-axis":
         y = np.linspace(0, 1, 200)
         T, Y = np.meshgrid(theta, y)
         R_out = parse_function(top_expr)(Y)
-        R_in = parse_function(bottom_expr)(Y)
+        R_in = parse_function(bottom_expr)(Y) if bottom_expr else None
         X_outer = R_out * np.cos(T)
         Z_outer = R_out * np.sin(T)
         ax.plot_surface(X_outer, Y, Z_outer, alpha=0.7, cmap="viridis", edgecolor="none")
-        X_inner = R_in * np.cos(T)
-        Z_inner = R_in * np.sin(T)
-        ax.plot_surface(X_inner, Y, Z_inner, alpha=1, color="white", edgecolor="none")
-
-    elif method == "Cylindrical Shell" and axis == "y-axis":
-        X, T = np.meshgrid(x, theta)
-        Height = f_top(X) - f_bot(X)
-        R = X
-        Y_shell = R * np.cos(T)
-        Z_shell = R * np.sin(T)
-        ax.plot_surface(Y_shell, Height, Z_shell, alpha=0.8, cmap="plasma", edgecolor="none")
-
-    elif method == "Cylindrical Shell" and axis == "x-axis":
-        y = np.linspace(0, 1, 200)
-        T, Y = np.meshgrid(theta, y)
-        Height = parse_function(top_expr)(Y) - parse_function(bottom_expr)(Y)
-        R = Y
-        X_shell = R * np.cos(T)
-        Z_shell = R * np.sin(T)
-        ax.plot_surface(X_shell, R, Z_shell, alpha=0.8, cmap="plasma", edgecolor="none")
+        if R_in:
+            X_inner = R_in * np.cos(T)
+            Z_inner = R_in * np.sin(T)
+            ax.plot_surface(X_inner, Y, Z_inner, alpha=1, color="white", edgecolor="none")
 
     ax.set_title(f"{method} about the {axis}")
     ax.set_xlabel("x")
@@ -185,20 +174,6 @@ def plot_solid(top_expr, bottom_expr, method, axis):
     ax.set_zlabel("z")
     ax.view_init(30, 45)
     st.pyplot(fig)
-
-# --- Recommendation box ---
-def show_method_tip(method, axis):
-    st.markdown("### ✅ Which Method is Better?")
-    if method == "Disk/Washer":
-        if axis == "x-axis":
-            st.success("Great choice! Since your functions are in terms of x, the Disk/Washer method about the x-axis is simple and direct.")
-        else:
-            st.warning("Careful! Using Disk/Washer about the y-axis may require solving for x as a function of y.")
-    else:
-        if axis == "y-axis":
-            st.success("Perfect! Cylindrical Shells work very well with vertical rectangles and rotation about the y-axis.")
-        else:
-            st.warning("Cylindrical Shells about the x-axis may be more complex if you can't easily express x as a function of y.")
 
 # --- Main Display Logic ---
 if compute:
