@@ -18,8 +18,11 @@ function_option = st.sidebar.selectbox("Do you have one function or two function
 if function_option == "One Function":
     top_expr = st.sidebar.text_input("Function f(x):", value="x**(1/2)")  # Default function y = sqrt(x)
     bottom_expr = None
-    method = "Disk/Washer"  # Automatically set to Disk/Washer since it's a single function
-    axis = st.sidebar.selectbox("Axis of rotation:", ["x-axis", "y-axis"])
+    method = st.sidebar.selectbox("Method:", ["Disk/Washer", "Cylindrical Shell"])  # Allow method selection
+    if method == "Cylindrical Shell":
+        axis = "y-axis"  # Automatically set axis to y-axis for cylindrical shell method
+    else:
+        axis = st.sidebar.selectbox("Axis of rotation:", ["x-axis", "y-axis"])
 else:
     top_expr = st.sidebar.text_input("Top function f(x):", value="x")
     bottom_expr = st.sidebar.text_input("Bottom function g(x):", value="x**2")
@@ -63,11 +66,11 @@ def compute_exact_volume(top_expr, bottom_expr, method, axis, a, b):
             integrand = lambda x: np.pi * (f_top(x)**2) if not f_bot else np.pi * (f_top(x)**2 - f_bot(x)**2)
         else:
             integrand = lambda y: np.pi * (f_top(y)**2) if not f_bot else np.pi * (f_top(y)**2 - f_bot(y)**2)
-    else:
-        if axis == "x-axis":
-            integrand = lambda x: 2 * np.pi * x * (f_top(x) - f_bot(x))
+    else:  # Cylindrical Shell
+        if axis == "y-axis":
+            integrand = lambda x: 2 * np.pi * x * f_top(x)  # Only one function for cylindrical shells
         else:
-            integrand = lambda y: 2 * np.pi * y * (f_top(y) - f_bot(y))
+            integrand = lambda y: 2 * np.pi * y * f_top(y)  # Only one function for cylindrical shells
 
     # Integrating using quad from scipy
     volume, error = quad(integrand, a, b)
@@ -84,11 +87,11 @@ def show_formula(method, axis, f_expr, g_expr=None):
             st.latex(r"V = \pi \int_a^b \left[f(x)^2 - g(x)^2\right] \, dx" if g_expr else r"V = \pi \int_a^b \left[f(x)^2\right] \, dx")
         else:
             st.latex(r"V = \pi \int_c^d \left[f(y)^2 - g(y)^2\right] \, dy" if g_expr else r"V = \pi \int_c^d \left[f(y)^2\right] \, dy")
-    else:
-        if axis == "x-axis":
-            st.latex(r"V = 2\pi \int_a^b x(f(x) - g(x)) \, dx")
+    else:  # Cylindrical Shell
+        if axis == "y-axis":
+            st.latex(r"V = 2\pi \int_a^b x f(x) \, dx")
         else:
-            st.latex(r"V = 2\pi \int_a^b y(f(y) - g(y)) \, dy")
+            st.latex(r"V = 2\pi \int_a^b y f(y) \, dy")
 
 # --- Step-by-step integral solution ---
 def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
@@ -112,13 +115,13 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
             formula_str = r"\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} \left[" + latex(f_top**2) + (" - " + latex(f_bot**2) if f_bot else "") + r"\right] \, dx"
     else:  # Cylindrical Shell
         if axis == "y-axis":
-            integrand = x * (f_top - f_bot)
+            integrand = x * f_top
             symbolic_integral = 2 * pi * integrate(integrand, (x, a, b))
-            formula_str = r"2\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} x\left(" + latex(f_top) + " - " + latex(f_bot) + r"\right) dx" if f_bot else r"2\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} x\left(" + latex(f_top) + r"\right) dx"
+            formula_str = r"2\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} x f(x) \, dx"
         else:
-            integrand = x * (f_top - f_bot)
+            integrand = x * f_top
             symbolic_integral = 2 * pi * integrate(integrand, (x, a, b))
-            formula_str = r"2\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} y\left(" + latex(f_top) + " - " + latex(f_bot) + r"\right) dy" if f_bot else r"2\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} y\left(" + latex(f_top) + r"\right) dy"
+            formula_str = r"2\pi \int_{" + f"{a}" + r"}^{" + f"{b}" + r"} y f(y) \, dy"
 
     st.latex(formula_str)
 
@@ -174,6 +177,20 @@ def plot_solid(top_expr, bottom_expr, method, axis):
     ax.set_zlabel("z")
     ax.view_init(30, 45)
     st.pyplot(fig)
+
+# --- Recommendation box ---
+def show_method_tip(method, axis):
+    st.markdown("### ✅ Which Method is Better?")
+    if method == "Disk/Washer":
+        if axis == "x-axis":
+            st.success("Great choice! Since your functions are in terms of x, the Disk/Washer method about the x-axis is simple and direct.")
+        else:
+            st.warning("Careful! Using Disk/Washer about the y-axis may require solving for x as a function of y.")
+    else:
+        if axis == "y-axis":
+            st.success("Perfect! Cylindrical Shells work very well with vertical rectangles and rotation about the y-axis.")
+        else:
+            st.warning("Cylindrical Shells about the x-axis may be more complex if you can't easily express x as a function of y.")
 
 # --- Main Display Logic ---
 if compute:
