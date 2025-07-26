@@ -2,7 +2,7 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import quad
-from sympy import symbols, integrate, pi, simplify, latex
+from sympy import symbols, integrate, pi, Rational, latex, simplify
 
 # --- Page config ---
 st.set_page_config(page_title="MIND: Solid Revolution Tool", layout="wide")
@@ -117,9 +117,15 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
 
     # Display result in terms of pi and decimal
     if simplified_expr.has(pi):
+        # Simplify the coefficient to a fraction
         coeff = simplified_expr / pi
-        st.latex(f"= {latex(coeff)} \cdot \pi")
-        st.markdown(f"**Exact Volume:** {float(coeff):.4f}π ≈ {float(symbolic_integral):.4f}")
+        fraction_result = Rational(coeff).limit_denominator()  # Simplify the fraction
+        
+        # Show result in terms of pi (e.g., pi/6)
+        st.latex(f"= \\frac{{{fraction_result.numerator()}}}{{{fraction_result.denominator()}}} \\pi")
+        
+        # Display decimal result
+        st.markdown(f"**Exact Volume:** {fraction_result.numerator()}/{fraction_result.denominator()}π ≈ {float(symbolic_integral):.4f}")
     else:
         st.latex(f"= {latex(symbolic_integral)}")
         st.markdown(f"**Exact Volume:** {float(symbolic_integral):.4f}")
