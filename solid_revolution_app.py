@@ -68,7 +68,7 @@ def animate_solid(f_expr, g_expr=None):
 
     def update(i):
         ax.cla()
-        theta = theta_vals[i]
+        theta = theta_vals[i % len(theta_vals)]
         X = x_vals
         Y_outer = f(X) * np.cos(theta)
         Z_outer = f(X) * np.sin(theta)
@@ -86,10 +86,9 @@ def animate_solid(f_expr, g_expr=None):
 
     ani = animation.FuncAnimation(fig, update, frames=len(theta_vals), interval=100)
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".gif") as temp_gif:
-            ani.save(temp_gif.name, writer='pillow')
-            st.image(temp_gif.name, caption="Volume Formation Animation")
-            os.remove(temp_gif.name)
+        temp_gif_path = os.path.join(tempfile.gettempdir(), "temp_solid.gif")
+        ani.save(temp_gif_path, writer='pillow')
+        st.image(temp_gif_path, caption="Volume Formation Animation")
     except Exception as e:
         st.warning("⚠️ Unable to render animation (pillow or ffmpeg may be missing).")
         st.code(str(e), language='python')
@@ -132,7 +131,7 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
     else:
         integrand = x * f_top
         symbolic_integral = 2 * pi * integrate(integrand, (x, a, b))
-        st.latex(f"V = 2\pi \int_{{{a}}}^{{{b}}} x \cdot {latex(f_top)} \\, dx")
+        st.latex(f"V = 2\pi \int_{{{a}}}^{{{b}}} x \\cdot {latex(f_top)} \\, dx")
 
     st.markdown("#### ✅ Step 2: Evaluate the integral")
     simplified_expr = simplify(symbolic_integral)
