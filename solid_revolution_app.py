@@ -177,7 +177,7 @@ if compute:
 
     with col_right:
         show_method_tip(method, axis)
-        with st.expander("🪞 What does this visualization mean?", expanded=True):
+        with st.expander("What does this visualization mean?", expanded=True):
             st.info(
                 "This tool helps visualize solids of revolution.\n\n"
                 "- **Disk/Washer Method**: uses horizontal/vertical slices perpendicular to the axis.\n"
