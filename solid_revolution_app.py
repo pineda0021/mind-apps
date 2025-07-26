@@ -88,10 +88,8 @@ def animate_solid(f_expr, g_expr=None):
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".gif") as temp_gif:
             ani.save(temp_gif.name, writer='pillow')
-            temp_gif.seek(0)
-            gif_bytes = temp_gif.read()
-        st.image(gif_bytes, caption="Volume Formation Animation")
-        os.remove(temp_gif.name)
+            st.image(temp_gif.name, caption="Volume Formation Animation")
+            os.remove(temp_gif.name)
     except Exception as e:
         st.warning("⚠️ Unable to render animation (pillow or ffmpeg may be missing).")
         st.code(str(e), language='python')
