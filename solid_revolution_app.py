@@ -115,16 +115,16 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b):
     st.markdown("#### ✅ Step 2: Perform the integration and compute the result")
     simplified_expr = simplify(symbolic_integral)
 
-    # Display result in terms of pi and decimal
+    # Simplify the result into a fraction
     if simplified_expr.has(pi):
-        # Simplify the coefficient to a fraction
         coeff = simplified_expr / pi
-        fraction_result = Rational(coeff).limit_denominator()  # Simplify the fraction
-        
-        # Show result in terms of pi (e.g., pi/6)
+        # Convert the coefficient to a rational number and display it
+        fraction_result = Rational(coeff).limit_denominator()  # Simplify to fraction
+
+        # Show result in terms of pi
         st.latex(f"= \\frac{{{fraction_result.numerator()}}}{{{fraction_result.denominator()}}} \\pi")
         
-        # Display decimal result
+        # Show decimal approximation as well
         st.markdown(f"**Exact Volume:** {fraction_result.numerator()}/{fraction_result.denominator()}π ≈ {float(symbolic_integral):.4f}")
     else:
         st.latex(f"= {latex(symbolic_integral)}")
@@ -223,3 +223,4 @@ if compute:
                 "- **Cylindrical Shell Method**: wraps vertical slices around the axis.\n\n"
                 "This helps visualize how integrals compute volume — just like Riemann sums approximate area!"
             )
+
