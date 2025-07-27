@@ -47,11 +47,74 @@ def extract_shift(axis_expr):
     except:
         return ("x", 0.0)
 
+# --- Plot functions ---
+def plot_functions(top_expr, bottom_expr):
+    f = parse_function(top_expr)
+    x = np.linspace(a, b, 300)
+    plt.figure(figsize=(6, 4))
+    plt.plot(x, f(x), label="Top: f(x)", color='blue')
+    if bottom_expr:
+        g = parse_function(bottom_expr)
+        plt.plot(x, g(x), label="Bottom: g(x)", color='red')
+        plt.fill_between(x, g(x), f(x), color='gray', alpha=0.3)
+    else:
+        plt.fill_between(x, 0, f(x), color='gray', alpha=0.3)
+    plt.legend()
+    plt.xlabel("x")
+    plt.ylabel("f(x), g(x)")
+    st.pyplot(plt.gcf())
+    plt.close()
+
+# --- Show formula ---
+def show_formula(method, axis, f_expr, g_expr):
+    x = symbols('x')
+    f = sympify(f_expr)
+    g = sympify(g_expr) if g_expr else 0
+    if method == "Disk/Washer" and axis == "x-axis":
+        expr = pi * ((f ** 2) - (g ** 2))
+        integral = integrate(expr, (x, a, b))
+        st.markdown("#### 📘 Setup and Formula")
+        st.latex(r"f(x) = " + latex(f))
+        if g_expr:
+            st.latex(r"g(x) = " + latex(g))
+        st.latex(r"V = \pi \int_{{{}}}^{{{}}} \left[{}^2 - {}^2\right] \,dx".format(a, b, latex(f), latex(g)))
+
+# --- Step-by-step solution ---
+def step_by_step_solution(f_expr, g_expr, method, axis, a, b, axis_shift):
+    x = symbols('x')
+    f = sympify(f_expr)
+    g = sympify(g_expr) if g_expr else 0
+    integrand = (f ** 2 - g ** 2) * pi
+    result = integrate(integrand, (x, a, b))
+    st.markdown("#### 📝 Step-by-Step Solution:")
+    st.latex(r"V = \pi \int_{{{}}}^{{{}}} \left[{}^2 - {}^2\right] \, dx = {}".format(a, b, latex(f), latex(g), latex(simplify(result))))
+
+# --- Compute exact volume ---
+def compute_exact_volume(f_expr, g_expr, method, axis, a, b, axis_shift):
+    f = parse_function(f_expr)
+    g = parse_function(g_expr) if g_expr else (lambda x: 0)
+    integrand = lambda x: np.pi * (f(x) ** 2 - g(x) ** 2)
+    result, _ = quad(integrand, a, b)
+    return result
+
+# --- Placeholder animation function ---
+def animate_revolution(f_expr):
+    st.info("⚠️ Animated revolution not yet implemented. Coming soon!")
+
+# --- Method Tip ---
+def show_method_tip(method, axis):
+    st.markdown("### ✅ Which Method is Better?")
+    if method == "Disk/Washer" and axis == "x-axis":
+        st.success("The Disk/Washer Method is generally preferred for solids rotated around the x-axis.")
+    elif method == "Cylindrical Shell" and axis == "y-axis":
+        st.success("Shell Method is often more convenient when rotating around the y-axis.")
+    else:
+        st.warning("This method/axis combo might require transforming the function or limits.")
+
 # --- 3D Disk Riemann Visualization ---
 def plot_disk_riemann_3d(top_expr):
     f = parse_function(top_expr)
     x_vals = np.linspace(a, b, 20)
-    theta = np.linspace(0, 2 * np.pi, 30)
     fig = go.Figure()
 
     for i in range(len(x_vals) - 1):
@@ -59,10 +122,9 @@ def plot_disk_riemann_3d(top_expr):
         x1 = x_vals[i + 1]
         x_mid = (x0 + x1) / 2
         r = f(x_mid)
-        Z = np.linspace(0, r, 10)
-        T = np.linspace(0, 2 * np.pi, 30)
-        T, Z = np.meshgrid(T, Z)
-        X = x_mid * np.ones_like(Z)
+        theta = np.linspace(0, 2 * np.pi, 30)
+        X = x_mid * np.ones((30, 30))
+        T, Z = np.meshgrid(theta, np.linspace(0, r, 30))
         Y = Z * np.cos(T)
         Z = Z * np.sin(T)
 
@@ -72,7 +134,7 @@ def plot_disk_riemann_3d(top_expr):
                       scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'), height=500)
     st.plotly_chart(fig)
 
-# --- Main (injection for disk Riemann 3D) ---
+# --- Main ---
 if compute:
     axis_name, axis_shift = extract_shift(rotation_line)
     col_left, col_right = st.columns([1.2, 0.8])
@@ -84,7 +146,7 @@ if compute:
         st.markdown(f"### ✅ Exact Volume: {exact_volume:.4f}")
         if show_riemann:
             if method == "Cylindrical Shell" and axis == "y-axis":
-                plot_shell_riemann_3d(top_expr)
+                st.warning("Shell method Riemann 3D visualization coming soon.")
             elif method == "Disk/Washer" and axis == "x-axis":
                 plot_disk_riemann_3d(top_expr)
             else:
