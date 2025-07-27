@@ -116,8 +116,8 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b, axis_shift)
         st.latex(f"= {latex(symbolic_integral)}")
         st.markdown(f"**Exact Volume:** {float(symbolic_integral):.4f}")
 
-# --- Riemann Sum in 3D ---
-def plot_riemann_3d(top_expr):
+# --- Shell Method Riemann Sum in 3D ---
+def plot_shell_riemann_3d(top_expr):
     f_top = parse_function(top_expr)
     x_vals = np.linspace(a, b, 20)
     dx = (b - a) / len(x_vals)
@@ -125,16 +125,22 @@ def plot_riemann_3d(top_expr):
     fig = go.Figure()
 
     for x in x_vals:
-        r = f_top(x)
-        if r < 0: continue
-        x_ring = x + np.zeros_like(theta)
-        y_ring = r * np.cos(theta)
-        z_ring = r * np.sin(theta)
-        fig.add_trace(go.Scatter3d(x=x_ring, y=y_ring, z=z_ring, mode='lines', line=dict(color='lightblue')))
+        height = f_top(x)
+        r = x
+        X = (r + dx/2) * np.cos(theta)
+        Y = (r + dx/2) * np.sin(theta)
+        Z0 = np.zeros_like(theta)
+        Z1 = height * np.ones_like(theta)
+
+        fig.add_trace(go.Scatter3d(x=X, y=Y, z=Z0, mode='lines', line=dict(color='lightblue'), showlegend=False))
+        fig.add_trace(go.Scatter3d(x=X, y=Y, z=Z1, mode='lines', line=dict(color='lightblue'), showlegend=False))
+
+        for i in range(len(theta)):
+            fig.add_trace(go.Scatter3d(x=[X[i], X[i]], y=[Y[i], Y[i]], z=[Z0[i], Z1[i]], mode='lines', line=dict(color='lightblue'), showlegend=False))
 
     fig.update_layout(
-        title="Riemann Sum Approximation in 3D",
-        scene=dict(xaxis_title='x', yaxis_title='f(x) cosθ', zaxis_title='f(x) sinθ'),
+        title="Shell Method: Riemann Sum Approximation in 3D",
+        scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='Height'),
         height=500
     )
     st.plotly_chart(fig)
@@ -147,14 +153,14 @@ def show_formula(method, axis, top_expr, bottom_expr):
         st.latex(f"g(x) = {bottom_expr}")
     if method == "Disk/Washer":
         if axis == "x-axis":
-            st.latex(r"V = \\pi \\int_a^b [f(x)^2 - g(x)^2] \\, dx")
+            st.latex(r"V = \pi \int_a^b [f(x)^2 - g(x)^2] \, dx")
         else:
-            st.latex(r"V = \\pi \\int_c^d [f(y)^2 - g(y)^2] \\, dy")
+            st.latex(r"V = \pi \int_c^d [f(y)^2 - g(y)^2] \, dy")
     else:
         if axis == "y-axis":
-            st.latex(r"V = 2\\pi \\int_a^b x f(x) \\, dx")
+            st.latex(r"V = 2\pi \int_a^b x f(x) \, dx")
         else:
-            st.latex(r"V = 2\\pi \\int_a^b y f(y) \\, dy")
+            st.latex(r"V = 2\pi \int_a^b y f(y) \, dy")
 
 # --- Method tip ---
 def show_method_tip(method, axis):
@@ -181,7 +187,10 @@ if compute:
         exact_volume = compute_exact_volume(top_expr, bottom_expr, method, axis, a, b, axis_shift)
         st.markdown(f"### ✅ Exact Volume: {exact_volume:.4f}")
         if show_riemann:
-            plot_riemann_3d(top_expr)
+            if method == "Cylindrical Shell" and axis == "y-axis":
+                plot_shell_riemann_3d(top_expr)
+            else:
+                st.info("Riemann 3D visualization for this method/axis not yet available.")
 
     with col_right:
         show_method_tip(method, axis)
