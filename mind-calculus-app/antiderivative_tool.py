@@ -1,77 +1,105 @@
 import streamlit as st
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import sympy as sp
 from sympy.abc import x
-import streamlit.components.v1 as components
+import matplotlib.pyplot as plt
+import numpy as np
+import random
 
-# Define the function with a removable discontinuity
-def f(x_val):
-    return (x_val**2 - 5*x_val + 6) / (x_val - 2)
 
 def run():
-    st.header("Limits Visualizer")
+    st.header("🧠 Antiderivative Visualizer")
     st.markdown("""
-    Explore removable discontinuities, limits from a table, and animation.
+    Enter a function and explore its antiderivative (indefinite integral) symbolically and graphically.
     """)
 
-    # Animation of the function with a removable discontinuity
-    x_vals_full = np.linspace(-2, 6, 400)
-    x_vals = x_vals_full[np.abs(x_vals_full - 2) > 1e-9]
-    y_vals = f(x_vals)
+    # Function input
+    st.subheader("📥 Enter a Function")
+    f_input = st.text_input("f(x) =", "x**2 + 1")
+    try:
+        fx = sp.sympify(f_input)
+        F = sp.integrate(fx, x)
+    except:
+        st.error("Invalid function. Please enter a valid mathematical expression.")
+        return
+
+    # Display symbolic antiderivative
+    st.subheader("🧮 Symbolic Antiderivative")
+    st.latex(rf"F(x) = \int {sp.latex(fx)} \, dx = {sp.latex(F)} + C")
+
+    # Graphs
+    st.subheader("📈 Graph of f(x) and F(x)")
+    f_np = sp.lambdify(x, fx, modules=["numpy"])
+    F_np = sp.lambdify(x, F, modules=["numpy"])
+
+    X = np.linspace(-5, 5, 400)
+    Y = f_np(X)
+    Y_int = F_np(X)
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.set_xlim(-2, 6)
-    ax.set_ylim(-6, 4)
-    ax.set_title(r"Graph of $f(x) = \frac{x^2 - 5x + 6}{x - 2}$")
+    ax.plot(X, Y, label="f(x)", color="blue")
+    ax.plot(X, Y_int, label="F(x)", color="orange")
     ax.set_xlabel("x")
-    ax.set_ylabel("f(x)")
+    ax.set_ylabel("y")
     ax.grid(True)
-    ax.axhline(0, color='black', linewidth=0.5)
-    ax.axvline(0, color='black', linewidth=0.5)
-    line, = ax.plot([], [], lw=2, label='f(x)')
-    x_hole = 2
-    y_hole = x_hole - 3
-    hole, = ax.plot([], [], 'o', color='red', markerfacecolor='white', markersize=8, label='Hole at x = 2')
+    ax.set_title("Function and Antiderivative")
+    ax.legend()
+    st.pyplot(fig)
 
-    def init():
-        line.set_data([], [])
-        hole.set_data([], [])
-        return line, hole
+    # -------------------------------
+    # 📊 Multiple Choice Quiz Section
+    # -------------------------------
+    st.subheader("📊 Multiple Choice Quiz: Antiderivative")
 
-    def animate(i):
-        x = x_vals[:i]
-        y = y_vals[:i]
-        line.set_data(x, y)
-        if i > len(x_vals) // 2:
-            hole.set_data([x_hole], [y_hole])
-        return line, hole
+    quiz_fx = fx  # use the main input function
+    quiz_expr_latex = sp.latex(fx)
 
-    ani = animation.FuncAnimation(fig, animate, init_func=init, frames=len(x_vals), interval=10, blit=True)
-    components.html(ani.to_jshtml(), height=500)
+    # Compute the correct antiderivative symbolically
+    F_correct = sp.integrate(quiz_fx, x)
+    F_correct_str = sp.latex(F_correct) + " + C"
 
-    # Table of values around x = 2
-    st.subheader("Limit Table Around x = 2")
-    x_input = [1.9, 1.99, 1.999, 2.001, 2.01, 2.1]
-    table_data = []
-    for xi in x_input:
-        if xi == 2:
-            table_data.append((xi, "undefined"))
+    # Generate distractors
+    distractors = []
+    while len(distractors) < 3:
+        wrong = F_correct + random.choice([1, -1, 2, -2, x, -x])
+        wrong_str = sp.latex(wrong) + " + C"
+        if wrong_str != F_correct_str and wrong_str not in distractors:
+            distractors.append(wrong_str)
+
+    # Combine and shuffle
+    options = [F_correct_str] + distractors
+    random.shuffle(options)
+
+    # Display the question
+    st.markdown(f"**What is an antiderivative of** $f(x) = {quiz_expr_latex}$?")
+    answer = st.radio("Choose the correct answer:", options)
+
+    # Check answer
+    if st.button("✅ Submit Antiderivative Answer"):
+        if answer == F_correct_str:
+            st.success("Correct! 🎉 That's the right antiderivative.")
         else:
-            table_data.append((xi, round(f(xi), 6)))
+            st.error("Oops! That's not quite right. Review the integration process.")
 
-    st.table({"x": [r[0] for r in table_data], "f(x)": [r[1] for r in table_data]})
+    # -------------------------------
+    # 📉 Accumulated Area Visualization
+    # -------------------------------
+    st.subheader("📊 Visualizing Accumulated Area")
+    a_val = st.slider("Choose starting point a for the integral", -5.0, 5.0, value=-2.0, step=0.1)
+    b_val = st.slider("Move the endpoint b to accumulate area", a_val, 5.0, value=2.0, step=0.1)
 
-    st.markdown("""
-    From both sides, the function approaches \( f(x) \to -1 \) as \( x \to 2 \).
-    Therefore, \( \lim_{x \to 2} f(x) = -1 \), even though \( f(2) \) is undefined.
-    """)
+    area_val = sp.integrate(fx, (x, a_val, b_val))
+    st.latex(rf"\int_{{{a_val}}}^{{{b_val}}} {sp.latex(fx)} \, dx = {sp.latex(area_val)}")
 
-    st.subheader("🧠 Try This Challenge!")
-    user_answer = st.number_input("What is the value of the limit as x approaches 2?", step=0.1)
-    if st.button("Check Answer"):
-        if np.isclose(user_answer, -1.0, atol=0.01):
-            st.success("✅ Correct! The limit is -1.")
-        else:
-            st.error("❌ Not quite. Remember to evaluate how f(x) behaves as x gets close to 2 from both sides.")
+    # Highlight the area under the curve
+    x_fill = np.linspace(a_val, b_val, 300)
+    y_fill = f_np(x_fill)
+
+    fig2, ax2 = plt.subplots(figsize=(8, 5))
+    ax2.plot(X, Y, label="f(x)", color="blue")
+    ax2.fill_between(x_fill, y_fill, alpha=0.3, color="green", label="Accumulated Area")
+    ax2.set_xlabel("x")
+    ax2.set_ylabel("y")
+    ax2.set_title("Accumulated Area from a to b")
+    ax2.grid(True)
+    ax2.legend()
+    st.pyplot(fig2)
