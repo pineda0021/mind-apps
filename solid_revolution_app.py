@@ -48,6 +48,8 @@ def plot_region():
     plt.close()
 
 # --- Symbolic formula + steps ---
+from sympy import Rational
+
 def display_formula():
     if method == "Disk/Washer" and axis == "x-axis":
         st.markdown("### 📘 Volume Formula")
@@ -57,37 +59,35 @@ def display_formula():
         g_sq = simplify(g_expr**2)
         integrand = f_sq - g_sq
         integral_part = integrate(integrand, (x, a, b))
-        final_expr = pi * integral_part
-        simplified_expr = simplify(final_expr)
+        symbolic_result = pi * integral_part
 
         st.markdown("### 📝 Step-by-Step")
         st.latex(r"f(x)^2 = " + latex(f_sq))
         st.latex(r"g(x)^2 = " + latex(g_sq))
         st.latex(
             r"V = \pi \int_{%.2f}^{%.2f} \left[%s - %s\right] dx = %s"
-            % (a, b, latex(f_sq), latex(g_sq), latex(simplified_expr))
+            % (a, b, latex(f_sq), latex(g_sq), latex(symbolic_result))
         )
 
-        return float(simplified_expr.evalf())
+        return float(symbolic_result.evalf())
 
     elif method == "Shell" and axis == "y-axis":
         st.markdown("### 📘 Volume Formula")
         st.latex(r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot \left[f(x) - g(x)\right] dx" % (a, b))
 
-        integrand = simplify(x * (f_expr - g_expr))
-        integral_part = integrate(integrand, (x, a, b))
-        final_expr = 2 * pi * integral_part
-        simplified_expr = simplify(final_expr)
+        shell_expr = simplify(x * (f_expr - g_expr))
+        integral_part = integrate(shell_expr, (x, a, b))
+        symbolic_result = 2 * pi * integral_part
 
         st.markdown("### 📝 Step-by-Step")
         st.latex(r"f(x) - g(x) = " + latex(f_expr - g_expr))
         st.latex(
             r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot \left(%s\right) dx = %s"
-            % (a, b, latex(f_expr - g_expr), latex(simplified_expr))
+            % (a, b, latex(f_expr - g_expr), latex(symbolic_result))
         )
 
-        return float(simplified_expr.evalf())
-
+        return float(symbolic_result.evalf())
+    
     else:
         st.warning("Method and axis combination not supported.")
         return None
