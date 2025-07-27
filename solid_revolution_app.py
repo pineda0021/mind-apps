@@ -52,40 +52,45 @@ def display_formula():
     if method == "Disk/Washer" and axis == "x-axis":
         st.markdown("### 📘 Volume Formula")
         st.latex(r"V = \pi \int_{%.2f}^{%.2f} \left[f(x)^2 - g(x)^2\right] dx" % (a, b))
-        f_sq = f_expr**2
-        g_sq = g_expr**2
-        integrand = pi * (f_sq - g_sq)
-        exact = integrate(integrand, (x, a, b))
-        simplified = simplify(exact)
 
-        # Show step-by-step with fractions
+        f_sq = simplify(f_expr**2)
+        g_sq = simplify(g_expr**2)
+        integrand = f_sq - g_sq
+        symbolic_integral = integrate(integrand, (x, a, b))
+        result = pi * symbolic_integral
+
         st.markdown("### 📝 Step-by-Step")
-        st.latex(r"f(x)^2 = " + latex(f_sq))
-        st.latex(r"g(x)^2 = " + latex(g_sq))
+        st.latex("f(x)^2 = " + latex(f_sq))
+        st.latex("g(x)^2 = " + latex(g_sq))
         st.latex(
             r"V = \pi \int_{%.2f}^{%.2f} \left[%s - %s\right] dx = %s"
-            % (a, b, latex(f_sq), latex(g_sq), latex(simplified))
+            % (a, b, latex(f_sq), latex(g_sq), latex(result))
         )
-        return float(simplified.evalf())
+
+        return float(result.evalf())
 
     elif method == "Shell" and axis == "y-axis":
         st.markdown("### 📘 Volume Formula")
         st.latex(r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot \left[f(x) - g(x)\right] dx" % (a, b))
-        shell_integrand = 2 * pi * x * (f_expr - g_expr)
-        result = integrate(shell_integrand, (x, a, b))
-        simplified = simplify(result)
+
+        diff_fg = simplify(f_expr - g_expr)
+        integrand = x * diff_fg
+        symbolic_integral = integrate(integrand, (x, a, b))
+        result = 2 * pi * symbolic_integral
 
         st.markdown("### 📝 Step-by-Step")
-        st.latex("f(x) - g(x) = " + latex(f_expr - g_expr))
+        st.latex("f(x) - g(x) = " + latex(diff_fg))
         st.latex(
             r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot (%s) dx = %s"
-            % (a, b, latex(f_expr - g_expr), latex(simplified))
+            % (a, b, latex(diff_fg), latex(result))
         )
-        return float(simplified.evalf())
+
+        return float(result.evalf())
 
     else:
         st.warning("Method and axis combination not supported.")
         return None
+
 
 # --- 3D Disk/Washer Visualization ---
 def plot_disk_riemann():
