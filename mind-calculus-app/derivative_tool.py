@@ -26,7 +26,7 @@ def step_by_step_derivation(expr):
     return steps
 
 def run():
-    st.header("\U0001F9E0 Derivative Visualizer")
+    st.header("🧠 Derivative Visualizer")
     st.markdown("""
     Enter a function and explore its derivative both symbolically and graphically. Compare f(x) and f'(x), and investigate the slope of the tangent line at any point.
     """)
@@ -130,4 +130,3 @@ def run():
 
 if __name__ == "__main__":
     run()
-
