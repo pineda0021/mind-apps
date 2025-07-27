@@ -100,7 +100,7 @@ def run():
         st.markdown(f"**1. Original Expression:**  $f(x) = {sp.latex(fx_expr)}$")
         st.markdown(f"**2. Factored Form:**  $f(x) = {sp.latex(factored)}$")
         st.markdown(f"**3. Simplified Form (after canceling):**  $f(x) = {sp.latex(canceled)}$")
-        st.markdown(f"**4. Compute the Limit as** $x $\to$ {user_a}$:")
+        st.markdown(f"**4. Compute the Limit as st.latex( x \to {user_a}:")
         st.latex(f"\\lim_{{x $\to$ {user_a}}} f(x) = {sp.latex(limit_val)}")
     except:
         st.warning("Could not compute symbolic limit. Try a simpler function.")
