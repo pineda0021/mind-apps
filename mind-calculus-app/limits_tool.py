@@ -13,7 +13,7 @@ import plotly.graph_objs as go
 def run():
     st.header("♾️ Limits Visualizer")
     st.markdown("""
-    Explore removable discontinuities, limits from a table, animation, symbolic simplification, and ε–δ reasoning.
+    Explore removable discontinuities, limits from a table, animation, and symbolic simplification.
     """)
 
     user_fx_input = st.text_input("Enter a function f(x):", "(x**2 - 5*x + 6)/(x - 2)")
@@ -61,7 +61,7 @@ def run():
         pass
 
     fig.update_layout(
-        title_text=f"Graph of f(x) = {sp.latex(fx_expr).replace('\\', '')}",
+        title_text=f"Graph of f(x)",
         scene=dict(
             xaxis_title='x',
             yaxis_title='depth (for visual separation)',
