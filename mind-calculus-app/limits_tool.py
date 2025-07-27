@@ -74,7 +74,7 @@ def run():
     except:
         pass
 
-    fig.update_layout(title=dict(text=f"Graph of $f(x) = {sp.latex(fx_expr)}$", x=0.5),
+    fig.update_layout(title=dict(st.markdown=f"Graph of $f(x) = {sp.latex(simplified_expr)}$", x=0.5),
                       scene=dict(
                           xaxis_title='x',
                           yaxis_title='depth (for visual separation)',
