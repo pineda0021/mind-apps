@@ -18,7 +18,7 @@ def run():
     """)
 
     # Symbolic simplification
-    st.subheader("\U0001F9EE Symbolic Simplification")
+    st.subheader("🧮 Symbolic Simplification")
     numerator = sp.expand((x - 2)*(x - 3))
     original_expr = (x**2 - 5*x + 6)/(x - 2)
     simplified_expr = sp.simplify(original_expr)
@@ -79,7 +79,7 @@ def run():
     """)
 
     # Interactive Challenge
-    st.subheader("\U0001F3AF Challenge: Estimate the Limit")
+    st.subheader("🎯 Challenge: Estimate the Limit")
     user_limit = st.number_input("What do you think is the limit of f(x) as x approaches 2?", step=0.01)
     if st.button("Check Answer"):
         if abs(user_limit + 1) < 1e-3:
