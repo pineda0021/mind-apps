@@ -1,3 +1,5 @@
+def run():
+
 import streamlit as st
 import sympy as sp
 from sympy.abc import x
@@ -128,3 +130,7 @@ def run():
             st.success("Correct! 🎉 Great job.")
         else:
             st.error("Oops! That's not quite right. Try reviewing the rules of differentiation.")
+
+if __name__ == "__main__":
+    run()
+
