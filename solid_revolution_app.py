@@ -53,55 +53,35 @@ from sympy import Rational
 def display_formula():
     if method == "Disk/Washer" and axis == "x-axis":
         st.markdown("### 📘 Volume Formula")
+        st.latex(r"V = \pi \int_{%.2f}^{%.2f} \left[f(x)^2 - g(x)^2\right] dx" % (a, b))
         f_sq = f_expr**2
         g_sq = g_expr**2
-        integrand = f_sq - g_sq
-        integral = integrate(integrand, (x, a, b))
-        exact = pi * integral
+        integrand = pi * (f_sq - g_sq)
+        exact = integrate(integrand, (x, a, b))
+        simplified = simplify(exact)
         st.markdown("### 📝 Step-by-Step")
         st.latex("f(x)^2 = " + latex(f_sq))
         st.latex("g(x)^2 = " + latex(g_sq))
-        step_by_step = r"""
-\begin{aligned}
-V &= \pi \int_{%s}^{%s} \left[%s - %s\right] dx \\
-  &= \pi \left(%s\right) \\
-  &= %s
-\end{aligned}
-""" % (
-            latex(a), latex(b),
-            latex(f_sq), latex(g_sq),
-            latex(integral),
-            latex(simplify(exact))
-        )
-        st.latex(step_by_step)
-        return float(exact.evalf())
+        st.latex(r"V = \pi \int_{%.2f}^{%.2f} \left[%s - %s\right] dx = %s" %
+                 (a, b, latex(f_sq), latex(g_sq), latex(simplified)))
+        return simplified  # return symbolic (not float)
 
     elif method == "Shell" and axis == "y-axis":
         st.markdown("### 📘 Volume Formula")
+        st.latex(r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot \left[f(x) - g(x)\right] dx" % (a, b))
         shell_expr = f_expr - g_expr
-        shell_integrand = x * shell_expr
-        integral = integrate(shell_integrand, (x, a, b))
-        exact = 2 * pi * integral
+        shell_integrand = 2 * pi * x * shell_expr
+        exact = integrate(shell_integrand, (x, a, b))
+        simplified = simplify(exact)
         st.markdown("### 📝 Step-by-Step")
         st.latex("f(x) - g(x) = " + latex(shell_expr))
-        step_by_step = r"""
-\begin{aligned}
-V &= 2\pi \int_{%s}^{%s} x \cdot \left(%s\right) dx \\
-  &= 2\pi \left(%s\right) \\
-  &= %s
-\end{aligned}
-""" % (
-            latex(a), latex(b),
-            latex(shell_expr),
-            latex(integral),
-            latex(simplify(exact))
-        )
-        st.latex(step_by_step)
-        return float(exact.evalf())
-
+        st.latex(r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot (%s) dx = %s" %
+                 (a, b, latex(shell_expr), latex(simplified)))
+        return simplified  # return symbolic (not float)
     else:
         st.warning("Method and axis combination not supported.")
         return None
+
 
 # --- 3D Disk/Washer Visualization ---
 def plot_disk_riemann():
