@@ -47,152 +47,32 @@ def extract_shift(axis_expr):
     except:
         return ("x", 0.0)
 
-# --- Plot functions ---
-def plot_functions(top_expr, bottom_expr=None):
-    x_vals = np.linspace(a, b, 400)
-    f_top = parse_function(top_expr)
-    f_bot = parse_function(bottom_expr) if bottom_expr else None
-
-    fig, ax = plt.subplots(figsize=(7, 5))
-    ax.plot(x_vals, f_top(x_vals), label=f"f(x) = {top_expr}", color='blue')
-    if f_bot:
-        ax.plot(x_vals, f_bot(x_vals), label=f"g(x) = {bottom_expr}", color='red')
-        ax.fill_between(x_vals, f_top(x_vals), f_bot(x_vals), alpha=0.3, color='purple')
-    else:
-        ax.fill_between(x_vals, f_top(x_vals), alpha=0.3, color='skyblue')
-
-    ax.set_title("2D Region to be Revolved")
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.legend()
-    ax.grid(True)
-    st.pyplot(fig)
-
-# --- Volume ---
-def compute_exact_volume(top_expr, bottom_expr, method, axis, a, b, axis_shift):
-    f_top = parse_function(top_expr)
-    f_bot = parse_function(bottom_expr) if bottom_expr else None
-
-    if method == "Disk/Washer":
-        if axis == "x-axis":
-            integrand = (lambda x: pi * ((f_top(x) - axis_shift)**2)) if not f_bot else (
-                lambda x: pi * ((f_top(x) - axis_shift)**2 - (f_bot(x) - axis_shift)**2))
-        else:
-            integrand = (lambda y: pi * ((f_top(y) - axis_shift)**2)) if not f_bot else (
-                lambda y: pi * ((f_top(y) - axis_shift)**2 - (f_bot(y) - axis_shift)**2))
-    else:
-        if axis == "y-axis":
-            integrand = lambda x: 2 * pi * (abs(x - axis_shift)) * f_top(x)
-        else:
-            integrand = lambda y: 2 * pi * (abs(y - axis_shift)) * f_top(y)
-
-    volume, _ = quad(integrand, a, b)
-    return volume
-
-# --- Step-by-step ---
-def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b, axis_shift):
-    st.markdown("### 📋 Step-by-Step Solution:")
-    x = symbols('x')
-    f_top = sympify(top_expr)
-    f_bot = sympify(bottom_expr) if bottom_expr else None
-
-    if method == "Disk/Washer":
-        integrand = (f_top - axis_shift)**2 if not f_bot else (f_top - axis_shift)**2 - (f_bot - axis_shift)**2
-        symbolic_integral = pi * integrate(integrand, (x, a, b))
-        st.latex(f"V = \\pi \\int_{{{a}}}^{{{b}}} {latex(integrand)} \\, dx")
-    else:
-        integrand = Abs(x - axis_shift) * f_top
-        symbolic_integral = 2 * pi * integrate(integrand, (x, a, b))
-        st.latex(f"V = 2\\pi \\int_{{{a}}}^{{{b}}} |x - {axis_shift}| \\cdot {latex(f_top)} \\, dx")
-
-    st.markdown("#### ✅ Step 2: Evaluate the integral")
-    simplified_expr = simplify(symbolic_integral)
-    if simplified_expr.has(pi):
-        coeff = simplified_expr / pi
-        fraction_result = Rational(coeff).limit_denominator()
-        numer, denom = fraction_result.as_numer_denom()
-        st.latex(f"= \\frac{{{numer}}}{{{denom}}} \\pi")
-        st.markdown(f"**Exact Volume:** {numer}/{denom}π ≈ {float(symbolic_integral):.4f}")
-    else:
-        st.latex(f"= {latex(symbolic_integral)}")
-        st.markdown(f"**Exact Volume:** {float(symbolic_integral):.4f}")
-
-# --- Shell Method Riemann Sum in 3D ---
-def plot_shell_riemann_3d(top_expr):
-    f_top = parse_function(top_expr)
+# --- 3D Disk Riemann Visualization ---
+def plot_disk_riemann_3d(top_expr):
+    f = parse_function(top_expr)
     x_vals = np.linspace(a, b, 20)
-    dx = (b - a) / len(x_vals)
     theta = np.linspace(0, 2 * np.pi, 30)
     fig = go.Figure()
 
-    for x in x_vals:
-        height = f_top(x)
-        r = x
-        X = (r + dx/2) * np.cos(theta)
-        Y = (r + dx/2) * np.sin(theta)
-        Z0 = np.zeros_like(theta)
-        Z1 = height * np.ones_like(theta)
+    for i in range(len(x_vals) - 1):
+        x0 = x_vals[i]
+        x1 = x_vals[i + 1]
+        x_mid = (x0 + x1) / 2
+        r = f(x_mid)
+        Z = np.linspace(0, r, 10)
+        T = np.linspace(0, 2 * np.pi, 30)
+        T, Z = np.meshgrid(T, Z)
+        X = x_mid * np.ones_like(Z)
+        Y = Z * np.cos(T)
+        Z = Z * np.sin(T)
 
-        fig.add_trace(go.Scatter3d(x=X, y=Y, z=Z0, mode='lines', line=dict(color='lightblue'), showlegend=False))
-        fig.add_trace(go.Scatter3d(x=X, y=Y, z=Z1, mode='lines', line=dict(color='lightblue'), showlegend=False))
+        fig.add_trace(go.Surface(x=X, y=Y, z=Z, showscale=False, opacity=0.6, colorscale='blues'))
 
-        for i in range(len(theta)):
-            fig.add_trace(go.Scatter3d(x=[X[i], X[i]], y=[Y[i], Y[i]], z=[Z0[i], Z1[i]], mode='lines', line=dict(color='lightblue'), showlegend=False))
-
-    fig.update_layout(
-        title="Shell Method: Riemann Sum Approximation in 3D",
-        scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='Height'),
-        height=500
-    )
+    fig.update_layout(title="Riemann Slices Forming the Solid (Disk Method)",
+                      scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'), height=500)
     st.plotly_chart(fig)
 
-# --- Animated Revolution ---
-def animate_revolution(top_expr):
-    f = parse_function(top_expr)
-    x = np.linspace(a, b, 100)
-    y = f(x)
-    theta = np.linspace(0, 2*np.pi, 40)
-    X, T = np.meshgrid(x, theta)
-    Y = np.tile(y, (len(theta), 1))
-    Z = Y * np.sin(T)
-    Y = Y * np.cos(T)
-
-    fig = go.Figure(data=[go.Surface(x=X, y=Y, z=Z, colorscale='Blues', showscale=False)])
-    fig.update_layout(title='Animated Solid of Revolution', scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'), height=500)
-    st.plotly_chart(fig)
-
-# --- Show formula ---
-def show_formula(method, axis, top_expr, bottom_expr):
-    st.markdown("### 📘 Setup and Formula")
-    st.latex(f"f(x) = {top_expr}")
-    if bottom_expr:
-        st.latex(f"g(x) = {bottom_expr}")
-    if method == "Disk/Washer":
-        if axis == "x-axis":
-            st.latex(r"V = \\pi \\int_a^b [f(x)^2 - g(x)^2] \\, dx")
-        else:
-            st.latex(r"V = \\pi \\int_c^d [f(y)^2 - g(y)^2] \\, dy")
-    else:
-        if axis == "y-axis":
-            st.latex(r"V = 2\\pi \\int_a^b x f(x) \\, dx")
-        else:
-            st.latex(r"V = 2\\pi \\int_a^b y f(y) \\, dy")
-
-# --- Method tip ---
-def show_method_tip(method, axis):
-    st.markdown("### ✅ Which Method is Better?")
-    if method == "Disk/Washer":
-        if axis == "x-axis":
-            st.success("Great choice! Since your functions are in terms of x, the Disk/Washer method about the x-axis is simple and direct.")
-        else:
-            st.warning("Careful! Using Disk/Washer about the y-axis may require solving for x as a function of y.")
-    else:
-        if axis == "y-axis":
-            st.success("Perfect! Cylindrical Shells work very well with vertical rectangles and rotation about the y-axis.")
-        else:
-            st.warning("Cylindrical Shells about the x-axis may be more complex if you can't easily express x as a function of y.")
-
-# --- Main ---
+# --- Main (injection for disk Riemann 3D) ---
 if compute:
     axis_name, axis_shift = extract_shift(rotation_line)
     col_left, col_right = st.columns([1.2, 0.8])
@@ -205,6 +85,8 @@ if compute:
         if show_riemann:
             if method == "Cylindrical Shell" and axis == "y-axis":
                 plot_shell_riemann_3d(top_expr)
+            elif method == "Disk/Washer" and axis == "x-axis":
+                plot_disk_riemann_3d(top_expr)
             else:
                 st.info("Riemann 3D visualization for this method/axis not yet available.")
         if show_animation and method == "Disk/Washer" and axis == "x-axis":
