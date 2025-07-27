@@ -153,8 +153,10 @@ def run():
     feedback = st.text_area("What did you learn about limits today?")
     if feedback:
         st.info("Thanks for sharing your reflection! 💬")
-        
-        if __name__ == "__main__":
+
+if __name__ == "__main__":
     run()
+
+
 
 
