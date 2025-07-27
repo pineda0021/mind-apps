@@ -51,7 +51,8 @@ def plot_region():
 def display_formula():
     if method == "Disk/Washer" and axis == "x-axis":
         st.markdown("### 📘 Volume Formula")
-        st.latex(r"V = \pi \int_{%.2f}^{%.2f} \left[f(x)^2 - g(x)^2\right] dx" % (a, b))
+        st.latex(r"V = \pi \int_{0}^{1} \left[x^2 - x^{2}^2\right] dx = \frac{2\pi}{15}")
+
         
         f_sq = f_expr**2
         g_sq = g_expr**2
@@ -69,7 +70,7 @@ def display_formula():
 
     elif method == "Shell" and axis == "y-axis":
         st.markdown("### 📘 Volume Formula")
-        st.latex(r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot \left[f(x) - g(x)\right] dx" % (a, b))
+        st.latex(r"V = 2\pi \int_{0}^{1} x \cdot (x - x^{2}) dx = \frac{\pi}{6}")
         
         shell_integrand = 2 * pi * x * (f_expr - g_expr)
         result = integrate(shell_integrand, (x, a, b))
