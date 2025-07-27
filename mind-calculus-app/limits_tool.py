@@ -2,8 +2,10 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import plotly.graph_objs as go
 import sympy as sp
 from sympy.abc import x
+from sympy import symbols, sympify, integrate, pi, latex, simplify, Rational
 import streamlit.components.v1 as components
 import random
 
@@ -43,17 +45,17 @@ def run():
         st.error("Error evaluating function for plotting.")
         return
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.set_xlim(min(x_vals_full), max(x_vals_full))
-    ax.set_ylim(np.nanmin(y_vals) - 1, np.nanmax(y_vals) + 1)
-    ax.set_title(rf"Graph of $f(x) = {sp.latex(fx_expr)}$")
-    ax.set_xlabel("x")
-    ax.set_ylabel("f(x)")
-    ax.grid(True)
-    ax.axhline(0, color='black', linewidth=0.5)
-    ax.axvline(0, color='black', linewidth=0.5)
-    line, = ax.plot([], [], lw=2, label='f(x)')
-    hole, = ax.plot([], [], 'o', color='red', markerfacecolor='white', markersize=8, label=f"Hole at x = {user_a}")
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode='lines', name='f(x)'))
+
+    # Add hole in red if removable discontinuity
+    try:
+        hole_y = simplified_expr.subs(x, user_a)
+        fig.add_trace(go.Scatter(x=[user_a], y=[hole_y], mode='markers',
+                                 marker=dict(size=10, color='red', symbol='circle-open'),
+                                 name=f"Hole at x = {user_a}"))
+    except:
+        pass
 
     # Optional tangent line
     try:
@@ -61,28 +63,19 @@ def run():
         b = float(simplified_expr.subs(x, user_a) - m * user_a)
         tangent_x = np.linspace(user_a - 2, user_a + 2, 100)
         tangent_y = m * tangent_x + b
-        ax.plot(tangent_x, tangent_y, '--', label="Tangent line", color='orange')
+        fig.add_trace(go.Scatter(x=tangent_x, y=tangent_y, mode='lines', name='Tangent line', line=dict(dash='dash')))
     except:
         pass
 
-    def init():
-        line.set_data([], [])
-        hole.set_data([], [])
-        return line, hole
-
-    def animate(i):
-        x_draw = x_vals[:i]
-        y_draw = y_vals[:i]
-        line.set_data(x_draw, y_draw)
-        if i > len(x_vals) // 2:
-            hole.set_data([user_a], [y_hole])
-        return line, hole
-
-    ani = animation.FuncAnimation(fig, animate, init_func=init, frames=len(x_vals), interval=10, blit=True)
-    components.html(ani.to_jshtml(), height=500)
+    fig.update_layout(title=f"Graph of f(x) = {sp.latex(fx_expr)}",
+                      xaxis_title="x",
+                      yaxis_title="f(x)",
+                      showlegend=True,
+                      height=500)
+    st.plotly_chart(fig, use_container_width=True)
 
     # Table of values around a
-    st.subheader(f"Limit Table Around x = {user_a}")
+    st.subheader(f"Limit Table Around x = {user_a} ⟲")
     delta_list = [0.1, 0.01, 0.001]
     x_input = [round(user_a - d, 6) for d in delta_list[::-1]] + [round(user_a + d, 6) for d in delta_list]
     table_data = []
