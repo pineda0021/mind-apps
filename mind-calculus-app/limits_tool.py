@@ -33,6 +33,8 @@ def run():
     st.latex(f"f(x) = {sp.latex(fx_expr)}")
     st.markdown(f"The simplified expression is: $f(x) = {sp.latex(simplified_expr)}$, if it exists.")
 
+    st.latex(f"\\text{{Graph of }} f(x) = {sp.latex(fx_expr)}")
+
     # Plot using Plotly with updated layout
     x_vals = np.linspace(user_a - 4, user_a + 4, 400)
     x_vals_filtered = x_vals[np.abs(x_vals - user_a) > 1e-6]
@@ -55,7 +57,7 @@ def run():
         pass
 
     fig.update_layout(
-        title_text=f"Graph of f(x) = {sp.latex(fx_expr)}".replace("\\", ""),
+        title_text=f"Graph of f(x) = {sp.latex(fx_expr).replace('\\\', '')}",
         scene=dict(
             xaxis_title='x',
             yaxis_title='depth (for visual separation)',
@@ -101,4 +103,5 @@ def run():
     feedback = st.text_area("What did you learn about limits today?")
     if feedback:
         st.info("Thanks for sharing your reflection! 💬")
+
 
