@@ -56,41 +56,41 @@ def display_formula():
         f_sq = simplify(f_expr**2)
         g_sq = simplify(g_expr**2)
         integrand = f_sq - g_sq
-        symbolic_integral = integrate(integrand, (x, a, b))
-        result = pi * symbolic_integral
+        integral_part = integrate(integrand, (x, a, b))
+        final_expr = pi * integral_part
+        simplified_expr = simplify(final_expr)
 
         st.markdown("### 📝 Step-by-Step")
-        st.latex("f(x)^2 = " + latex(f_sq))
-        st.latex("g(x)^2 = " + latex(g_sq))
+        st.latex(r"f(x)^2 = " + latex(f_sq))
+        st.latex(r"g(x)^2 = " + latex(g_sq))
         st.latex(
             r"V = \pi \int_{%.2f}^{%.2f} \left[%s - %s\right] dx = %s"
-            % (a, b, latex(f_sq), latex(g_sq), latex(result))
+            % (a, b, latex(f_sq), latex(g_sq), latex(simplified_expr))
         )
 
-        return float(result.evalf())
+        return float(simplified_expr.evalf())
 
     elif method == "Shell" and axis == "y-axis":
         st.markdown("### 📘 Volume Formula")
         st.latex(r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot \left[f(x) - g(x)\right] dx" % (a, b))
 
-        diff_fg = simplify(f_expr - g_expr)
-        integrand = x * diff_fg
-        symbolic_integral = integrate(integrand, (x, a, b))
-        result = 2 * pi * symbolic_integral
+        integrand = simplify(x * (f_expr - g_expr))
+        integral_part = integrate(integrand, (x, a, b))
+        final_expr = 2 * pi * integral_part
+        simplified_expr = simplify(final_expr)
 
         st.markdown("### 📝 Step-by-Step")
-        st.latex("f(x) - g(x) = " + latex(diff_fg))
+        st.latex(r"f(x) - g(x) = " + latex(f_expr - g_expr))
         st.latex(
-            r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot (%s) dx = %s"
-            % (a, b, latex(diff_fg), latex(result))
+            r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot \left(%s\right) dx = %s"
+            % (a, b, latex(f_expr - g_expr), latex(simplified_expr))
         )
 
-        return float(result.evalf())
+        return float(simplified_expr.evalf())
 
     else:
         st.warning("Method and axis combination not supported.")
         return None
-
 
 # --- 3D Disk/Washer Visualization ---
 def plot_disk_riemann():
