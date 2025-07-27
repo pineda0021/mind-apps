@@ -7,7 +7,7 @@ import sympy as sp
 from sympy.abc import x
 
 def run():
-    st.subheader("🧠 Solid of Revolution Tool")
+    st.subheader("🧊 Solid of Revolution Tool")
     st.markdown("""
     Visualize and compute volumes of solids formed by rotating a region around the x- or y-axis using the Disk/Washer or Shell method.
     """)
