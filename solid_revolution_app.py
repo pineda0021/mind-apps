@@ -2,7 +2,7 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 import plotly.graph_objs as go
-from sympy import symbols, sympify, integrate, pi, latex, simplify, Rational
+from sympy import symbols, sympify, integrate, pi, latex, simplify, Rational, nsimplify
 
 # --- Page Config ---
 st.set_page_config("MIND: Solid of Revolution Tool", layout="wide")
@@ -48,40 +48,38 @@ def plot_region():
     plt.close()
 
 # --- Symbolic formula + steps ---
-from sympy import Rational
-
 def display_formula():
     if method == "Disk/Washer" and axis == "x-axis":
-        st.markdown("### 📘 Volume Formula")
-        st.latex(r"V = \pi \int_{%.2f}^{%.2f} \left[f(x)^2 - g(x)^2\right] dx" % (a, b))
+        st.markdown("### 📘 Volume Formula (Disk/Washer)")
         f_sq = f_expr**2
         g_sq = g_expr**2
-        integrand = pi * (f_sq - g_sq)
-        exact = integrate(integrand, (x, a, b))
-        simplified = simplify(exact)
+        integrand = f_sq - g_sq
+        raw_integral = integrate(integrand, (x, a, b))
+        simplified = simplify(raw_integral)
+        exact = simplify(pi * simplified)
+
         st.markdown("### 📝 Step-by-Step")
-        st.latex("f(x)^2 = " + latex(f_sq))
-        st.latex("g(x)^2 = " + latex(g_sq))
-        st.latex(r"V = \pi \int_{%.2f}^{%.2f} \left[%s - %s\right] dx = %s" %
-                 (a, b, latex(f_sq), latex(g_sq), latex(simplified)))
-        return simplified  # return symbolic (not float)
+        st.latex(f"f(x)^2 = {latex(f_sq)}")
+        st.latex(f"g(x)^2 = {latex(g_sq)}")
+        st.latex(rf"V = \pi \int_{{{a}}}^{{{b}}} \left[{latex(f_sq)} - {latex(g_sq)}\right] dx = \pi \cdot {latex(simplified)} = {latex(exact)}")
+        return exact
 
     elif method == "Shell" and axis == "y-axis":
-        st.markdown("### 📘 Volume Formula")
-        st.latex(r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot \left[f(x) - g(x)\right] dx" % (a, b))
+        st.markdown("### 📘 Volume Formula (Shell Method)")
         shell_expr = f_expr - g_expr
-        shell_integrand = 2 * pi * x * shell_expr
-        exact = integrate(shell_integrand, (x, a, b))
-        simplified = simplify(exact)
+        integrand = x * shell_expr
+        raw_integral = integrate(integrand, (x, a, b))
+        simplified = simplify(raw_integral)
+        exact = simplify(2 * pi * simplified)
+
         st.markdown("### 📝 Step-by-Step")
-        st.latex("f(x) - g(x) = " + latex(shell_expr))
-        st.latex(r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot (%s) dx = %s" %
-                 (a, b, latex(shell_expr), latex(simplified)))
-        return simplified  # return symbolic (not float)
+        st.latex(f"f(x) - g(x) = {latex(shell_expr)}")
+        st.latex(rf"V = 2\pi \int_{{{a}}}^{{{b}}} x \cdot ({latex(shell_expr)}) dx = 2\pi \cdot {latex(simplified)} = {latex(exact)}")
+        return exact
+
     else:
         st.warning("Method and axis combination not supported.")
         return None
-
 
 # --- 3D Disk/Washer Visualization ---
 def plot_disk_riemann():
@@ -141,13 +139,13 @@ if compute:
             else:
                 st.warning("3D visualization not available for this method/axis.")
 
- volume = display_formula()
+    volume = display_formula()
     if volume is not None:
-        st.markdown(f"### ✅ Exact Volume: `{volume:.4f}`")
+        st.markdown(f"### ✅ Exact Volume: $${latex(volume)}$$")
 
     st.markdown("## 💡 Interpretation Tip")
     st.info(
-        "- **Disk/Washer**: Good when rotating around the x-axis.\n"
-        "- **Shell**: Better for y-axis. This tool helps students see how volume is built from slices!"
+        "- **Disk/Washer**: Ideal when rotating around the x-axis.\n"
+        "- **Shell**: Ideal when rotating around the y-axis.\n"
+        "This tool visualizes how slices build solid volume — symbolically and geometrically."
     )
-
