@@ -55,7 +55,7 @@ def run():
         pass
 
     fig.update_layout(
-        title_text="Function Visualization in 3D",
+        title_text=f"Graph of f(x) = {sp.latex(fx_expr)}",
         scene=dict(
             xaxis_title='x',
             yaxis_title='depth (for visual separation)',
