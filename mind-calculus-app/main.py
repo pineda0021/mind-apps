@@ -1,32 +1,34 @@
 # main.py
 import streamlit as st
-import os
 
-st.set_page_config("MIND: Calculus Visualizer Suite", layout="wide")
+st.set_page_config("🧠 MIND: Calculus Suite", layout="wide")
 st.title("🧠 MIND: Calculus Visualizer Suite")
 st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College")
 
 st.markdown("""
-Welcome! Use the selector below to explore interactive calculus tools:
-- Visualize **limits**, **derivatives**, **Riemann sums**, **antiderivatives**, and **solids of revolution**
-- Step-by-step symbolic solutions and graphs
-- Includes embedded student challenges!
+Welcome to the **MIND** Calculus Visualizer Suite! Use the dropdown below to explore interactive tools for:
+- Limits and Discontinuities
+- Derivatives
+- Riemann Sums
+- Antiderivatives
+- Solids of Revolution
 """)
 
-# Navigation
-option = st.selectbox("📚 Choose a module:", [
-    "Limits", "Derivative", "Riemann Sum", "Antiderivative", "Solid of Revolution"
+option = st.selectbox("Select a tool:", [
+    "Limits Visualizer",
+    "Derivative Visualizer",
+    "Riemann Sum Explorer",
+    "Antiderivative Visualizer",
+    "Solid of Revolution Tool"
 ])
 
-if option == "Limits":
-    exec(open("limits_tool.py").read())
-elif option == "Derivative":
-    exec(open("derivative_tool.py").read())
-elif option == "Riemann Sum":
-    exec(open("riemann_tool.py").read())
-elif option == "Antiderivative":
-    exec(open("antiderivative_tool.py").read())
-elif option == "Solid of Revolution":
-    exec(open("solid_volume_tool.py").read())
-
-
+if option == "Limits Visualizer":
+    import limits_tool
+elif option == "Derivative Visualizer":
+    import derivative_tool
+elif option == "Riemann Sum Explorer":
+    import riemann_tool
+elif option == "Antiderivative Visualizer":
+    import antiderivative_tool
+elif option == "Solid of Revolution Tool":
+    import solid_volume_tool
