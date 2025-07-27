@@ -101,7 +101,7 @@ def run():
         st.markdown(f"**2. Factored Form:**  $f(x) = {sp.latex(factored)}$")
         st.markdown(f"**3. Simplified Form (after canceling):**  $f(x) = {sp.latex(canceled)}$")
         st.markdown("**4. Compute the Limit:**")
-        st.latex(f"\\lim_{{x \to {user_a}}} f(x) = {sp.latex(limit_val)}")
+        st.latex(r"\lim_{x \to " + str(user_a) + r"} f(x) = " + sp.latex(limit_val))
     except:
         st.warning("Could not compute symbolic limit. Try a simpler function.")
 
