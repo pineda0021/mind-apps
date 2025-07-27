@@ -2,17 +2,15 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 import plotly.graph_objs as go
-from scipy.integrate import quad
 from sympy import symbols, sympify, integrate, pi, latex, simplify, Rational
 
+# --- Page Config ---
 st.set_page_config("MIND: Solid of Revolution Tool", layout="wide")
-
 st.title("🧠 MIND: Solid of Revolution Tool")
 st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College — built with the students in MIND.")
 
 # --- Sidebar ---
 st.sidebar.header("Parameters")
-
 function_mode = st.sidebar.selectbox("Function setup", ["One Function", "Two Functions"])
 top_expr = st.sidebar.text_input("Top function f(x):", "x")
 bottom_expr = st.sidebar.text_input("Bottom function g(x):", "x**2") if function_mode == "Two Functions" else "0"
@@ -21,18 +19,17 @@ axis = st.sidebar.selectbox("Axis of rotation", ["x-axis", "y-axis"])
 a = st.sidebar.number_input("Start of interval a", 0.0)
 b = st.sidebar.number_input("End of interval b", 1.0)
 show_3d = st.sidebar.checkbox("Show 3D Visualization", True)
-
 compute = st.sidebar.button("🔄 Compute and Visualize")
 
+# --- Parse expressions ---
 x = symbols('x')
 f_expr = sympify(top_expr)
 g_expr = sympify(bottom_expr)
 
-# --- Helper: numerical eval ---
 def parse(expr):
     return lambda x: eval(expr, {"x": x, "np": np})
 
-# --- 2D region plot ---
+# --- Region plot ---
 def plot_region():
     fx = parse(top_expr)
     gx = parse(bottom_expr)
@@ -50,64 +47,37 @@ def plot_region():
     st.pyplot(plt.gcf())
     plt.close()
 
-# --- Symbolic formula + step-by-step ---
+# --- Symbolic formula + steps ---
 def display_formula():
-    st.markdown("### 📘 Volume Formula")
     if method == "Disk/Washer" and axis == "x-axis":
-        vol_expr = pi * (f_expr**2 - g_expr**2)
-        step1 = integrate(f_expr**2, (x, a, b))
-        step2 = integrate(g_expr**2, (x, a, b))
-        volume_expr = pi * (step1 - step2)
-        exact = simplify(volume_expr)
-
-        st.latex(r"V = \pi \int_{{{}}}^{{{}}} \left({}^2 - {}^2\right) dx".format(
-            a, b, latex(f_expr), latex(g_expr)
-        ))
+        st.markdown("### 📘 Volume Formula")
+        st.latex(r"V = \pi \int_{%.2f}^{%.2f} \left[f(x)^2 - g(x)^2\right] dx" % (a, b))
+        f_sq = f_expr**2
+        g_sq = g_expr**2
+        integrand = pi * (f_sq - g_sq)
+        exact = integrate(integrand, (x, a, b))
+        simplified = simplify(exact)
         st.markdown("### 📝 Step-by-Step")
-        st.latex(r"""
-        \begin{align*}
-        V &= \pi \left( \int_{{{a}}}^{{{b}}} {f}^2 dx - \int_{{{a}}}^{{{b}}} {g}^2 dx \right) \\
-          &= \pi \left( {s1} - {s2} \right) \\
-          &= {final}
-        \end{align*}
-        """.format(
-            a=a, b=b,
-            f=latex(f_expr), g=latex(g_expr),
-            s1=latex(simplify(step1)), s2=latex(simplify(step2)),
-            final=latex(simplify(exact))
-        ))
-
-        return float(exact.evalf())
-
+        st.latex("f(x)^2 = " + latex(f_sq))
+        st.latex("g(x)^2 = " + latex(g_sq))
+        st.latex(r"V = \pi \int_{%.2f}^{%.2f} \left[%s - %s\right] dx = %s" %
+                 (a, b, latex(f_sq), latex(g_sq), latex(simplify(exact))))
+        return float(simplified.evalf())
     elif method == "Shell" and axis == "y-axis":
-        vol_expr = 2 * pi * x * (f_expr - g_expr)
-        integrand = simplify(x * (f_expr - g_expr))
-        step = integrate(integrand, (x, a, b))
-        volume_expr = simplify(2 * pi * step)
-
-        st.latex(r"V = 2\pi \int_{{{}}}^{{{}}} x \cdot \left({} - {}\right) dx".format(
-            a, b, latex(f_expr), latex(g_expr)
-        ))
+        st.markdown("### 📘 Volume Formula")
+        st.latex(r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot \left[f(x) - g(x)\right] dx" % (a, b))
+        shell_integrand = 2 * pi * x * (f_expr - g_expr)
+        result = integrate(shell_integrand, (x, a, b))
         st.markdown("### 📝 Step-by-Step")
-        st.latex(r"""
-        \begin{align*}
-        V &= 2\pi \int_{{{a}}}^{{{b}}} x \cdot ({f} - {g}) dx \\
-          &= 2\pi \cdot {step} \\
-          &= {final}
-        \end{align*}
-        """.format(
-            a=a, b=b,
-            f=latex(f_expr), g=latex(g_expr),
-            step=latex(simplify(step)),
-            final=latex(volume_expr)
-        ))
-
-        return float(volume_expr.evalf())
+        st.latex("f(x) - g(x) = " + latex(f_expr - g_expr))
+        st.latex(r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot (%s) dx = %s" %
+                 (a, b, latex(f_expr - g_expr), latex(simplify(result))))
+        return float(result.evalf())
     else:
-        st.warning("Unsupported combination.")
+        st.warning("Method and axis combination not supported.")
         return None
 
-# --- 3D Disk Riemann ---
+# --- 3D Disk/Washer Visualization ---
 def plot_disk_riemann():
     fx = parse(top_expr)
     gx = parse(bottom_expr)
@@ -128,7 +98,7 @@ def plot_disk_riemann():
                       scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'))
     st.plotly_chart(fig)
 
-# --- 3D Shell Riemann ---
+# --- 3D Shell Visualization ---
 def plot_shell_riemann():
     fx = parse(top_expr)
     gx = parse(bottom_expr)
@@ -139,16 +109,16 @@ def plot_shell_riemann():
         h = fx((x0 + x1)/2) - gx((x0 + x1)/2)
         r = (x0 + x1)/2
         theta = np.linspace(0, 2*np.pi, 30)
-        X = r * np.cos(theta)
-        Y = np.linspace(0, h, 2)
-        X, Y = np.meshgrid(X, Y)
-        Z = r * np.sin(theta)[None, :]
-        fig.add_trace(go.Surface(x=X, y=Y.T, z=Z, showscale=False, opacity=0.6, colorscale='blues'))
+        T, H = np.meshgrid(theta, np.linspace(0, h, 2))
+        X = r * np.cos(T)
+        Y = H
+        Z = r * np.sin(T)
+        fig.add_trace(go.Surface(x=X, y=Y, z=Z, showscale=False, opacity=0.6, colorscale='blues'))
     fig.update_layout(title="3D Cylindrical Shells", height=500,
-                      scene=dict(xaxis_title='x', yaxis_title='height', zaxis_title='z'))
+                      scene=dict(xaxis_title='radius', yaxis_title='height', zaxis_title='z'))
     st.plotly_chart(fig)
 
-# --- Main computation ---
+# --- Main Display ---
 if compute:
     col1, col2 = st.columns([1.1, 0.9])
     with col1:
