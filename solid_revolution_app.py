@@ -1,150 +1,117 @@
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.integrate import quad
-from sympy import symbols, integrate, pi, latex, simplify, sympify
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import animation
+from sympy import symbols, sympify, pi, latex, simplify, integrate
 import plotly.graph_objs as go
-import io
 
-# --- Setup ---
-st.set_page_config(page_title="MIND: Solid of Revolution Tool", layout="wide")
+# --- App Config ---
+st.set_page_config(page_title="MIND: Solid Revolution Tool", layout="wide")
 st.title("🧠 MIND: Solid of Revolution Tool")
-st.caption("Created by Professor Edward Pineda-Castro — built with the students in MIND.")
+st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College — built with the students in MIND.")
 
-# --- Sidebar ---
+# --- Inputs ---
 st.sidebar.header("🔧 Parameters")
-function_type = st.sidebar.selectbox("Do you have one or two functions?", ["One Function", "Two Functions"])
 
-top_expr = st.sidebar.text_input("Top function f(x):", "x")
-bottom_expr = st.sidebar.text_input("Bottom function g(x):", "x**2") if function_type == "Two Functions" else None
-method = st.sidebar.selectbox("Method:", ["Disk/Washer"])
-axis = st.sidebar.selectbox("Axis of rotation:", ["x-axis"])
-a = st.sidebar.number_input("Start of interval a:", value=0.0)
-b = st.sidebar.number_input("End of interval b:", value=1.0)
-show_riemann = st.sidebar.checkbox("Show Riemann Sum in 3D", value=True)
+function_option = st.sidebar.selectbox("Do you have one or two functions?", ["One Function", "Two Functions"])
+top_expr = st.sidebar.text_input("Top Function f(x):", value="x**2")
+bottom_expr = None if function_option == "One Function" else st.sidebar.text_input("Bottom Function g(x):", value="x")
+
+method = st.sidebar.selectbox("Method:", ["Disk/Washer", "Cylindrical Shell"])
+axis = st.sidebar.selectbox("Axis of Rotation:", ["x-axis", "y-axis"])
+a = st.sidebar.number_input("Start of interval (a):", value=0.0)
+b = st.sidebar.number_input("End of interval (b):", value=1.0)
 show_animation = st.sidebar.checkbox("Show Animated Revolution", value=True)
-compute = st.sidebar.button("🔄 Compute and Visualize")
 
-# --- Helpers ---
+# --- Utility Functions ---
 def parse_function(expr):
     return lambda x: eval(expr, {"x": x, "np": np})
 
-def show_formula(f_expr, g_expr):
+def show_formula_and_steps(f_expr, g_expr, method, axis, a, b):
     x = symbols('x')
     f = sympify(f_expr)
     g = sympify(g_expr) if g_expr else 0
-    st.markdown("#### 📘 Setup and Formula")
-    st.latex(f"f(x) = {latex(f)}")
-    if g_expr:
-        st.latex(f"g(x) = {latex(g)}")
-    st.latex(r"V = \pi \int_{" + str(a) + r"}^{" + str(b) + r"} \left[" + latex(f**2) + " - " + latex(g**2) + r"\right] \,dx")
+    st.markdown("### 📝 Step-by-Step Setup")
 
-def step_by_step_solution(f_expr, g_expr):
-    x = symbols('x')
-    f = sympify(f_expr)
-    g = sympify(g_expr) if g_expr else 0
-    integrand = pi * (f**2 - g**2)
-    result = integrate(integrand, (x, a, b))
-    st.markdown("#### 📝 Step-by-Step Solution:")
-    st.latex(r"V = \pi \int_{" + str(a) + r"}^{" + str(b) + r"} \left[" + latex(f**2) + " - " + latex(g**2) + r"\right] \,dx = " + latex(simplify(result)))
-
-def compute_exact_volume(f_expr, g_expr):
-    f = parse_function(f_expr)
-    g = parse_function(g_expr) if g_expr else (lambda x: 0)
-    integrand = lambda x: np.pi * (f(x)**2 - g(x)**2)
-    result, _ = quad(integrand, a, b)
-    return result
-
-def plot_2d_functions(f_expr, g_expr):
-    f = parse_function(f_expr)
-    g = parse_function(g_expr) if g_expr else (lambda x: 0)
-    x_vals = np.linspace(a, b, 300)
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.plot(x_vals, f(x_vals), label="Top: f(x)", color='blue')
-    if g_expr:
-        ax.plot(x_vals, g(x_vals), label="Bottom: g(x)", color='red')
-        ax.fill_between(x_vals, g(x_vals), f(x_vals), color='gray', alpha=0.3)
+    if method == "Disk/Washer" and axis == "x-axis":
+        st.latex(r"f(x) = " + latex(f))
+        if g_expr:
+            st.latex(r"g(x) = " + latex(g))
+        integral_expr = pi * (f**2 - g**2)
+        st.latex(
+            r"V = \pi \int_{{{}}}^{{{}}} \left[{}^2 - {}^2\right] \, dx = {}".format(
+                a, b, latex(f), latex(g), latex(simplify(integrate(integral_expr, (x, a, b))))
+            )
+        )
+    elif method == "Cylindrical Shell" and axis == "y-axis":
+        st.latex(r"f(x) = " + latex(f))
+        if g_expr:
+            st.latex(r"g(x) = " + latex(g))
+        shell_expr = 2 * pi * x * (f - g)
+        st.latex(
+            r"V = 2\pi \int_{{{}}}^{{{}}} x({} - {}) \, dx = {}".format(
+                a, b, latex(f), latex(g), latex(simplify(integrate(shell_expr, (x, a, b))))
+            )
+        )
     else:
-        ax.fill_between(x_vals, 0, f(x_vals), color='gray', alpha=0.3)
-    ax.set_xlabel("x")
-    ax.set_ylabel("f(x), g(x)")
-    ax.legend()
-    st.pyplot(fig)
+        st.warning("This axis/method combo not yet supported for symbolic steps.")
 
-def plot_riemann_3d(f_expr):
+def compute_numeric_volume(f_expr, g_expr, method, axis, a, b):
     f = parse_function(f_expr)
-    x_vals = np.linspace(a, b, 20)
-    fig = go.Figure()
-    for i in range(len(x_vals) - 1):
-        x0, x1 = x_vals[i], x_vals[i + 1]
-        x_mid = (x0 + x1) / 2
-        r = f(x_mid)
-        theta = np.linspace(0, 2 * np.pi, 30)
-        T, Z = np.meshgrid(theta, np.linspace(0, r, 10))
-        X = np.full_like(T, x_mid)
-        Y = Z * np.cos(T)
-        Z = Z * np.sin(T)
-        fig.add_trace(go.Surface(x=X, y=Y, z=Z, showscale=False, opacity=0.6, colorscale='blues'))
+    g = parse_function(g_expr) if g_expr else (lambda x: 0)
+    if method == "Disk/Washer" and axis == "x-axis":
+        return np.pi * np.trapz(f(np.linspace(a, b, 100))**2 - g(np.linspace(a, b, 100))**2, dx=(b - a)/100)
+    elif method == "Cylindrical Shell" and axis == "y-axis":
+        x_vals = np.linspace(a, b, 100)
+        return 2 * np.pi * np.trapz(x_vals * (f(x_vals) - g(x_vals)), dx=(b - a)/100)
+    else:
+        return None
 
-    fig.update_layout(title="Riemann Slices Forming the Solid (Disk Method)",
-                      scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'), height=500)
+def animate_revolution(f_expr, a, b):
+    f = parse_function(f_expr)
+    x_vals = np.linspace(a, b, 50)
+    theta = np.linspace(0, 2 * np.pi, 50)
+    X, T = np.meshgrid(x_vals, theta)
+    R = f(X)
+
+    Y = R * np.cos(T)
+    Z = R * np.sin(T)
+
+    fig = go.Figure(data=[go.Surface(x=X, y=Y, z=Z, colorscale='blues', opacity=0.8)])
+    fig.update_layout(
+        title="🔁 Animated Solid of Revolution",
+        scene=dict(
+            xaxis_title="x",
+            yaxis_title="y",
+            zaxis_title="z"
+        ),
+        height=600
+    )
     st.plotly_chart(fig)
 
-def animate_revolution(f_expr):
-    f = parse_function(f_expr)
-    x_vals = np.linspace(a, b, 100)
-    y_vals = f(x_vals)
-    fig = plt.figure(figsize=(6, 5))
-    ax = fig.add_subplot(111, projection='3d')
+def method_tip(method, axis):
+    st.markdown("### 🤔 Which Method is Better?")
+    if method == "Disk/Washer" and axis == "x-axis":
+        st.success("Use the Disk/Washer method when rotating around the x-axis with vertical slices.")
+    elif method == "Cylindrical Shell" and axis == "y-axis":
+        st.success("Use the Shell method for rotation about the y-axis with vertical slices.")
+    else:
+        st.info("Consider algebraic manipulation or changing integration variable.")
 
-    def surface(theta, r):
-        X = np.outer(x_vals, np.cos(theta))
-        Y = np.outer(x_vals, np.sin(theta))
-        Z = np.outer(y_vals, np.ones_like(theta))
-        return X, Y, Z
-
-    theta_vals = np.linspace(0, 2*np.pi, 60)
-
-    def update(i):
-        ax.clear()
-        X, Y, Z = surface(theta_vals[:i+1], y_vals)
-        ax.plot_surface(X, Y, Z, color='lightblue', alpha=0.7)
-        ax.set_xlim([-1, 1])
-        ax.set_ylim([-1, 1])
-        ax.set_zlim([0, max(y_vals)])
-        ax.set_title("Solid of Revolution Animation")
-
-    ani = animation.FuncAnimation(fig, update, frames=len(theta_vals), interval=50)
-    buf = io.BytesIO()
-    ani.save(buf, format='gif')
-    st.image(buf.getvalue(), caption="Animated Solid of Revolution")
-
-# --- Main App ---
-if compute:
-    col1, col2 = st.columns([1.4, 0.6])
-
+# --- Main Output ---
+if st.button("🔄 Compute and Visualize"):
+    col1, col2 = st.columns([2, 1])
     with col1:
-        plot_2d_functions(top_expr, bottom_expr)
-        show_formula(top_expr, bottom_expr)
-        step_by_step_solution(top_expr, bottom_expr)
-        volume = compute_exact_volume(top_expr, bottom_expr)
-        st.markdown(f"### ✅ Exact Volume: {volume:.4f}")
-        if show_riemann:
-            plot_riemann_3d(top_expr)
-        if show_animation:
-            animate_revolution(top_expr)
-
+        show_formula_and_steps(top_expr, bottom_expr, method, axis, a, b)
+        vol = compute_numeric_volume(top_expr, bottom_expr, method, axis, a, b)
+        if vol:
+            st.markdown(f"### ✅ Approximate Volume: `{vol:.5f}` units³")
+        if show_animation and method == "Disk/Washer" and axis == "x-axis":
+            animate_revolution(top_expr, a, b)
     with col2:
-        st.markdown("### ✅ Which Method is Better?")
-        st.success("The Disk/Washer Method is generally preferred for solids rotated around the x-axis.")
-        with st.expander("📘 What does this visualization mean?", expanded=True):
-            st.info("""
-This tool helps visualize solids of revolution:
-
-- **Disk/Washer Method**: slices perpendicular to axis of revolution.
-- **Shell Method**: slices wrapped around the axis (not yet implemented).
-
-Integrals compute exact volume — just like Riemann sums approximate area.
-            """)
+        method_tip(method, axis)
+        with st.expander("📘 What’s Going On Here?", expanded=True):
+            st.info(
+                "You're revolving a region around an axis to create a 3D solid.\n\n"
+                "- Disk/Washer: Think of slicing the solid horizontally or vertically.\n"
+                "- Shell: Think of wrapping thin shells around the axis.\n\n"
+                "This app helps visualize the integral that calculates the volume!"
+            )
