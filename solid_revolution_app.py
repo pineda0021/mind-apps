@@ -45,6 +45,27 @@ def extract_shift(axis_expr):
     except:
         return ("x", 0.0)
 
+# --- Plot functions ---
+def plot_functions(top_expr, bottom_expr=None):
+    x_vals = np.linspace(a, b, 400)
+    f_top = parse_function(top_expr)
+    f_bot = parse_function(bottom_expr) if bottom_expr else None
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.plot(x_vals, f_top(x_vals), label=f"f(x) = {top_expr}", color='blue')
+    if f_bot:
+        ax.plot(x_vals, f_bot(x_vals), label=f"g(x) = {bottom_expr}", color='red')
+        ax.fill_between(x_vals, f_top(x_vals), f_bot(x_vals), alpha=0.3, color='purple')
+    else:
+        ax.fill_between(x_vals, f_top(x_vals), alpha=0.3, color='skyblue')
+
+    ax.set_title("2D Region to be Revolved")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.legend()
+    ax.grid(True)
+    st.pyplot(fig)
+
 # --- Volume ---
 def compute_exact_volume(top_expr, bottom_expr, method, axis, a, b, axis_shift):
     f_top = parse_function(top_expr)
@@ -66,7 +87,7 @@ def compute_exact_volume(top_expr, bottom_expr, method, axis, a, b, axis_shift):
     volume, _ = quad(integrand, a, b)
     return volume
 
-# --- Steps ---
+# --- Step-by-step ---
 def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b, axis_shift):
     st.markdown("### 📋 Step-by-Step Solution:")
     x = symbols('x')
@@ -94,6 +115,37 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b, axis_shift)
         st.latex(f"= {latex(symbolic_integral)}")
         st.markdown(f"**Exact Volume:** {float(symbolic_integral):.4f}")
 
+# --- Show formula ---
+def show_formula(method, axis, top_expr, bottom_expr):
+    st.markdown("### 📘 Setup and Formula")
+    st.latex(f"f(x) = {top_expr}")
+    if bottom_expr:
+        st.latex(f"g(x) = {bottom_expr}")
+    if method == "Disk/Washer":
+        if axis == "x-axis":
+            st.latex(r"V = \\pi \\int_a^b [f(x)^2 - g(x)^2] \\, dx")
+        else:
+            st.latex(r"V = \\pi \\int_c^d [f(y)^2 - g(y)^2] \\, dy")
+    else:
+        if axis == "y-axis":
+            st.latex(r"V = 2\\pi \\int_a^b x f(x) \\, dx")
+        else:
+            st.latex(r"V = 2\\pi \\int_a^b y f(y) \\, dy")
+
+# --- Method tip ---
+def show_method_tip(method, axis):
+    st.markdown("### ✅ Which Method is Better?")
+    if method == "Disk/Washer":
+        if axis == "x-axis":
+            st.success("Great choice! Since your functions are in terms of x, the Disk/Washer method about the x-axis is simple and direct.")
+        else:
+            st.warning("Careful! Using Disk/Washer about the y-axis may require solving for x as a function of y.")
+    else:
+        if axis == "y-axis":
+            st.success("Perfect! Cylindrical Shells work very well with vertical rectangles and rotation about the y-axis.")
+        else:
+            st.warning("Cylindrical Shells about the x-axis may be more complex if you can't easily express x as a function of y.")
+
 # --- Main ---
 if compute:
     axis_name, axis_shift = extract_shift(rotation_line)
@@ -104,9 +156,6 @@ if compute:
         step_by_step_solution(top_expr, bottom_expr, method, axis, a, b, axis_shift)
         exact_volume = compute_exact_volume(top_expr, bottom_expr, method, axis, a, b, axis_shift)
         st.markdown(f"### ✅ Exact Volume: {exact_volume:.4f}")
-        plot_3d_solid(top_expr, bottom_expr)
-        if show_riemann:
-            plot_riemann_sum(top_expr)
 
     with col_right:
         show_method_tip(method, axis)
