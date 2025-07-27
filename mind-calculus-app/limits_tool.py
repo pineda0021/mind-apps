@@ -32,7 +32,7 @@ def run():
     derivative_func = sp.lambdify(x, derivative_expr, modules=['numpy'])
 
     st.subheader("🧮 Symbolic Simplification")
-    st.latex(f"f(x) = {sp.latex(fx_expr)}")
+    st.latex(rf"f(x) = {sp.latex(fx_expr)}")
     st.markdown(f"The simplified expression is: $f(x) = {sp.latex(simplified_expr)}$, if it exists.")
 
     st.subheader("📈 Graph & Tangent Line")
@@ -45,32 +45,38 @@ def run():
         return
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode='lines', name='f(x)'))
+    fig.add_trace(go.Scatter3d(x=x_vals.tolist(), y=[0]*len(x_vals), z=y_vals.tolist(), mode='lines', name='f(x)', line=dict(color='blue')))
 
     # Add hole in red if removable discontinuity
     try:
         hole_y_val = float(simplified_expr.subs(x, user_a))
-        fig.add_trace(go.Scatter(x=[user_a], y=[hole_y_val], mode='markers',
-                                 marker=dict(size=10, color='red', symbol='circle-open'),
-                                 name=f"Hole at x = {user_a}"))
+        fig.add_trace(go.Scatter3d(x=[float(user_a)], y=[0], z=[hole_y_val], mode='markers',
+                                   marker=dict(size=6, color='red', symbol='circle-open'),
+                                   name=f"Hole at x = {user_a}"))
     except:
         pass
 
-    # Optional tangent line
+    # Optional animated tangent line
     try:
         m = float(derivative_expr.subs(x, user_a))
         b = float(simplified_expr.subs(x, user_a) - m * user_a)
         tangent_x = np.linspace(user_a - 2, user_a + 2, 100)
         tangent_y = m * tangent_x + b
-        fig.add_trace(go.Scatter(x=tangent_x, y=tangent_y, mode='lines', name='Tangent line', line=dict(dash='dash')))
+        fig.add_trace(go.Scatter3d(x=tangent_x.tolist(), y=[0]*len(tangent_x), z=tangent_y.tolist(),
+                                   mode='lines', name='Tangent line', line=dict(color='orange', dash='dash')))
     except:
         pass
 
-    fig.update_layout(title=f"Graph of f(x) = {sp.latex(fx_expr)}",
-                      xaxis_title="x",
-                      yaxis_title="f(x)",
+    fig.update_layout(title=dict(text=f"Graph of $f(x) = {sp.latex(fx_expr)}$", x=0.5),
+                      scene=dict(
+                          xaxis_title='x',
+                          yaxis_title='depth (for visual separation)',
+                          zaxis_title='f(x)',
+                          camera=dict(eye=dict(x=1.2, y=1.2, z=1.2))
+                      ),
                       showlegend=True,
-                      height=500)
+                      height=600)
+
     try:
         st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
@@ -105,3 +111,4 @@ def run():
     feedback = st.text_area("What did you learn about limits today?")
     if feedback:
         st.info("Thanks for sharing your reflection! 💬")
+
