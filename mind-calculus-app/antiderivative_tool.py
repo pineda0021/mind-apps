@@ -6,7 +6,7 @@ import numpy as np
 import random
 
 def run():
-    st.header("🧠 Antiderivative Visualizer")
+    st.header("∫ Antiderivative Visualizer")
     st.markdown("""
     Enter a function and explore its antiderivative (indefinite integral) symbolically and graphically.
     """)
