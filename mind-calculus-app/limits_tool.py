@@ -40,7 +40,6 @@ def run():
     x_vals = x_vals_full[np.abs(x_vals_full - user_a) > 1e-6]
     try:
         y_vals = f(x_vals)
-        y_hole = f(user_a - 1e-5)  # approximate value for hole
     except:
         st.error("Error evaluating function for plotting.")
         return
@@ -72,7 +71,11 @@ def run():
                       yaxis_title="f(x)",
                       showlegend=True,
                       height=500)
-    st.plotly_chart(fig, use_container_width=True)
+    try:
+        fig_json = fig.to_plotly_json()
+        st.plotly_chart(go.Figure(fig_json), use_container_width=True)
+    except Exception as e:
+        st.error(f"Error displaying Plotly chart: {e}")
 
     # Table of values around a
     st.subheader(f"Limit Table Around x = {user_a} ⟲")
@@ -103,3 +106,4 @@ def run():
     feedback = st.text_area("What did you learn about limits today?")
     if feedback:
         st.info("Thanks for sharing your reflection! 💬")
+
