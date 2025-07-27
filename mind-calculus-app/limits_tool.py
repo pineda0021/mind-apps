@@ -1,6 +1,5 @@
 def run():
-    # put ALL of your Streamlit code here
-
+    
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
