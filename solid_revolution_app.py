@@ -47,10 +47,50 @@ def plot_region():
     st.pyplot(plt.gcf())
     plt.close()
 
+# --- 3D Disk Visualization ---
+def plot_disk_3d():
+    fx = parse(top_expr)
+    gx = parse(bottom_expr)
+    xs = np.linspace(float(a), float(b), 20)
+    fig = go.Figure()
+    for i in range(len(xs) - 1):
+        x0, x1 = xs[i], xs[i+1]
+        x_mid = (x0 + x1) / 2
+        r_outer = fx(x_mid)
+        r_inner = gx(x_mid)
+        theta = np.linspace(0, 2 * np.pi, 30)
+        T, R = np.meshgrid(theta, np.linspace(r_inner, r_outer, 2))
+        X = x_mid * np.ones_like(R)
+        Y = R * np.cos(T)
+        Z = R * np.sin(T)
+        fig.add_trace(go.Surface(x=X, y=Y, z=Z, showscale=False, opacity=0.6, colorscale='blues'))
+    fig.update_layout(title="3D Disk/Washer Visualization", height=500,
+                      scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'))
+    st.plotly_chart(fig)
+
+# --- 3D Shell Visualization ---
+def plot_shell_3d():
+    fx = parse(top_expr)
+    gx = parse(bottom_expr)
+    xs = np.linspace(float(a), float(b), 20)
+    fig = go.Figure()
+    for i in range(len(xs) - 1):
+        x0, x1 = xs[i], xs[i+1]
+        h = fx((x0 + x1) / 2) - gx((x0 + x1) / 2)
+        r = (x0 + x1) / 2
+        theta = np.linspace(0, 2 * np.pi, 30)
+        T, H = np.meshgrid(theta, np.linspace(0, h, 2))
+        X = r * np.cos(T)
+        Y = H
+        Z = r * np.sin(T)
+        fig.add_trace(go.Surface(x=X, y=Y, z=Z, showscale=False, opacity=0.6, colorscale='blues'))
+    fig.update_layout(title="3D Cylindrical Shell Visualization", height=500,
+                      scene=dict(xaxis_title='x', yaxis_title='height', zaxis_title='z'))
+    st.plotly_chart(fig)
+
 # --- Volume with Steps ---
 def display_formula():
     st.markdown("### 📘 Volume Formula")
-
     if method == "Disk/Washer" and axis == "x-axis":
         f_sq = simplify(f_expr**2)
         g_sq = simplify(g_expr**2)
@@ -98,49 +138,6 @@ def display_formula():
     st.warning("This method and axis combination is not supported.")
     return None
 
-# --- 3D Disk/Washer Visualization ---
-def plot_disk_riemann():
-    fx = parse(top_expr)
-    gx = parse(bottom_expr)
-    xs = np.linspace(a, b, 20)
-    fig = go.Figure()
-    for i in range(len(xs) - 1):
-        x0, x1 = xs[i], xs[i+1]
-        x_mid = (x0 + x1) / 2
-        r_outer = fx(x_mid)
-        r_inner = gx(x_mid)
-        theta = np.linspace(0, 2*np.pi, 30)
-        T, R = np.meshgrid(theta, np.linspace(r_inner, r_outer, 2))
-        X = x_mid * np.ones_like(R)
-        Y = R * np.cos(T)
-        Z = R * np.sin(T)
-        fig.add_trace(go.Surface(x=X, y=Y, z=Z, showscale=False, opacity=0.6, colorscale='blues'))
-    fig.update_layout(title="3D Riemann Slices (Disk/Washer)", height=500,
-                      scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'))
-    st.plotly_chart(fig)
-
-# --- 3D Shell Visualization ---
-def plot_shell_riemann():
-    fx = parse(top_expr)
-    gx = parse(bottom_expr)
-    xs = np.linspace(a, b, 20)
-    fig = go.Figure()
-    for i in range(len(xs) - 1):
-        x0, x1 = xs[i], xs[i+1]
-        h = fx((x0 + x1)/2) - gx((x0 + x1)/2)
-        r = (x0 + x1)/2
-        theta = np.linspace(0, 2*np.pi, 30)
-        T, H = np.meshgrid(theta, np.linspace(0, h, 2))
-        X = r * np.cos(T)
-        Y = H
-        Z = r * np.sin(T)
-        fig.add_trace(go.Surface(x=X, y=Y, z=Z, showscale=False, opacity=0.6, colorscale='blues'))
-    fig.update_layout(title="3D Cylindrical Shells", height=500,
-                      scene=dict(xaxis_title='radius', yaxis_title='height', zaxis_title='z'))
-    st.plotly_chart(fig)
-
-
-
 # --- Main App ---
 if compute:
     col1, col2 = st.columns([1.1, 0.9])
@@ -151,7 +148,12 @@ if compute:
     with col2:
         st.subheader("📊 3D Visualization")
         if show_3d:
-            st.info("3D available for educational visualization (experimental).")
+            if method == "Disk/Washer" and axis == "x-axis":
+                plot_disk_3d()
+            elif method == "Shell" and axis == "y-axis":
+                plot_shell_3d()
+            else:
+                st.info("3D available only for Disk/x-axis and Shell/y-axis.")
 
     volume = display_formula()
     if volume is not None:
@@ -160,7 +162,7 @@ if compute:
 
     st.markdown("## 💡 Tips")
     st.info(
-        "- Use expressions like `x`, `x**2`, `sqrt(x)`, etc.\n"
-        "- Fractions like `1/3` preserve exact symbolic results.\n"
-        "- Works best with continuous and integrable functions over [a, b]."
+        "- Use functions like `x`, `x**2`, `sqrt(x)` for best results.\n"
+        "- Enter fractions as `1/3` to preserve exact symbolic output.\n"
+        "- For 3D, use `x-axis` with Disk/Washer and `y-axis` with Shell."
     )
