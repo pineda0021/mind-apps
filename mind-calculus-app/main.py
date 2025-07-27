@@ -41,6 +41,7 @@ st.markdown("""
 
 👨‍🏫 About the Creators
 Professor Edward Pineda-Castro
-Mathematics Department, Los Angeles City College
+Department of Mathematics at Los Angeles City College
+E-Mail: pinedaem@lacitycollege.edu | Tel:(323)953-4000 ext. 2827
 Founder of MIND — Making Inference Digestible
 """)
