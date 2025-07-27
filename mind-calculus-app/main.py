@@ -1,18 +1,18 @@
 import streamlit as st
 
-# Import all tool modules
+# Import tool modules (ensure these .py files exist and are correctly named)
 import limits_tool
 import derivative_tool
 import riemann_tool
 import antiderivative_tool
 import solid_volume_tool
 
-# App title and branding
-st.set_page_config(page_title="MIND: Calculus Visualizer Suite", layout="wide")
+# App header
+st.set_page_config(page_title="MIND: Calculus Visualizer", layout="wide")
 st.title("🧠 MIND: Calculus Visualizer Suite")
 st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College — built with the students in MIND.")
 
-# Sidebar navigation
+# Sidebar for navigation
 st.sidebar.header("📚 Select a Concept")
 tool = st.sidebar.radio("Choose a tool:", [
     "Limits Visualizer",
@@ -22,7 +22,7 @@ tool = st.sidebar.radio("Choose a tool:", [
     "Solid of Revolution Tool"
 ])
 
-# Route to selected module
+# Route to appropriate tool
 if tool == "Limits Visualizer":
     limits_tool.run()
 elif tool == "Derivative Visualizer":
