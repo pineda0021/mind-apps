@@ -1,145 +1,139 @@
-# --- Imports ---
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import quad
-from sympy import symbols, integrate, pi, latex, simplify, sympify
+from sympy import symbols, pi, simplify, latex, integrate, sympify
 import plotly.graph_objs as go
 
-# --- Config ---
 st.set_page_config(page_title="MIND: Solid of Revolution Tool", layout="wide")
 st.title("🧠 MIND: Solid of Revolution Tool")
 st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College — built with the students in MIND.")
 
-# --- Sidebar ---
-st.sidebar.header("🔧 Parameters")
-
-function_option = st.sidebar.selectbox("Do you have one function or two functions?", ["One Function", "Two Functions"])
-
-if function_option == "One Function":
-    top_expr = st.sidebar.text_input("Function f(x):", value="x**(1/2)")
-    bottom_expr = None
-else:
-    top_expr = st.sidebar.text_input("Top function f(x):", value="x")
-    bottom_expr = st.sidebar.text_input("Bottom function g(x):", value="x**2")
-
+# Sidebar Inputs
+st.sidebar.header("🔧 Input Parameters")
+function_option = st.sidebar.selectbox("Function Type:", ["One Function", "Two Functions"])
 method = st.sidebar.selectbox("Method:", ["Disk/Washer", "Cylindrical Shell"])
-axis = st.sidebar.selectbox("Axis of rotation:", ["x-axis", "y-axis"])
-rotation_line = st.sidebar.text_input("Axis of rotation value (e.g., x=2 or y=3):", value="x=0")
-show_riemann = st.sidebar.checkbox("Show Riemann Sum in 3D", value=True)
+axis = st.sidebar.selectbox("Axis of Rotation:", ["x-axis", "y-axis"])
 a = st.sidebar.number_input("Start of interval (a):", value=0.0)
 b = st.sidebar.number_input("End of interval (b):", value=1.0)
+show_riemann = st.sidebar.checkbox("Show 3D Riemann Slices", value=True)
 compute = st.sidebar.button("🔄 Compute and Visualize")
 
-# --- Helper functions ---
+# Function Input
+if function_option == "One Function":
+    f_expr = st.sidebar.text_input("f(x):", value="x**(1/2)")
+    g_expr = None
+else:
+    f_expr = st.sidebar.text_input("Top function f(x):", value="x")
+    g_expr = st.sidebar.text_input("Bottom function g(x):", value="x**2")
+
+# Function Parser
 def parse_function(expr):
     return lambda x: eval(expr, {"x": x, "np": np})
 
-def extract_shift(axis_expr):
-    try:
-        axis_name, val = axis_expr.replace(" ", "").split("=")
-        return axis_name, float(val)
-    except:
-        return ("x", 0.0)
-
-def plot_functions(top_expr, bottom_expr):
-    f = parse_function(top_expr)
-    x = np.linspace(a, b, 300)
-    plt.figure(figsize=(6, 4))
-    plt.plot(x, f(x), label="Top: f(x)", color='blue')
-    if bottom_expr:
-        g = parse_function(bottom_expr)
-        plt.plot(x, g(x), label="Bottom: g(x)", color='red')
-        plt.fill_between(x, g(x), f(x), color='gray', alpha=0.3)
+# Formula Display
+def display_formula(f_expr, g_expr, method, axis):
+    x = symbols('x')
+    f = sympify(f_expr)
+    g = sympify(g_expr) if g_expr else 0
+    if method == "Disk/Washer" and axis == "x-axis":
+        formula = f"V = \\pi \\int_{{{a}}}^{{{b}}} \\left[{latex(f)}^2 - {latex(g)}^2\\right] \\, dx"
+    elif method == "Cylindrical Shell" and axis == "y-axis":
+        formula = f"V = 2\\pi \\int_{{{a}}}^{{{b}}} x\\left[{latex(f)} - {latex(g)}\\right] \\, dx"
     else:
-        plt.fill_between(x, 0, f(x), color='gray', alpha=0.3)
+        formula = "Unsupported combination."
+    st.markdown("### 📘 Volume Formula")
+    st.latex(formula)
+
+# Step-by-step volume
+def compute_symbolic_volume(f_expr, g_expr, method, axis, a, b):
+    x = symbols('x')
+    f = sympify(f_expr)
+    g = sympify(g_expr) if g_expr else 0
+    if method == "Disk/Washer" and axis == "x-axis":
+        integrand = pi * (f**2 - g**2)
+    elif method == "Cylindrical Shell" and axis == "y-axis":
+        integrand = 2 * pi * x * (f - g)
+    else:
+        st.warning("Unsupported combination.")
+        return None, None
+    exact = simplify(integrate(integrand, (x, a, b)))
+    numeric = float(exact.evalf())
+    return exact, numeric
+
+# Plot 2D region
+def plot_region(f_expr, g_expr, a, b):
+    x_vals = np.linspace(a, b, 300)
+    f = parse_function(f_expr)
+    plt.figure()
+    plt.plot(x_vals, f(x_vals), label="f(x)", color="blue")
+    if g_expr:
+        g = parse_function(g_expr)
+        plt.plot(x_vals, g(x_vals), label="g(x)", color="red")
+        plt.fill_between(x_vals, g(x_vals), f(x_vals), color='gray', alpha=0.3)
+    else:
+        plt.fill_between(x_vals, 0, f(x_vals), color='gray', alpha=0.3)
     plt.legend()
     plt.xlabel("x")
-    plt.ylabel("f(x), g(x)")
+    plt.ylabel("y")
     st.pyplot(plt.gcf())
     plt.close()
 
-def show_formula(method, axis, f_expr, g_expr):
-    x = symbols('x')
-    f = sympify(f_expr)
-    g = sympify(g_expr) if g_expr else 0
-    st.markdown("#### 📘 Setup and Formula")
-    st.latex(r"f(x) = " + latex(f))
-    if g_expr:
-        st.latex(r"g(x) = " + latex(g))
-    st.latex(r"V = \pi \int_{{{}}}^{{{}}} \left[{}^2 - {}^2\right] \,dx".format(a, b, latex(f), latex(g)))
-
-def step_by_step_solution(f_expr, g_expr, method, axis, a, b, axis_shift):
-    x = symbols('x')
-    f = sympify(f_expr)
-    g = sympify(g_expr) if g_expr else 0
-    integrand = (f ** 2 - g ** 2) * pi
-    result = integrate(integrand, (x, a, b))
-    st.markdown("#### 📝 Step-by-Step Solution:")
-    st.latex(r"V = \pi \int_{{{}}}^{{{}}} \left[{}^2 - {}^2\right] \, dx = {}".format(
-        a, b, latex(f), latex(g), latex(simplify(result))
-    ))
-
-def compute_exact_volume(f_expr, g_expr, method, axis, a, b, axis_shift):
+# 3D Riemann Visual
+def plot_riemann_3d(f_expr, g_expr, method, axis, a, b):
     f = parse_function(f_expr)
-    g = parse_function(g_expr) if g_expr else (lambda x: 0)
-    integrand = lambda x: np.pi * (f(x) ** 2 - g(x) ** 2)
-    result, _ = quad(integrand, a, b)
-    return result
-
-def show_method_tip(method, axis):
-    st.markdown("### ✅ Which Method is Better?")
-    if method == "Disk/Washer" and axis == "x-axis":
-        st.success("The Disk/Washer Method is generally preferred for solids rotated around the x-axis.")
-    elif method == "Cylindrical Shell" and axis == "y-axis":
-        st.success("Shell Method is often more convenient when rotating around the y-axis.")
-    else:
-        st.warning("This method/axis combo might require transforming the function or limits.")
-
-def plot_disk_riemann_3d(top_expr):
-    f = parse_function(top_expr)
+    g = parse_function(g_expr) if g_expr else lambda x: 0
     x_vals = np.linspace(a, b, 20)
     fig = go.Figure()
-    for i in range(len(x_vals) - 1):
-        x0 = x_vals[i]
-        x1 = x_vals[i + 1]
-        x_mid = (x0 + x1) / 2
-        r = f(x_mid)
-        theta = np.linspace(0, 2 * np.pi, 30)
-        X = x_mid * np.ones((30, 30))
-        T, Z = np.meshgrid(theta, np.linspace(0, r, 30))
-        Y = Z * np.cos(T)
-        Z = Z * np.sin(T)
-        fig.add_trace(go.Surface(x=X, y=Y, z=Z, showscale=False, opacity=0.6, colorscale='blues'))
 
-    fig.update_layout(title="Riemann Slices Forming the Solid (Disk Method)",
-                      scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'), height=500)
+    for i in range(len(x_vals)-1):
+        x0 = x_vals[i]
+        x1 = x_vals[i+1]
+        x_mid = (x0 + x1)/2
+        height = f(x_mid) - g(x_mid)
+        if height < 0: continue
+        if method == "Disk/Washer" and axis == "x-axis":
+            r = f(x_mid)
+            theta = np.linspace(0, 2*np.pi, 30)
+            T, Z = np.meshgrid(theta, np.linspace(g(x_mid), f(x_mid), 2))
+            X = x_mid * np.ones_like(T)
+            Y = (Z) * np.cos(T)
+            Z = (Z) * np.sin(T)
+            fig.add_trace(go.Surface(x=X, y=Y, z=Z, showscale=False, opacity=0.6, colorscale='blues'))
+        elif method == "Cylindrical Shell" and axis == "y-axis":
+            r = x_mid
+            h = height
+            theta = np.linspace(0, 2*np.pi, 30)
+            Z, T = np.meshgrid(np.linspace(0, h, 2), theta)
+            X = r * np.cos(T)
+            Y = r * np.sin(T)
+            fig.add_trace(go.Surface(x=X, y=Y, z=Z, showscale=False, opacity=0.6, colorscale='greens'))
+
+    fig.update_layout(scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'), height=500,
+                      title="3D Riemann Approximation")
     st.plotly_chart(fig)
 
-# --- Main Execution ---
+# Main App
 if compute:
-    axis_name, axis_shift = extract_shift(rotation_line)
-    col_left, col_right = st.columns([1.2, 0.8])
-
-    with col_left:
-        plot_functions(top_expr, bottom_expr)
-        show_formula(method, axis, top_expr, bottom_expr)
-        step_by_step_solution(top_expr, bottom_expr, method, axis, a, b, axis_shift)
-        exact_volume = compute_exact_volume(top_expr, bottom_expr, method, axis, a, b, axis_shift)
-        st.markdown(f"### ✅ Exact Volume: {exact_volume:.4f}")
-
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("## ✏️ Region Bounded by Curves")
+        plot_region(f_expr, g_expr, a, b)
+        display_formula(f_expr, g_expr, method, axis)
+        exact, approx = compute_symbolic_volume(f_expr, g_expr, method, axis, a, b)
+        if exact is not None:
+            st.markdown("### 🧮 Exact Volume:")
+            st.latex(f"V = {latex(exact)} ≈ {approx:.4f}")
+    with col2:
+        st.markdown("## 📊 3D Visualization")
         if show_riemann:
-            if method == "Disk/Washer" and axis == "x-axis":
-                plot_disk_riemann_3d(top_expr)
-            else:
-                st.info("Riemann 3D visualization for this method/axis not yet available.")
+            plot_riemann_3d(f_expr, g_expr, method, axis, a, b)
+        else:
+            st.info("Riemann visualization not selected.")
 
-    with col_right:
-        show_method_tip(method, axis)
-        with st.expander("🪞 What does this visualization mean?", expanded=True):
-            st.info(
-                "This tool helps visualize solids of revolution.\n\n"
-                "- **Disk/Washer Method**: horizontal/vertical slices.\n"
-                "- **Shell Method**: wraps vertical slices around the axis.\n\n"
-                "Integrals compute volume — just like Riemann sums approximate area!"
-            )
+    st.markdown("### 💡 Interpretation Tip")
+    st.info(
+        "- Disk/Washer: Good when rotating around the x-axis.\n"
+        "- Shell: Better for y-axis.\n"
+        "This tool helps students see how volume is built from slices!"
+    )
