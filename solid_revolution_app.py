@@ -141,10 +141,9 @@ if compute:
             else:
                 st.warning("3D visualization not available for this method/axis.")
 
-  volume = display_formula()
+ volume = display_formula()
     if volume is not None:
-        st.markdown(f"### ✅ Exact Volume: ${latex(volume)}$")
-
+        st.markdown(f"### ✅ Exact Volume: `{volume:.4f}`")
 
     st.markdown("## 💡 Interpretation Tip")
     st.info(
