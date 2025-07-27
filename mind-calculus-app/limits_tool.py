@@ -49,8 +49,8 @@ def run():
 
     # Add hole in red if removable discontinuity
     try:
-        hole_y = simplified_expr.subs(x, user_a)
-        fig.add_trace(go.Scatter(x=[user_a], y=[hole_y], mode='markers',
+        hole_y_val = float(simplified_expr.subs(x, user_a))
+        fig.add_trace(go.Scatter(x=[user_a], y=[hole_y_val], mode='markers',
                                  marker=dict(size=10, color='red', symbol='circle-open'),
                                  name=f"Hole at x = {user_a}"))
     except:
@@ -72,8 +72,7 @@ def run():
                       showlegend=True,
                       height=500)
     try:
-        fig_json = fig.to_plotly_json()
-        st.plotly_chart(go.Figure(fig_json), use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
         st.error(f"Error displaying Plotly chart: {e}")
 
@@ -106,4 +105,3 @@ def run():
     feedback = st.text_area("What did you learn about limits today?")
     if feedback:
         st.info("Thanks for sharing your reflection! 💬")
-
