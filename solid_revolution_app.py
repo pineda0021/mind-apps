@@ -50,20 +50,29 @@ def plot_region():
     st.pyplot(plt.gcf())
     plt.close()
 
-# --- Symbolic formula ---
-def display_formula():
+# --- Symbolic formula + step-by-step ---
+def display_formula_and_steps():
     if method == "Disk/Washer" and axis == "x-axis":
         vol_expr = pi * (f_expr**2 - g_expr**2)
-        integral = simplify(integrate(vol_expr, (x, a, b)))
+        int_f2 = integrate(f_expr**2, (x, a, b))
+        int_g2 = integrate(g_expr**2, (x, a, b))
+        full_result = simplify(pi * (int_f2 - int_g2))
         st.markdown("### 📘 Volume Formula")
-        st.latex(r"V = \pi \int_{{{}}}^{{{}}} \left[{}^2 - {}^2\right] dx = {}".format(
-            a, b, latex(f_expr), latex(g_expr), latex(integral)))
-        return float(integral.evalf())
+        st.latex(rf"V = \pi \int_{{{a}}}^{{{b}}} \left({latex(f_expr)}^2 - {latex(g_expr)}^2\right) dx")
+        st.markdown("### 📝 Step-by-Step")
+        st.latex(rf"""
+\begin{{aligned}}
+V &= \pi \left( \int_{{{a}}}^{{{b}}} {latex(f_expr**2)} dx - \int_{{{a}}}^{{{b}}} {latex(g_expr**2)} dx \right) \\
+  &= \pi \left( {latex(int_f2)} - {latex(int_g2)} \right) \\
+  &= {latex(full_result)}
+\end{{aligned}}
+""")
+        return float(full_result.evalf())
     elif method == "Shell" and axis == "y-axis":
         vol_expr = 2 * pi * x * (f_expr - g_expr)
         integral = simplify(integrate(vol_expr, (x, a, b)))
         st.markdown("### 📘 Volume Formula")
-        st.latex(r"V = 2\pi \int_{{{}}}^{{{}}} x \cdot \left({} - {}\right) dx = {}".format(
+        st.latex(r"V = 2\pi \int_{{{}}}^{{{}}} x({} - {}) dx = {}".format(
             a, b, latex(f_expr), latex(g_expr), latex(integral)))
         return float(integral.evalf())
     else:
@@ -99,14 +108,15 @@ def plot_shell_riemann():
     fig = go.Figure()
     for i in range(len(xs) - 1):
         x0, x1 = xs[i], xs[i+1]
-        h = fx((x0 + x1)/2) - gx((x0 + x1)/2)
         r = (x0 + x1)/2
+        h = fx(r) - gx(r)
         theta = np.linspace(0, 2*np.pi, 30)
         X = r * np.cos(theta)
+        Z = r * np.sin(theta)
         Y = np.linspace(0, h, 2)
         X, Y = np.meshgrid(X, Y)
-        Z = r * np.sin(theta)[None, :]
-        fig.add_trace(go.Surface(x=X, y=Y.T, z=Z, showscale=False, opacity=0.6, colorscale='blues'))
+        Z = np.tile(Z, (2, 1))
+        fig.add_trace(go.Surface(x=X, y=Y, z=Z, showscale=False, opacity=0.6, colorscale='blues'))
     fig.update_layout(title="3D Cylindrical Shells", height=500,
                       scene=dict(xaxis_title='x', yaxis_title='height', zaxis_title='z'))
     st.plotly_chart(fig)
@@ -128,7 +138,7 @@ if compute:
             else:
                 st.warning("3D visualization not available for this method/axis.")
 
-    volume = display_formula()
+    volume = display_formula_and_steps()
     if volume is not None:
         st.markdown(f"### ✅ Exact Volume: `{volume:.4f}`")
 
