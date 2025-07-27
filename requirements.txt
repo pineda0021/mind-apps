@@ -3,4 +3,3 @@ numpy
 matplotlib
 scipy
 sympy
-plotly.graph_objs
