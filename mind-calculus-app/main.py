@@ -8,29 +8,29 @@ Created by **Professor Edward Pineda-Castro** at Los Angeles City College, this 
    - Explore removable and non-removable discontinuities
    - See animations of functions approaching a limit
    - Tabular values with undefined points
-   - ✅ *Challenge*: Determine the limit as \( x \to c \) from a table and animation.
+   - Challenge: Determine the limit as \( x \to c \) from a table and animation.
 
 2. **Derivative Visualizer**
    - Plot a function and its derivative
    - See symbolic differentiation (via SymPy)
-   - ✅ *Challenge*: Match a function to its derivative graph or compute \( f'(x) \) at a point.
+   - Challenge: Match a function to its derivative graph or compute \( f'(x) \) at a point.
 
 3. **Riemann Sum Explorer**
    - Compare Left, Right, Midpoint, Trapezoidal, and Upper/Lower Sums
    - Overlay rectangles on graphs
    - Compute absolute and relative error
-   - ✅ *Challenge*: Estimate area using Midpoint sum and compare to the exact integral.
+   - Challenge: Estimate area using Midpoint sum and compare to the exact integral.
 
 4. **Antiderivative (Integral) Visualizer**
    - See the function and its integral side-by-side
    - Symbolic antiderivatives displayed with +C
-   - ✅ *Challenge*: Identify antiderivatives from multiple choices.
+   - Challenge: Identify antiderivatives from multiple choices.
 
 5. **Solid of Revolution Tool**
    - Compute volume using Disk/Washer or Shell method
    - 3D plotly visualization for revolution around the x or y-axis
    - Step-by-step integral setup and solution in exact form
-   - ✅ *Challenge*: Match volume expressions to the correct setup for a region.
+   - Challenge: Match volume expressions to the correct setup for a region.
 
 ## 🏁 Getting Started
 
@@ -80,10 +80,10 @@ https://mind-calculus-app.streamlit.app
 
 ## 🎓 Educational Value
 Each module includes:
-- 💡 Concept overview
-- 📘 Challenge problems with randomized input
-- ✏️ Symbolic solutions
-- 📊 Visual exploration
+- Concept overview
+- Challenge problems with randomized input
+- Symbolic solutions
+- Visual exploration
 
 Students can learn by adjusting parameters, testing examples, and verifying their solutions.
 
