@@ -160,9 +160,9 @@ if compute:
         st.success("✅ Final Answer (Exact Volume)")
         st.latex(r"V = " + latex(volume))
 
-    st.markdown("## 💡 Tips")
+    st.markdown("## 💡 Interpretation Tip")
     st.info(
-        "- Use functions like `x`, `x**2`, `sqrt(x)` for best results.\n"
-        "- Enter fractions as `1/3` to preserve exact symbolic output.\n"
-        "- For 3D, use `x-axis` with Disk/Washer and `y-axis` with Shell."
+        "- **Disk/Washer**: Great when rotating around the x-axis.\n"
+        "- **Shell**: Better when rotating around the y-axis.\n"
+        "- This tool helps visualize how volume accumulates slice by slice!"
     )
