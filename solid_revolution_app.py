@@ -2,17 +2,14 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 import plotly.graph_objs as go
-from scipy.integrate import quad
-from sympy import symbols, sympify, integrate, pi, latex, simplify
+from sympy import symbols, sympify, pi, integrate, latex, simplify, Rational
 
 st.set_page_config("MIND: Solid of Revolution Tool", layout="wide")
-
 st.title("🧠 MIND: Solid of Revolution Tool")
 st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College — built with the students in MIND.")
 
 # --- Sidebar ---
 st.sidebar.header("Parameters")
-
 function_mode = st.sidebar.selectbox("Function setup", ["One Function", "Two Functions"])
 top_expr = st.sidebar.text_input("Top function f(x):", "x")
 bottom_expr = st.sidebar.text_input("Bottom function g(x):", "x**2") if function_mode == "Two Functions" else "0"
@@ -21,7 +18,6 @@ axis = st.sidebar.selectbox("Axis of rotation", ["x-axis", "y-axis"])
 a = st.sidebar.number_input("Start of interval a", 0.0)
 b = st.sidebar.number_input("End of interval b", 1.0)
 show_3d = st.sidebar.checkbox("Show 3D Visualization", True)
-
 compute = st.sidebar.button("🔄 Compute and Visualize")
 
 x = symbols('x')
@@ -32,7 +28,7 @@ g_expr = sympify(bottom_expr)
 def parse(expr):
     return lambda x: eval(expr, {"x": x, "np": np})
 
-# --- 2D region plot ---
+# --- 2D Region Plot ---
 def plot_region():
     fx = parse(top_expr)
     gx = parse(bottom_expr)
@@ -50,54 +46,42 @@ def plot_region():
     st.pyplot(plt.gcf())
     plt.close()
 
-# --- Symbolic formula + step-by-step ---
+# --- Volume and Formula Display ---
 def display_formula_and_steps():
     if method == "Disk/Washer" and axis == "x-axis":
-        vol_integrand = f_expr**2 - g_expr**2
-        full_expr = pi * integrate(vol_integrand, (x, a, b))
+        vol_expr = pi * (f_expr**2 - g_expr**2)
         int_f2 = integrate(f_expr**2, (x, a, b))
         int_g2 = integrate(g_expr**2, (x, a, b))
-        inner_val = int_f2 - int_g2
-        approx = float(inner_val.evalf())
+        step_expr = simplify(int_f2 - int_g2)
+        final_expr = simplify(pi * step_expr)
 
         st.markdown("### 📘 Volume Formula")
-        st.latex(rf"V = \pi \int_{{a}}^{{b}} \left[f(x)^2 - g(x)^2\right]\,dx")
+        st.latex(rf"V = \pi \int_{{{a}}}^{{{b}}} \left({latex(f_expr)}^2 - {latex(g_expr)}^2\right)\,dx")
 
         st.markdown("### 📝 Step-by-Step")
         st.latex(rf"""
-\begin{{aligned}}
-V &= \pi \int_{{{a}}}^{{{b}}} \left({latex(f_expr)}^2 - {latex(g_expr)}^2\right)\,dx \\
-  &= \pi \left( \int_{{{a}}}^{{{b}}} {latex(f_expr**2)}\,dx - \int_{{{a}}}^{{{b}}} {latex(g_expr**2)}\,dx \right) \\
-  &= \pi ({latex(int_f2)} - {latex(int_g2)}) \\
-  &= {latex(simplify(inner_val))} \pi \\
-  &= {latex(simplify(full_expr))}
-\end{{aligned}}
-""")
-        return float(full_expr.evalf())
+        \begin{{aligned}}
+        V &= \pi \left( \int_{{{a}}}^{{{b}}} {latex(f_expr**2)}\,dx - \int_{{{a}}}^{{{b}}} {latex(g_expr**2)}\,dx \right) \\
+        &= \pi \left( {latex(int_f2)} - {latex(int_g2)} \right) \\
+        &= \pi \cdot \left( {latex(step_expr)} \right) \\
+        &= {latex(final_expr)}
+        \end{{aligned}}
+        """)
+
+        return float(final_expr.evalf())
 
     elif method == "Shell" and axis == "y-axis":
-        vol_integrand = x * (f_expr - g_expr)
-        inner_val = integrate(vol_integrand, (x, a, b))
-        full_expr = simplify(2 * pi * inner_val)
-
+        shell_expr = 2 * pi * x * (f_expr - g_expr)
+        integral = simplify(integrate(shell_expr, (x, a, b)))
         st.markdown("### 📘 Volume Formula")
-        st.latex(rf"V = 2\pi \int_{{a}}^{{b}} x\left[f(x) - g(x)\right]\,dx")
-
-        st.markdown("### 📝 Step-by-Step")
-        st.latex(rf"""
-\begin{{aligned}}
-V &= 2\pi \int_{{{a}}}^{{{b}}} x({latex(f_expr)} - {latex(g_expr)})\,dx \\
-  &= 2\pi \left({latex(inner_val)}\right) \\
-  &= {latex(full_expr)}
-\end{{aligned}}
-""")
-        return float(full_expr.evalf())
+        st.latex(rf"V = 2\pi \int_{{{a}}}^{{{b}}} x({latex(f_expr)} - {latex(g_expr)})\,dx = {latex(integral)}")
+        return float(integral.evalf())
 
     else:
-        st.warning("Unsupported method/axis combination.")
+        st.warning("Unsupported combination.")
         return None
 
-# --- 3D Disk Riemann ---
+# --- 3D Disk/Washer Slices ---
 def plot_disk_riemann():
     fx = parse(top_expr)
     gx = parse(bottom_expr)
@@ -118,7 +102,7 @@ def plot_disk_riemann():
                       scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'))
     st.plotly_chart(fig)
 
-# --- 3D Shell Riemann ---
+# --- 3D Shell Slices ---
 def plot_shell_riemann():
     fx = parse(top_expr)
     gx = parse(bottom_expr)
@@ -126,26 +110,24 @@ def plot_shell_riemann():
     fig = go.Figure()
     for i in range(len(xs) - 1):
         x0, x1 = xs[i], xs[i+1]
+        h = fx((x0 + x1)/2) - gx((x0 + x1)/2)
         r = (x0 + x1)/2
-        h = fx(r) - gx(r)
         theta = np.linspace(0, 2*np.pi, 30)
         X = r * np.cos(theta)
-        Z = r * np.sin(theta)
         Y = np.linspace(0, h, 2)
         X, Y = np.meshgrid(X, Y)
-        Z = np.tile(Z, (2, 1))
-        fig.add_trace(go.Surface(x=X, y=Y, z=Z, showscale=False, opacity=0.6, colorscale='blues'))
+        Z = r * np.sin(theta)[None, :]
+        fig.add_trace(go.Surface(x=X, y=Y.T, z=Z, showscale=False, opacity=0.6, colorscale='blues'))
     fig.update_layout(title="3D Cylindrical Shells", height=500,
                       scene=dict(xaxis_title='x', yaxis_title='height', zaxis_title='z'))
     st.plotly_chart(fig)
 
-# --- Main computation ---
+# --- Main Run ---
 if compute:
     col1, col2 = st.columns([1.1, 0.9])
     with col1:
         st.markdown("## ✏️ Region Bounded by Curves")
         plot_region()
-
     with col2:
         st.markdown("## 📊 3D Visualization")
         if show_3d:
