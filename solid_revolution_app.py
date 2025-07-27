@@ -51,41 +51,41 @@ def plot_region():
 def display_formula():
     if method == "Disk/Washer" and axis == "x-axis":
         st.markdown("### 📘 Volume Formula")
-        st.latex(r"V = \pi \int_{0}^{1} \left[x^2 - x^{2}^2\right] dx = \frac{2\pi}{15}")
-
-        
+        st.latex(r"V = \pi \int_{%.2f}^{%.2f} \left[f(x)^2 - g(x)^2\right] dx" % (a, b))
         f_sq = f_expr**2
         g_sq = g_expr**2
         integrand = pi * (f_sq - g_sq)
         exact = integrate(integrand, (x, a, b))
         simplified = simplify(exact)
 
+        # Show step-by-step with fractions
         st.markdown("### 📝 Step-by-Step")
         st.latex(r"f(x)^2 = " + latex(f_sq))
         st.latex(r"g(x)^2 = " + latex(g_sq))
-        st.latex(r"V = \pi \int_{%.2f}^{%.2f} \left[%s - %s\right] dx = %s" %
-                 (a, b, latex(f_sq), latex(g_sq), latex(simplified)))
-        
+        st.latex(
+            r"V = \pi \int_{%.2f}^{%.2f} \left[%s - %s\right] dx = %s"
+            % (a, b, latex(f_sq), latex(g_sq), latex(simplified))
+        )
         return float(simplified.evalf())
 
     elif method == "Shell" and axis == "y-axis":
         st.markdown("### 📘 Volume Formula")
-        st.latex(r"V = 2\pi \int_{0}^{1} x \cdot (x - x^{2}) dx = \frac{\pi}{6}")
-        
+        st.latex(r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot \left[f(x) - g(x)\right] dx" % (a, b))
         shell_integrand = 2 * pi * x * (f_expr - g_expr)
         result = integrate(shell_integrand, (x, a, b))
-        simplified_result = simplify(result)
+        simplified = simplify(result)
 
         st.markdown("### 📝 Step-by-Step")
-        st.latex(r"f(x) - g(x) = " + latex(f_expr - g_expr))
-        st.latex(r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot (%s) dx = %s" %
-                 (a, b, latex(f_expr - g_expr), latex(simplified_result)))
+        st.latex("f(x) - g(x) = " + latex(f_expr - g_expr))
+        st.latex(
+            r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot (%s) dx = %s"
+            % (a, b, latex(f_expr - g_expr), latex(simplified))
+        )
+        return float(simplified.evalf())
 
-        return float(simplified_result.evalf())
     else:
         st.warning("Method and axis combination not supported.")
         return None
-
 
 # --- 3D Disk/Washer Visualization ---
 def plot_disk_riemann():
