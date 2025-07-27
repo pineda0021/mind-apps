@@ -1,5 +1,3 @@
-def run():
-    
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,6 +6,14 @@ import sympy as sp
 from sympy.abc import x
 import streamlit.components.v1 as components
 import random
+
+# Define the function with a removable discontinuity
+def f(x_val):
+    return (x_val**2 - 5*x_val + 6) / (x_val - 2)
+
+def run():
+    st.header("Limits Visualizer")
+    ...
 
 # Define the function with a removable discontinuity
 def f(x_val):
