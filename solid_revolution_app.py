@@ -120,14 +120,15 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b, axis_shift)
 def plot_riemann_3d(top_expr):
     f_top = parse_function(top_expr)
     x_vals = np.linspace(a, b, 20)
-    heights = f_top(x_vals)
+    heights = f_top(x_vals).astype(float)
     width = (b - a) / len(x_vals)
 
     fig = go.Figure()
     for i, x in enumerate(x_vals):
+        h = float(heights[i])
         fig.add_trace(go.Mesh3d(
             x=[x, x + width, x + width, x, x, x + width, x + width, x],
-            y=[0, 0, 0, 0, heights[i], heights[i], heights[i], heights[i]],
+            y=[0, 0, 0, 0, h, h, h, h],
             z=[0, 0, 1, 1, 0, 0, 1, 1],
             color='skyblue', opacity=0.5, showscale=False))
 
@@ -190,3 +191,4 @@ if compute:
                 "- **Shell Method**: wraps vertical slices around the axis.\n\n"
                 "Integrals compute volume — just like Riemann sums approximate area!"
             )
+
