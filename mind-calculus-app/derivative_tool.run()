@@ -27,13 +27,13 @@ def step_by_step_derivation(expr):
     return steps
 
 def run():
-    st.header("🧠 Derivative Visualizer")
+    st.header("\U0001F9E0 Derivative Visualizer")
     st.markdown("""
     Enter a function and explore its derivative both symbolically and graphically. Compare f(x) and f'(x), and investigate the slope of the tangent line at any point.
     """)
 
     # Function input
-    st.subheader("📥 Enter a Function")
+    st.subheader("\U0001F4E5 Enter a Function")
     f_input = st.text_input("f(x) =", "x**3 - 3*x + 1")
     try:
         fx = sp.sympify(f_input)
@@ -43,16 +43,16 @@ def run():
         return
 
     # Display symbolic derivative
-    st.subheader("🧮 Symbolic Derivative")
+    st.subheader("\U0001F9EE Symbolic Derivative")
     st.latex(rf"f'(x) = \frac{{d}}{{dx}}[{sp.latex(fx)}] = {sp.latex(dfx)}")
 
     # Step-by-step explanation
-    st.subheader("🪜 Step-by-Step Derivation")
+    st.subheader("\U0001FA5C Step-by-Step Derivation")
     for step in step_by_step_derivation(fx):
         st.markdown(step)
 
     # Graphs of f(x) and f'(x)
-    st.subheader("📈 Graph of f(x) and f'(x)")
+    st.subheader("\U0001F4C8 Graph of f(x) and f'(x)")
     f_np = sp.lambdify(x, fx, modules=["numpy"])
     df_np = sp.lambdify(x, dfx, modules=["numpy"])
 
@@ -71,7 +71,7 @@ def run():
     st.pyplot(fig)
 
     # Tangent line visualization
-    st.subheader("📍 Tangent Line at a Point")
+    st.subheader("\U0001F4CD Tangent Line at a Point")
     a_val = st.slider("Choose a point x = a", -5.0, 5.0, value=1.0, step=0.1)
     f_a = f_np(a_val)
     df_a = df_np(a_val)
@@ -91,7 +91,7 @@ def run():
     st.pyplot(fig2)
 
     # Derivative Table Animation (h -> 0)
-    st.subheader("📉 Derivative Table: Definition of Derivative")
+    st.subheader("\U0001F4C9 Derivative Table: Definition of Derivative")
     h_vals = [1, 0.5, 0.1, 0.01, 0.001]
     slopes = [(f_np(a_val + h) - f_np(a_val)) / h for h in h_vals]
     df_exact = df_np(a_val)
@@ -105,7 +105,7 @@ def run():
     st.latex(rf"\lim_{{h \to 0}} \frac{{f({a_val}+h)-f({a_val})}}{{h}} = {df_exact:.6f}")
 
     # Quiz
-    st.subheader("📊 Multiple Choice Quiz: Derivative")
+    st.subheader("\U0001F4CA Multiple Choice Quiz: Derivative")
     correct = sp.diff(fx, x)
     correct_str = sp.latex(correct)
 
@@ -128,4 +128,3 @@ def run():
             st.success("Correct! 🎉 Great job.")
         else:
             st.error("Oops! That's not quite right. Try reviewing the rules of differentiation.")
-
