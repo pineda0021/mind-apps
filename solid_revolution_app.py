@@ -2,9 +2,11 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import quad
-from sympy import symbols, integrate, pi, Rational, latex, simplify, sympify
+from sympy import symbols, integrate, pi, Rational, latex, simplify, sympify, Abs
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib
+import plotly.graph_objs as go
+
 matplotlib.use("Agg")
 
 # --- Page config ---
@@ -26,7 +28,6 @@ else:
 
 method = st.sidebar.selectbox("Method:", ["Disk/Washer", "Cylindrical Shell"])
 axis = st.sidebar.selectbox("Axis of rotation:", ["x-axis", "y-axis"])
-
 rotation_line = st.sidebar.text_input("Axis of rotation value (e.g., x=2 or y=3):", value="x=0")
 show_riemann = st.sidebar.checkbox("Show Riemann Sum in 3D", value=True)
 a = st.sidebar.number_input("Start of interval (a):", value=0.0)
@@ -99,7 +100,7 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b, axis_shift)
         symbolic_integral = pi * integrate(integrand, (x, a, b))
         st.latex(f"V = \\pi \\int_{{{a}}}^{{{b}}} {latex(integrand)} \\, dx")
     else:
-        integrand = abs(x - axis_shift) * f_top
+        integrand = Abs(x - axis_shift) * f_top
         symbolic_integral = 2 * pi * integrate(integrand, (x, a, b))
         st.latex(f"V = 2\\pi \\int_{{{a}}}^{{{b}}} |x - {axis_shift}| \\cdot {latex(f_top)} \\, dx")
 
@@ -114,6 +115,27 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b, axis_shift)
     else:
         st.latex(f"= {latex(symbolic_integral)}")
         st.markdown(f"**Exact Volume:** {float(symbolic_integral):.4f}")
+
+# --- Riemann 3D Simulation ---
+def plot_riemann_3d(top_expr):
+    f_top = parse_function(top_expr)
+    x_vals = np.linspace(a, b, 20)
+    heights = f_top(x_vals)
+    width = (b - a) / len(x_vals)
+
+    fig = go.Figure()
+    for i, x in enumerate(x_vals):
+        fig.add_trace(go.Mesh3d(
+            x=[x, x + width, x + width, x, x, x + width, x + width, x],
+            y=[0, 0, 0, 0, heights[i], heights[i], heights[i], heights[i]],
+            z=[0, 0, 1, 1, 0, 0, 1, 1],
+            color='skyblue', opacity=0.5, showscale=False))
+
+    fig.update_layout(
+        title="Riemann Sum Approximation in 3D",
+        scene=dict(xaxis_title='x', yaxis_title='f(x)', zaxis_title='z'),
+        height=500)
+    st.plotly_chart(fig)
 
 # --- Show formula ---
 def show_formula(method, axis, top_expr, bottom_expr):
@@ -156,6 +178,8 @@ if compute:
         step_by_step_solution(top_expr, bottom_expr, method, axis, a, b, axis_shift)
         exact_volume = compute_exact_volume(top_expr, bottom_expr, method, axis, a, b, axis_shift)
         st.markdown(f"### ✅ Exact Volume: {exact_volume:.4f}")
+        if show_riemann:
+            plot_riemann_3d(top_expr)
 
     with col_right:
         show_method_tip(method, axis)
