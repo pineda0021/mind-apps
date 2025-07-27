@@ -1,3 +1,5 @@
+def run():
+
 # solid_volume_tool.py
 import streamlit as st
 import numpy as np
@@ -96,3 +98,6 @@ st.info(
     "- **Shell**: Ideal for y-axis rotations with vertical slices.\n"
     "- Visualize volume as accumulation of circular or cylindrical slices!"
 )
+if __name__ == "__main__":
+    run()
+
