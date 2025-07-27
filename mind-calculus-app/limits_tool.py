@@ -12,7 +12,7 @@ def f(x_val):
     return (x_val**2 - 5*x_val + 6) / (x_val - 2)
 
 def run():
-    st.header("\U0001F9E0 Limits Visualizer")
+    st.header("♾️ Limits Visualizer")
     st.markdown("""
     Explore removable discontinuities, limits from a table, animation, symbolic simplification, and ε–δ reasoning.
     """)
