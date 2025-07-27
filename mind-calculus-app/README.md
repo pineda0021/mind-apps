@@ -60,18 +60,6 @@ mind-calculus-app/
     └── config.toml
 ```
 
-### 🧠 Run Locally
-```bash
-streamlit run main.py
-```
-
-### ☁️ Deploy to Streamlit Cloud
-1. Push to GitHub
-2. Visit [streamlit.io/cloud](https://streamlit.io/cloud)
-3. Select your repo
-4. Set `main.py` as the entry point
-5. Click **Deploy**
-
 Your app will be live at:
 ```
 https://your-app-name.streamlit.app
@@ -85,6 +73,5 @@ Each module includes:
 - 📊 Visual exploration
 
 Students can learn by adjusting parameters, testing examples, and verifying their solutions.
-
 ---
 Made with ❤️ for Calculus students everywhere by **Professor Edward Pineda-Castro**.
