@@ -2,7 +2,7 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 import plotly.graph_objs as go
-from sympy import symbols, sympify, integrate, pi, latex, simplify, Rational
+from sympy import symbols, sympify, integrate, pi, latex, simplify
 
 # --- Page Config ---
 st.set_page_config("MIND: Solid of Revolution Tool", layout="wide")
@@ -27,7 +27,7 @@ f_expr = sympify(top_expr)
 g_expr = sympify(bottom_expr)
 
 def parse(expr):
-    return lambda x: eval(expr, {"x": x, "np": np})
+    return lambda x_val: eval(expr, {"x": x_val, "np": np})
 
 # --- Region plot ---
 def plot_region():
@@ -48,8 +48,6 @@ def plot_region():
     plt.close()
 
 # --- Symbolic formula + steps ---
-from sympy import Rational
-
 def display_formula():
     if method == "Disk/Washer" and axis == "x-axis":
         st.markdown("### 📘 Volume Formula")
@@ -68,8 +66,7 @@ def display_formula():
             r"V = \pi \int_{%.2f}^{%.2f} \left[%s - %s\right] dx = %s"
             % (a, b, latex(f_sq), latex(g_sq), latex(symbolic_result))
         )
-
-        return float(symbolic_result.evalf())
+        return symbolic_result
 
     elif method == "Shell" and axis == "y-axis":
         st.markdown("### 📘 Volume Formula")
@@ -85,14 +82,13 @@ def display_formula():
             r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot \left(%s\right) dx = %s"
             % (a, b, latex(f_expr - g_expr), latex(symbolic_result))
         )
+        return symbolic_result
 
-        return float(symbolic_result.evalf())
-    
     else:
         st.warning("Method and axis combination not supported.")
         return None
 
-# --- 3D Disk/Washer Visualization ---
+# --- 3D Visualizations ---
 def plot_disk_riemann():
     fx = parse(top_expr)
     gx = parse(bottom_expr)
@@ -113,7 +109,6 @@ def plot_disk_riemann():
                       scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'))
     st.plotly_chart(fig)
 
-# --- 3D Shell Visualization ---
 def plot_shell_riemann():
     fx = parse(top_expr)
     gx = parse(bottom_expr)
@@ -152,10 +147,12 @@ if compute:
 
     volume = display_formula()
     if volume is not None:
-        st.markdown(f"### ✅ Exact Volume: `{volume:.4f}`")
+        st.markdown("### ✅ Exact Volume:")
+        st.latex(f"{latex(volume)}")
 
     st.markdown("## 💡 Interpretation Tip")
     st.info(
         "- **Disk/Washer**: Good when rotating around the x-axis.\n"
         "- **Shell**: Better for y-axis. This tool helps students see how volume is built from slices!"
     )
+
