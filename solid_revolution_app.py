@@ -51,38 +51,54 @@ def plot_region():
 def display_formula():
     if method == "Disk/Washer" and axis == "x-axis":
         st.markdown("### 📘 Volume Formula")
-        st.latex(r"V = \pi \int_{%.2f}^{%.2f} \left[f(x)^2 - g(x)^2\right] dx" % (a, b))
+        st.latex(r"V = \pi \int_a^b \left[f(x)^2 - g(x)^2\right] dx")
 
         f_sq = simplify(f_expr**2)
         g_sq = simplify(g_expr**2)
-        integrand = f_sq - g_sq
-        integral_part = integrate(integrand, (x, a, b))
-        symbolic_result = pi * integral_part
-
-        st.markdown("### 📝 Step-by-Step")
+        st.markdown("#### Step 1: Square the functions")
         st.latex(r"f(x)^2 = " + latex(f_sq))
         st.latex(r"g(x)^2 = " + latex(g_sq))
-        st.latex(
-            r"V = \pi \int_{%.2f}^{%.2f} \left[%s - %s\right] dx = %s"
-            % (a, b, latex(f_sq), latex(g_sq), latex(symbolic_result))
-        )
-        return symbolic_result
+
+        integrand = f_sq - g_sq
+        st.markdown("#### Step 2: Subtract the squares")
+        st.latex(r"f(x)^2 - g(x)^2 = " + latex(integrand))
+
+        st.markdown("#### Step 3: Set up the definite integral")
+        st.latex(r"\int_{%.2f}^{%.2f} \left[%s\right] dx" % (a, b, latex(integrand)))
+
+        result = pi * integrate(integrand, (x, a, b))
+
+        st.markdown("#### Step 4: Multiply by π and integrate")
+        st.latex(r"V = \pi \cdot \left(" + latex(integrate(integrand, (x, a, b))) + r"\right)")
+        st.markdown("#### ✅ Final Answer (Exact Volume):")
+        st.latex(r"V = " + latex(result))
+
+        return result
 
     elif method == "Shell" and axis == "y-axis":
         st.markdown("### 📘 Volume Formula")
-        st.latex(r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot \left[f(x) - g(x)\right] dx" % (a, b))
+        st.latex(r"V = 2\pi \int_a^b x \cdot \left[f(x) - g(x)\right] dx")
 
-        shell_expr = simplify(x * (f_expr - g_expr))
-        integral_part = integrate(shell_expr, (x, a, b))
-        symbolic_result = 2 * pi * integral_part
+        diff = simplify(f_expr - g_expr)
+        shell_expr = simplify(x * diff)
 
-        st.markdown("### 📝 Step-by-Step")
-        st.latex(r"f(x) - g(x) = " + latex(f_expr - g_expr))
-        st.latex(
-            r"V = 2\pi \int_{%.2f}^{%.2f} x \cdot \left(%s\right) dx = %s"
-            % (a, b, latex(f_expr - g_expr), latex(symbolic_result))
-        )
-        return symbolic_result
+        st.markdown("#### Step 1: Subtract functions")
+        st.latex(r"f(x) - g(x) = " + latex(diff))
+
+        st.markdown("#### Step 2: Multiply by x")
+        st.latex(r"x \cdot (f(x) - g(x)) = " + latex(shell_expr))
+
+        st.markdown("#### Step 3: Set up the definite integral")
+        st.latex(r"\int_{%.2f}^{%.2f} %s \, dx" % (a, b, latex(shell_expr)))
+
+        result = 2 * pi * integrate(shell_expr, (x, a, b))
+
+        st.markdown("#### Step 4: Multiply by 2π and integrate")
+        st.latex(r"V = 2\pi \cdot \left(" + latex(integrate(shell_expr, (x, a, b))) + r"\right)")
+        st.markdown("#### ✅ Final Answer (Exact Volume):")
+        st.latex(r"V = " + latex(result))
+
+        return result
 
     else:
         st.warning("Method and axis combination not supported.")
@@ -147,12 +163,10 @@ if compute:
 
     volume = display_formula()
     if volume is not None:
-        st.markdown("### ✅ Exact Volume:")
-        st.latex(f"{latex(volume)}")
+        st.success("Scroll above to view full symbolic solution with steps.")
 
     st.markdown("## 💡 Interpretation Tip")
     st.info(
         "- **Disk/Washer**: Good when rotating around the x-axis.\n"
         "- **Shell**: Better for y-axis. This tool helps students see how volume is built from slices!"
     )
-
