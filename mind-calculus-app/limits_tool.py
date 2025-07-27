@@ -56,14 +56,21 @@ def run():
     except:
         pass
 
-    # Optional animated tangent line
+    # Animated tangent line (approximation by shifting a small amount)
     try:
-        m = float(derivative_expr.subs(x, user_a))
-        b = float(simplified_expr.subs(x, user_a) - m * user_a)
-        tangent_x = np.linspace(user_a - 2, user_a + 2, 100)
-        tangent_y = m * tangent_x + b
-        fig.add_trace(go.Scatter3d(x=tangent_x.tolist(), y=[0]*len(tangent_x), z=tangent_y.tolist(),
-                                   mode='lines', name='Tangent line', line=dict(color='orange', dash='dash')))
+        tangent_frames = []
+        for shift in np.linspace(-1, 1, 20):
+            a_val = user_a + shift * 0.01
+            m = float(derivative_expr.subs(x, a_val))
+            b = float(simplified_expr.subs(x, a_val) - m * a_val)
+            tangent_x = np.linspace(a_val - 1, a_val + 1, 100)
+            tangent_y = m * tangent_x + b
+            tangent_frames.append(go.Scatter3d(
+                x=tangent_x.tolist(), y=[0]*len(tangent_x), z=tangent_y.tolist(),
+                mode='lines', line=dict(color='orange', dash='dash'), name='Tangent'))
+
+        # Add last tangent line
+        fig.add_trace(tangent_frames[-1])
     except:
         pass
 
@@ -75,7 +82,8 @@ def run():
                           camera=dict(eye=dict(x=1.2, y=1.2, z=1.2))
                       ),
                       showlegend=True,
-                      height=600)
+                      height=600,
+                      margin=dict(l=0, r=0, b=0, t=30))
 
     try:
         st.plotly_chart(fig, use_container_width=True)
@@ -111,4 +119,3 @@ def run():
     feedback = st.text_area("What did you learn about limits today?")
     if feedback:
         st.info("Thanks for sharing your reflection! 💬")
-
