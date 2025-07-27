@@ -67,3 +67,11 @@ def run():
     From both sides, the function approaches \( f(x) \to -1 \) as \( x \to 2 \).
     Therefore, \( \lim_{x \to 2} f(x) = -1 \), even though \( f(2) \) is undefined.
     """)
+
+    st.subheader("🧠 Try This Challenge!")
+    user_answer = st.number_input("What is the value of the limit as x approaches 2?", step=0.1)
+    if st.button("Check Answer"):
+        if np.isclose(user_answer, -1.0, atol=0.01):
+            st.success("✅ Correct! The limit is -1.")
+        else:
+            st.error("❌ Not quite. Remember to evaluate how f(x) behaves as x gets close to 2 from both sides.")
