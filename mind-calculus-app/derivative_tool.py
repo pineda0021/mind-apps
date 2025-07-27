@@ -1,4 +1,3 @@
-def run():
 
 import streamlit as st
 import sympy as sp
@@ -8,7 +7,9 @@ import numpy as np
 import random
 import pandas as pd
 
-
+def run():
+    st.header("Derivative Visualizer")
+    ...
 def step_by_step_derivation(expr):
     steps = []
     if expr.is_Mul:
