@@ -11,11 +11,11 @@ import random
 def run():
     st.header("♾️ Limits Visualizer")
     st.markdown("""
-    Explore removable discontinuities, limits from a table, animation, symbolic simplification, and ε–δ reasoning.
+    Explore removable discontinuities, limits from a table, animation, symbolic simplification, tangent lines, and ε–δ reasoning.
     """)
 
     user_fx_input = st.text_input("Enter a function f(x):", "(x**2 - 5*x + 6)/(x - 2)")
-    user_fx_input = user_fx_input.replace("sqrt", "sqrt")
+    user_fx_input = user_fx_input.replace("sqrt", "sp.sqrt")
     user_a = st.number_input("Approach x → a:", value=2.0, step=0.1, format="%.2f")
 
     try:
@@ -26,11 +26,14 @@ def run():
         return
 
     simplified_expr = sp.simplify(fx_expr)
+    derivative_expr = sp.diff(simplified_expr, x)
+    derivative_func = sp.lambdify(x, derivative_expr, modules=['numpy'])
 
     st.subheader("🧮 Symbolic Simplification")
     st.latex(f"f(x) = {sp.latex(fx_expr)}")
     st.markdown(f"The simplified expression is: $f(x) = {sp.latex(simplified_expr)}$, if it exists.")
 
+    st.subheader("📈 Graph & Tangent Line")
     x_vals_full = np.linspace(user_a - 4, user_a + 4, 400)
     x_vals = x_vals_full[np.abs(x_vals_full - user_a) > 1e-6]
     try:
@@ -52,6 +55,16 @@ def run():
     line, = ax.plot([], [], lw=2, label='f(x)')
     hole, = ax.plot([], [], 'o', color='red', markerfacecolor='white', markersize=8, label=f"Hole at x = {user_a}")
 
+    # Optional tangent line
+    try:
+        m = float(derivative_expr.subs(x, user_a))
+        b = float(simplified_expr.subs(x, user_a) - m * user_a)
+        tangent_x = np.linspace(user_a - 2, user_a + 2, 100)
+        tangent_y = m * tangent_x + b
+        ax.plot(tangent_x, tangent_y, '--', label="Tangent line", color='orange')
+    except:
+        pass
+
     def init():
         line.set_data([], [])
         hole.set_data([], [])
@@ -62,10 +75,6 @@ def run():
         y_draw = y_vals[:i]
         line.set_data(x_draw, y_draw)
         if i > len(x_vals) // 2:
-            try:
-                y_at_a = f(user_a)
-            except:
-                y_at_a = y_hole
             hole.set_data([user_a], [y_hole])
         return line, hole
 
