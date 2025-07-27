@@ -1,3 +1,5 @@
+def run():
+
 # riemann_tool.py
 import streamlit as st
 import numpy as np
@@ -102,3 +104,6 @@ with st.expander("📘 What does this mean?"):
     - Exact area comes from the definite integral.
     - Try increasing n to improve the approximation!
     """)
+    if __name__ == "__main__":
+    run()
+
