@@ -39,5 +39,8 @@ st.markdown("""
 ---
 📘 Explore calculus with interactive tools built for conceptual clarity, practice, and fun.
 
-ℹ️ **Note:** Each visualizer includes explanations and symbolic math support using SymPy.
+👨‍🏫 About the Creators
+Professor Edward Pineda-Castro
+Mathematics Department, Los Angeles City College
+Founder of MIND — Making Inference Digestible
 """)
