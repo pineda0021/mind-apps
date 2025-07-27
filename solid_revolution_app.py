@@ -116,26 +116,27 @@ def step_by_step_solution(top_expr, bottom_expr, method, axis, a, b, axis_shift)
         st.latex(f"= {latex(symbolic_integral)}")
         st.markdown(f"**Exact Volume:** {float(symbolic_integral):.4f}")
 
-# --- Riemann 3D Simulation ---
+# --- Riemann Sum in 3D ---
 def plot_riemann_3d(top_expr):
     f_top = parse_function(top_expr)
     x_vals = np.linspace(a, b, 20)
-    heights = f_top(x_vals).astype(float)
-    width = (b - a) / len(x_vals)
-
+    dx = (b - a) / len(x_vals)
+    theta = np.linspace(0, 2 * np.pi, 30)
     fig = go.Figure()
-    for i, x in enumerate(x_vals):
-        h = float(heights[i])
-        fig.add_trace(go.Mesh3d(
-            x=[x, x + width, x + width, x, x, x + width, x + width, x],
-            y=[0, 0, 0, 0, h, h, h, h],
-            z=[0, 0, 1, 1, 0, 0, 1, 1],
-            color='skyblue', opacity=0.5, showscale=False))
+
+    for x in x_vals:
+        r = f_top(x)
+        if r < 0: continue
+        x_ring = x + np.zeros_like(theta)
+        y_ring = r * np.cos(theta)
+        z_ring = r * np.sin(theta)
+        fig.add_trace(go.Scatter3d(x=x_ring, y=y_ring, z=z_ring, mode='lines', line=dict(color='lightblue')))
 
     fig.update_layout(
         title="Riemann Sum Approximation in 3D",
-        scene=dict(xaxis_title='x', yaxis_title='f(x)', zaxis_title='z'),
-        height=500)
+        scene=dict(xaxis_title='x', yaxis_title='f(x) cosθ', zaxis_title='f(x) sinθ'),
+        height=500
+    )
     st.plotly_chart(fig)
 
 # --- Show formula ---
@@ -191,4 +192,3 @@ if compute:
                 "- **Shell Method**: wraps vertical slices around the axis.\n\n"
                 "Integrals compute volume — just like Riemann sums approximate area!"
             )
-
