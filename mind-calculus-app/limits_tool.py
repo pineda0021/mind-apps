@@ -7,9 +7,6 @@ from sympy.abc import x
 import streamlit.components.v1 as components
 import random
 
-# Define the function with a removable discontinuity
-def f(x_val):
-    return (x_val**2 - 5*x_val + 6) / (x_val - 2)
 
 def run():
     st.header("♾️ Limits Visualizer")
@@ -17,33 +14,43 @@ def run():
     Explore removable discontinuities, limits from a table, animation, symbolic simplification, and ε–δ reasoning.
     """)
 
-    # Symbolic simplification
+    user_fx_input = st.text_input("Enter a function f(x):", "(x**2 - 5*x + 6)/(x - 2)")
+    user_fx_input = user_fx_input.replace("sqrt", "sqrt")
+    user_a = st.number_input("Approach x → a:", value=2.0, step=0.1, format="%.2f")
+
+    try:
+        fx_expr = sp.sympify(user_fx_input)
+        f = sp.lambdify(x, fx_expr, modules=['numpy'])
+    except Exception as e:
+        st.error(f"Invalid function: {e}")
+        return
+
+    simplified_expr = sp.simplify(fx_expr)
+
     st.subheader("🧮 Symbolic Simplification")
-    numerator = sp.expand((x - 2)*(x - 3))
-    original_expr = (x**2 - 5*x + 6)/(x - 2)
-    simplified_expr = sp.simplify(original_expr)
+    st.latex(f"f(x) = {sp.latex(fx_expr)}")
+    st.markdown(f"The simplified expression is: $f(x) = {sp.latex(simplified_expr)}$, if it exists.")
 
-    st.latex(r"\frac{x^2 - 5x + 6}{x - 2} = \frac{(x - 2)(x - 3)}{x - 2} = x - 3, \text{ for } x \ne 2")
-    st.markdown(f"The simplified expression is: $f(x) = {sp.latex(simplified_expr)}$ for $x \ne 2$.")
-
-    # Animation of the function with a removable discontinuity
-    x_vals_full = np.linspace(-2, 6, 400)
-    x_vals = x_vals_full[np.abs(x_vals_full - 2) > 1e-9]
-    y_vals = f(x_vals)
+    x_vals_full = np.linspace(user_a - 4, user_a + 4, 400)
+    x_vals = x_vals_full[np.abs(x_vals_full - user_a) > 1e-6]
+    try:
+        y_vals = f(x_vals)
+        y_hole = f(user_a - 1e-5)  # approximate value for hole
+    except:
+        st.error("Error evaluating function for plotting.")
+        return
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.set_xlim(-2, 6)
-    ax.set_ylim(-6, 4)
-    ax.set_title(r"Graph of $f(x) = \frac{x^2 - 5x + 6}{x - 2}$")
+    ax.set_xlim(min(x_vals_full), max(x_vals_full))
+    ax.set_ylim(np.nanmin(y_vals) - 1, np.nanmax(y_vals) + 1)
+    ax.set_title(rf"Graph of $f(x) = {sp.latex(fx_expr)}$")
     ax.set_xlabel("x")
     ax.set_ylabel("f(x)")
     ax.grid(True)
     ax.axhline(0, color='black', linewidth=0.5)
     ax.axvline(0, color='black', linewidth=0.5)
     line, = ax.plot([], [], lw=2, label='f(x)')
-    x_hole = 2
-    y_hole = x_hole - 3
-    hole, = ax.plot([], [], 'o', color='red', markerfacecolor='white', markersize=8, label='Hole at x = 2')
+    hole, = ax.plot([], [], 'o', color='red', markerfacecolor='white', markersize=8, label=f"Hole at x = {user_a}")
 
     def init():
         line.set_data([], [])
@@ -51,102 +58,45 @@ def run():
         return line, hole
 
     def animate(i):
-        x = x_vals[:i]
-        y = y_vals[:i]
-        line.set_data(x, y)
+        x_draw = x_vals[:i]
+        y_draw = y_vals[:i]
+        line.set_data(x_draw, y_draw)
         if i > len(x_vals) // 2:
-            hole.set_data([x_hole], [y_hole])
+            try:
+                y_at_a = f(user_a)
+            except:
+                y_at_a = y_hole
+            hole.set_data([user_a], [y_hole])
         return line, hole
 
     ani = animation.FuncAnimation(fig, animate, init_func=init, frames=len(x_vals), interval=10, blit=True)
     components.html(ani.to_jshtml(), height=500)
 
-    # Table of values around x = 2
-    st.subheader("Limit Table Around x = 2")
-    x_input = [1.9, 1.99, 1.999, 2.001, 2.01, 2.1]
+    # Table of values around a
+    st.subheader(f"Limit Table Around x = {user_a}")
+    delta_list = [0.1, 0.01, 0.001]
+    x_input = [round(user_a - d, 6) for d in delta_list[::-1]] + [round(user_a + d, 6) for d in delta_list]
     table_data = []
     for xi in x_input:
-        if xi == 2:
-            table_data.append((xi, "undefined"))
-        else:
+        try:
             table_data.append((xi, round(f(xi), 6)))
+        except:
+            table_data.append((xi, "undefined"))
 
     st.table({"x": [r[0] for r in table_data], "f(x)": [r[1] for r in table_data]})
 
-    st.markdown("""
-    From both sides, the function approaches \( f(x) \to -1 \) as \( x \to 2 \).
-    Therefore, \( \lim_{x \to 2} f(x) = -1 \), even though \( f(2) \) is undefined.
-    """)
-
-    # Interactive Challenge
     st.subheader("🎯 Challenge: Estimate the Limit")
-    user_limit = st.number_input("What do you think is the limit of f(x) as x approaches 2?", step=0.01)
-    if st.button("Check Answer"):
-        if abs(user_limit + 1) < 1e-3:
-            st.success("✅ Correct! The limit is -1.")
-        else:
-            st.error("❌ Not quite. Try looking at the animation and the table again.")
+    user_limit = st.number_input(f"What do you think is the limit of f(x) as x approaches {user_a}?", step=0.01)
+    try:
+        actual_limit = round(float(simplified_expr.subs(x, user_a)), 6)
+        if st.button("Check Answer"):
+            if abs(user_limit - actual_limit) < 1e-3:
+                st.success(f"✅ Correct! The limit is {actual_limit}.")
+            else:
+                st.error(f"❌ Not quite. The limit appears to be {actual_limit}.")
+    except:
+        st.warning("Limit may not exist or is not numerically evaluable.")
 
-    # One-Sided Limits Challenge
-    st.subheader("🔍 One-Sided Limits Challenge")
-    left_limit = st.number_input("Limit as x approaches 2 from the left (x → 2⁻):", key="left")
-    right_limit = st.number_input("Limit as x approaches 2 from the right (x → 2⁺):", key="right")
-    if st.button("Check One-Sided Limits"):
-        correct = abs(left_limit + 1) < 1e-3 and abs(right_limit + 1) < 1e-3
-        if correct:
-            st.success("✅ Both one-sided limits are correct! So the two-sided limit exists and equals -1.")
-        else:
-            st.warning("⚠️ One or both one-sided limits are incorrect. Remember to read values closely from the table or animation.")
-
-    # ε–δ Definition Challenge
-    st.subheader("📐 ε–δ Definition Reasoning")
-    st.markdown(r"""
-    If \( \epsilon = 0.1 \), can you find a \( \delta \) such that whenever \( 0 < |x - 2| < \delta \), then \( |f(x) + 1| < \epsilon \)?
-    """)
-    user_delta = st.number_input("Your choice of δ:", step=0.001, format="%0.3f", key="delta")
-    if st.button("Check ε–δ Condition"):
-        delta_valid = True
-        for test_x in [2 - user_delta / 2, 2 + user_delta / 2]:
-            if abs(f(test_x) + 1) >= 0.1:
-                delta_valid = False
-                break
-        if delta_valid:
-            st.success("✅ Great! That δ works for ε = 0.1.")
-        else:
-            st.error("❌ That δ does not satisfy the ε–δ condition. Try a smaller δ.")
-
-    # ε–δ Band Visualization
-    st.subheader("📊 ε–δ Graphical Representation")
-    epsilon = 0.1
-    delta = user_delta
-    xx = np.linspace(2 - delta * 1.5, 2 + delta * 1.5, 400)
-    yy = f(xx)
-
-    fig2, ax2 = plt.subplots(figsize=(8, 5))
-    ax2.plot(xx, yy, label="f(x)", color="blue")
-    ax2.axhline(-1 + epsilon, color="green", linestyle="--", label=r"y = -1 ± ε")
-    ax2.axhline(-1 - epsilon, color="green", linestyle="--")
-    ax2.axvline(2 - delta, color="red", linestyle=":", label=r"x = 2 ± δ")
-    ax2.axvline(2 + delta, color="red", linestyle=":")
-    ax2.scatter([2], [-1], color='black', zorder=5)
-    ax2.set_title("ε–δ Visualization")
-    ax2.legend()
-    ax2.grid(True)
-    st.pyplot(fig2)
-
-    # Multiple Choice Quiz
-    st.subheader("📝 Quick Quiz")
-    question = "What is the value of the limit as x approaches 2 for f(x)?"
-    options = ["-2", "0", "1", "-1"]
-    random.shuffle(options)
-    answer = st.radio(question, options)
-    if st.button("Submit Answer"):
-        if answer == "-1":
-            st.success("✅ Correct! f(x) approaches -1 as x approaches 2.")
-        else:
-            st.error("❌ Not quite. Review the animation and table above.")
-
-    # Reflection Box
     st.subheader("🧠 Reflection")
     feedback = st.text_area("What did you learn about limits today?")
     if feedback:
