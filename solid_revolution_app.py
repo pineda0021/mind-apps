@@ -30,6 +30,7 @@ method = st.sidebar.selectbox("Method:", ["Disk/Washer", "Cylindrical Shell"])
 axis = st.sidebar.selectbox("Axis of rotation:", ["x-axis", "y-axis"])
 rotation_line = st.sidebar.text_input("Axis of rotation value (e.g., x=2 or y=3):", value="x=0")
 show_riemann = st.sidebar.checkbox("Show Riemann Sum in 3D", value=True)
+show_animation = st.sidebar.checkbox("Show Animated Revolution", value=True)
 a = st.sidebar.number_input("Start of interval (a):", value=0.0)
 b = st.sidebar.number_input("End of interval (b):", value=1.0)
 compute = st.sidebar.button("🔄 Compute and Visualize")
@@ -145,6 +146,21 @@ def plot_shell_riemann_3d(top_expr):
     )
     st.plotly_chart(fig)
 
+# --- Animated Revolution ---
+def animate_revolution(top_expr):
+    f = parse_function(top_expr)
+    x = np.linspace(a, b, 100)
+    y = f(x)
+    theta = np.linspace(0, 2*np.pi, 40)
+    X, T = np.meshgrid(x, theta)
+    Y = np.tile(y, (len(theta), 1))
+    Z = Y * np.sin(T)
+    Y = Y * np.cos(T)
+
+    fig = go.Figure(data=[go.Surface(x=X, y=Y, z=Z, colorscale='Blues', showscale=False)])
+    fig.update_layout(title='Animated Solid of Revolution', scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'), height=500)
+    st.plotly_chart(fig)
+
 # --- Show formula ---
 def show_formula(method, axis, top_expr, bottom_expr):
     st.markdown("### 📘 Setup and Formula")
@@ -153,14 +169,14 @@ def show_formula(method, axis, top_expr, bottom_expr):
         st.latex(f"g(x) = {bottom_expr}")
     if method == "Disk/Washer":
         if axis == "x-axis":
-            st.latex(r"V = \pi \int_a^b [f(x)^2 - g(x)^2] \, dx")
+            st.latex(r"V = \\pi \\int_a^b [f(x)^2 - g(x)^2] \\, dx")
         else:
-            st.latex(r"V = \pi \int_c^d [f(y)^2 - g(y)^2] \, dy")
+            st.latex(r"V = \\pi \\int_c^d [f(y)^2 - g(y)^2] \\, dy")
     else:
         if axis == "y-axis":
-            st.latex(r"V = 2\pi \int_a^b x f(x) \, dx")
+            st.latex(r"V = 2\\pi \\int_a^b x f(x) \\, dx")
         else:
-            st.latex(r"V = 2\pi \int_a^b y f(y) \, dy")
+            st.latex(r"V = 2\\pi \\int_a^b y f(y) \\, dy")
 
 # --- Method tip ---
 def show_method_tip(method, axis):
@@ -191,6 +207,8 @@ if compute:
                 plot_shell_riemann_3d(top_expr)
             else:
                 st.info("Riemann 3D visualization for this method/axis not yet available.")
+        if show_animation and method == "Disk/Washer" and axis == "x-axis":
+            animate_revolution(top_expr)
 
     with col_right:
         show_method_tip(method, axis)
