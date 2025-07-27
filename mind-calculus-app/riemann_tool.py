@@ -6,7 +6,7 @@ from sympy.abc import x
 from matplotlib.patches import Rectangle
 
 def run():
-    st.subheader("🧠 Riemann Sum Explorer")
+    st.subheader("∑ Riemann Sum Explorer")
 
     st.markdown("""
     Explore how rectangles approximate the area under a curve using different types of Riemann sums.
