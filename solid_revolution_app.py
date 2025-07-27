@@ -53,30 +53,48 @@ def plot_region():
 # --- Symbolic formula + step-by-step ---
 def display_formula_and_steps():
     if method == "Disk/Washer" and axis == "x-axis":
-        vol_expr = pi * (f_expr**2 - g_expr**2)
+        vol_integrand = f_expr**2 - g_expr**2
+        full_expr = pi * integrate(vol_integrand, (x, a, b))
         int_f2 = integrate(f_expr**2, (x, a, b))
         int_g2 = integrate(g_expr**2, (x, a, b))
-        full_result = simplify(pi * (int_f2 - int_g2))
+        inner_val = int_f2 - int_g2
+        approx = float(inner_val.evalf())
+
         st.markdown("### 📘 Volume Formula")
-        st.latex(rf"V = \pi \int_{{{a}}}^{{{b}}} \left({latex(f_expr)}^2 - {latex(g_expr)}^2\right) dx")
+        st.latex(rf"V = \pi \int_{{a}}^{{b}} \left[f(x)^2 - g(x)^2\right]\,dx")
+
         st.markdown("### 📝 Step-by-Step")
         st.latex(rf"""
 \begin{{aligned}}
-V &= \pi \left( \int_{{{a}}}^{{{b}}} {latex(f_expr**2)} dx - \int_{{{a}}}^{{{b}}} {latex(g_expr**2)} dx \right) \\
-  &= \pi \left( {latex(int_f2)} - {latex(int_g2)} \right) \\
-  &= {latex(full_result)}
+V &= \pi \int_{{{a}}}^{{{b}}} \left({latex(f_expr)}^2 - {latex(g_expr)}^2\right)\,dx \\
+  &= \pi \left( \int_{{{a}}}^{{{b}}} {latex(f_expr**2)}\,dx - \int_{{{a}}}^{{{b}}} {latex(g_expr**2)}\,dx \right) \\
+  &= \pi ({latex(int_f2)} - {latex(int_g2)}) \\
+  &= {latex(simplify(inner_val))} \pi \\
+  &= {latex(simplify(full_expr))}
 \end{{aligned}}
 """)
-        return float(full_result.evalf())
+        return float(full_expr.evalf())
+
     elif method == "Shell" and axis == "y-axis":
-        vol_expr = 2 * pi * x * (f_expr - g_expr)
-        integral = simplify(integrate(vol_expr, (x, a, b)))
+        vol_integrand = x * (f_expr - g_expr)
+        inner_val = integrate(vol_integrand, (x, a, b))
+        full_expr = simplify(2 * pi * inner_val)
+
         st.markdown("### 📘 Volume Formula")
-        st.latex(r"V = 2\pi \int_{{{}}}^{{{}}} x({} - {}) dx = {}".format(
-            a, b, latex(f_expr), latex(g_expr), latex(integral)))
-        return float(integral.evalf())
+        st.latex(rf"V = 2\pi \int_{{a}}^{{b}} x\left[f(x) - g(x)\right]\,dx")
+
+        st.markdown("### 📝 Step-by-Step")
+        st.latex(rf"""
+\begin{{aligned}}
+V &= 2\pi \int_{{{a}}}^{{{b}}} x({latex(f_expr)} - {latex(g_expr)})\,dx \\
+  &= 2\pi \left({latex(inner_val)}\right) \\
+  &= {latex(full_expr)}
+\end{{aligned}}
+""")
+        return float(full_expr.evalf())
+
     else:
-        st.warning("Unsupported combination.")
+        st.warning("Unsupported method/axis combination.")
         return None
 
 # --- 3D Disk Riemann ---
