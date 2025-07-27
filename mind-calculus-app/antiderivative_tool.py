@@ -1,3 +1,5 @@
+def run():
+
 import streamlit as st
 import sympy as sp
 from sympy.abc import x
@@ -103,3 +105,7 @@ def run():
     ax2.grid(True)
     ax2.legend()
     st.pyplot(fig2)
+
+    if __name__ == "__main__":
+    run()
+
