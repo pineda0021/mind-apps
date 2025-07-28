@@ -104,8 +104,11 @@ def definite_integral_steps(fx, a, b):
 
 def run():
     st.header("∫ Antiderivative Visualizer")
-    st.markdown("Enter a function and explore its antiderivative (indefinite and definite integral) symbolically and graphically.")
+    st.markdown("""
+    Enter a function and explore its antiderivative (indefinite or definite integral) symbolically and graphically.
+    """)
 
+    st.subheader("📥 Enter a Function")
     f_input = st.text_input("f(x) =", "x**2 + 1")
     try:
         fx = sp.sympify(f_input, locals=sympy_locals)
@@ -114,44 +117,43 @@ def run():
         st.error("Invalid function. Please enter a valid mathematical expression.")
         return
 
-    st.subheader("📊 Indefinite Integral")
+    st.subheader("🧮 Symbolic Antiderivative")
     st.latex(rf"F(x) = \\int {sp.latex(fx)} \\, dx = {sp.latex(F)} + C")
 
-    st.subheader("🔍 Step-by-Step Integration")
+    st.subheader("🔎 Step-by-Step Integration")
     for step in step_by_step_antiderivative(fx):
         st.markdown("- " + step)
 
     st.subheader("📈 Graph of f(x) and F(x)")
-    try:
-        f_np = sp.lambdify(x, fx, modules=["numpy"])
-        F_np = sp.lambdify(x, F, modules=["numpy"])
-        X = np.linspace(-5, 5, 400)
-        Y = f_np(X)
-        Y_int = F_np(X)
-        fig, ax = plt.subplots(figsize=(8, 5))
-        ax.plot(X, Y, label="f(x)", color="blue")
-        ax.plot(X, Y_int, label="F(x)", color="orange")
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_title("Function and Antiderivative")
-        ax.grid(True)
-        ax.legend()
-        st.pyplot(fig)
-    except:
-        st.error("Unable to generate graph. Please check the input function.")
+    f_np = sp.lambdify(x, fx, modules=["numpy"])
+    F_np = sp.lambdify(x, F, modules=["numpy"])
+    X = np.linspace(-5, 5, 400)
+    Y = f_np(X)
+    Y_int = F_np(X)
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(X, Y, label="f(x)", color="blue")
+    ax.plot(X, Y_int, label="F(x)", color="orange")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.grid(True)
+    ax.set_title("Function and Antiderivative")
+    ax.legend()
+    st.pyplot(fig)
 
-    st.subheader("📐 Definite Integral (Area under Curve)")
-    a_str = st.text_input("Enter lower limit a:", "0")
-    b_str = st.text_input("Enter upper limit b:", "1")
+    st.subheader("📊 Visualizing Accumulated Area")
+    a_str = st.text_input("Lower limit a:", "-2")
+    b_str = st.text_input("Upper limit b:", "2")
     try:
-        a_val = float(sp.sympify(a_str, locals=sympy_locals))
-        b_val = float(sp.sympify(b_str, locals=sympy_locals))
+        a_val = sp.sympify(a_str, locals=sympy_locals)
+        b_val = sp.sympify(b_str, locals=sympy_locals)
         area_val = sp.integrate(fx, (x, a_val, b_val))
-        st.latex(rf"\\int_{{{a_val}}}^{{{b_val}}} {sp.latex(fx)} \\, dx = {sp.latex(area_val)}")
+        st.latex(rf"\int_{{{a_val}}}^{{{b_val}}} {sp.latex(fx)} \, dx = {sp.latex(area_val)}")
+
+        st.subheader("📐 Step-by-Step for Definite Integral")
         for step in definite_integral_steps(fx, a_val, b_val):
             st.markdown("- " + step)
 
-        x_fill = np.linspace(a_val, b_val, 300)
+        x_fill = np.linspace(float(a_val.evalf()), float(b_val.evalf()), 300)
         y_fill = f_np(x_fill)
         fig2, ax2 = plt.subplots(figsize=(8, 5))
         ax2.plot(X, Y, label="f(x)", color="blue")
@@ -163,4 +165,4 @@ def run():
         ax2.legend()
         st.pyplot(fig2)
     except:
-        st.error("Invalid bounds. Please enter values like 0, 1, pi, e, oo, etc.")
+        st.error("Invalid bounds for definite integral. Try numeric values or valid constants like pi, e, or oo.")
