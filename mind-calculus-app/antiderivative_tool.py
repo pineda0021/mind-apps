@@ -91,9 +91,20 @@ def step_by_step_antiderivative(expr):
     steps.append(rf"$\\int {sp.latex(expr)} \\, dx = {sp.latex(result)}$")
     return steps
 
+def definite_integral_steps(fx, a, b):
+    steps = []
+    F = sp.integrate(fx, x)
+    Fa = F.subs(x, a)
+    Fb = F.subs(x, b)
+    area = Fb - Fa
+    steps.append("**Fundamental Theorem of Calculus:**")
+    steps.append(rf"$\\int_{{{a}}}^{{{b}}} {sp.latex(fx)} \\, dx = F({b}) - F({a})$")
+    steps.append(rf"$= {sp.latex(F)} \\Big|_{{{a}}}^{{{b}}} = {sp.latex(Fb)} - {sp.latex(Fa)} = {sp.latex(area)}$")
+    return steps
+
 def run():
     st.header("∫ Antiderivative Visualizer")
-    st.markdown("Enter a function and explore its antiderivative (indefinite integral) symbolically and graphically.")
+    st.markdown("Enter a function and explore its antiderivative (indefinite and definite integral) symbolically and graphically.")
 
     f_input = st.text_input("f(x) =", "x**2 + 1")
     try:
@@ -128,3 +139,28 @@ def run():
         st.pyplot(fig)
     except:
         st.error("Unable to generate graph. Please check the input function.")
+
+    st.subheader("📐 Definite Integral (Area under Curve)")
+    a_str = st.text_input("Enter lower limit a:", "0")
+    b_str = st.text_input("Enter upper limit b:", "1")
+    try:
+        a_val = float(sp.sympify(a_str, locals=sympy_locals))
+        b_val = float(sp.sympify(b_str, locals=sympy_locals))
+        area_val = sp.integrate(fx, (x, a_val, b_val))
+        st.latex(rf"\\int_{{{a_val}}}^{{{b_val}}} {sp.latex(fx)} \\, dx = {sp.latex(area_val)}")
+        for step in definite_integral_steps(fx, a_val, b_val):
+            st.markdown("- " + step)
+
+        x_fill = np.linspace(a_val, b_val, 300)
+        y_fill = f_np(x_fill)
+        fig2, ax2 = plt.subplots(figsize=(8, 5))
+        ax2.plot(X, Y, label="f(x)", color="blue")
+        ax2.fill_between(x_fill, y_fill, alpha=0.3, color="green", label="Accumulated Area")
+        ax2.set_xlabel("x")
+        ax2.set_ylabel("y")
+        ax2.set_title("Accumulated Area from a to b")
+        ax2.grid(True)
+        ax2.legend()
+        st.pyplot(fig2)
+    except:
+        st.error("Invalid bounds. Please enter values like 0, 1, pi, e, oo, etc.")
