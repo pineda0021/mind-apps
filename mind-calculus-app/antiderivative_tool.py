@@ -98,8 +98,9 @@ def definite_integral_steps(fx, a, b):
 def run():
     st.header("∫ Antiderivative Visualizer")
     st.markdown("""
-    Enter a function and explore its antiderivative (indefinite or definite integral) symbolically and graphically.
-    You can now enter bounds like `pi`, `sqrt(2)`, or `1/3`.
+    Explore symbolic integration and accumulated area under a curve.
+
+    ✅ Supports: `pi`, `sqrt(2)`, `e`, `1/3`, `oo`, `-oo`
     """)
 
     # Function input
@@ -109,23 +110,22 @@ def run():
         fx = sp.sympify(f_input)
         F = sp.integrate(fx, x)
     except:
-        st.error("Invalid function. Please enter a valid mathematical expression.")
+        st.error("Invalid function. Please enter a valid expression.")
         return
 
-    # Symbolic Antiderivative
-    st.subheader("🧮 Symbolic Antiderivative")
+    # Indefinite Integral
+    st.subheader("🧮 Indefinite Integral")
     st.latex(rf"F(x) = \int {sp.latex(fx)} \, dx = {sp.latex(F)} + C")
 
-    # Step-by-step Explanation
+    # Step-by-step
     st.subheader("🔎 Step-by-Step Integration")
     for step in step_by_step_antiderivative(fx):
         st.markdown("- " + step)
 
-    # Graphs
+    # Graph f(x) and F(x)
     st.subheader("📈 Graph of f(x) and F(x)")
     f_np = sp.lambdify(x, fx, modules=["numpy"])
     F_np = sp.lambdify(x, F, modules=["numpy"])
-
     X = np.linspace(-5, 5, 400)
     Y = f_np(X)
     Y_int = F_np(X)
@@ -135,46 +135,52 @@ def run():
     ax.plot(X, Y_int, label="F(x)", color="orange")
     ax.set_xlabel("x")
     ax.set_ylabel("y")
-    ax.grid(True)
     ax.set_title("Function and Antiderivative")
+    ax.grid(True)
     ax.legend()
     st.pyplot(fig)
 
-    # Area Visualization
-    st.subheader("📊 Visualizing Accumulated Area")
-    a_str = st.text_input("Enter lower bound a (e.g. 0, pi, sqrt(2)):", "-2")
-    b_str = st.text_input("Enter upper bound b (e.g. 1, pi/2, 3):", "2")
+    # Definite integral bounds
+    st.subheader("📊 Enter Bounds for Definite Integral")
+    a_str = st.text_input("Lower bound a (e.g., 0, pi, -oo):", "-2")
+    b_str = st.text_input("Upper bound b (e.g., 1, pi/2, oo):", "2")
+
     try:
         a_val = sp.sympify(a_str)
         b_val = sp.sympify(b_str)
     except:
-        st.error("Please enter valid bounds (e.g. 0, pi, 1/2, sqrt(2)).")
+        st.error("❌ Invalid symbolic bounds.")
         return
 
+    # Definite integral result
     area_val = sp.integrate(fx, (x, a_val, b_val))
     st.latex(rf"\int_{{{sp.latex(a_val)}}}^{{{sp.latex(b_val)}}} {sp.latex(fx)} \, dx = {sp.latex(area_val)}")
 
-    st.subheader("📐 Step-by-Step for Definite Integral")
+    # Step-by-step for definite
+    st.subheader("📐 Step-by-Step Evaluation")
     for step in definite_integral_steps(fx, a_val, b_val):
         st.markdown("- " + step)
 
-    # Highlight Area (numeric only)
-    try:
-        a_float = float(a_val.evalf())
-        b_float = float(b_val.evalf())
-        x_fill = np.linspace(a_float, b_float, 300)
-        y_fill = f_np(x_fill)
-        fig2, ax2 = plt.subplots(figsize=(8, 5))
-        ax2.plot(X, Y, label="f(x)", color="blue")
-        ax2.fill_between(x_fill, y_fill, alpha=0.3, color="green", label="Accumulated Area")
-        ax2.set_xlabel("x")
-        ax2.set_ylabel("y")
-        ax2.set_title("Accumulated Area from a to b")
-        ax2.grid(True)
-        ax2.legend()
-        st.pyplot(fig2)
-    except:
-        st.warning("Plotting only works for numeric bounds. Symbolic bounds like `pi` or `sqrt(2)` will still be calculated and displayed correctly above.")
+    # Graph filled area (if bounds are finite)
+    if a_val.is_real and b_val.is_real and not (sp.oo in [a_val, b_val] or -sp.oo in [a_val, b_val]):
+        try:
+            a_num = float(a_val.evalf())
+            b_num = float(b_val.evalf())
+            x_fill = np.linspace(a_num, b_num, 300)
+            y_fill = f_np(x_fill)
+            fig2, ax2 = plt.subplots(figsize=(8, 5))
+            ax2.plot(X, Y, label="f(x)", color="blue")
+            ax2.fill_between(x_fill, y_fill, alpha=0.3, color="green", label="Accumulated Area")
+            ax2.set_xlabel("x")
+            ax2.set_ylabel("y")
+            ax2.set_title("Accumulated Area from a to b")
+            ax2.grid(True)
+            ax2.legend()
+            st.pyplot(fig2)
+        except:
+            st.warning("⚠️ Could not plot filled area.")
+    else:
+        st.warning("⚠️ Skipped plot: Infinite bounds cannot be visualized.")
 
 if __name__ == "__main__":
     run()
