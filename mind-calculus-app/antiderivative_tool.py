@@ -7,20 +7,17 @@ import numpy as np
 def step_by_step_antiderivative(expr):
     steps = []
 
-    # Sum Rule
     if expr.is_Add:
         steps.append("**Sum Rule:**")
         for term in expr.args:
             steps += step_by_step_antiderivative(term)
         return steps
 
-    # Constant Rule
     if expr.is_Number:
         steps.append("**Constant Rule:**")
         steps.append(rf"$\int {sp.latex(expr)} \, dx = {sp.latex(expr)}x$")
         return steps
 
-    # Power Rule
     if expr.is_Pow and expr.args[0] == x:
         n = expr.args[1]
         if n != -1:
@@ -33,7 +30,6 @@ def step_by_step_antiderivative(expr):
             steps.append(rf"$\int \frac{{1}}{{x}} \, dx = \ln|x|$")
         return steps
 
-    # Chain Rule (u-substitution)
     if expr.is_Mul:
         factors = expr.args
         for i in range(len(factors)):
@@ -41,15 +37,13 @@ def step_by_step_antiderivative(expr):
                 if i != j and factors[i] == sp.diff(factors[j], x):
                     u = factors[j]
                     du = factors[i]
-                    new_expr = u**1
                     result = sp.integrate(u, x)
                     steps.append("**Chain Rule (u-substitution):**")
                     steps.append(rf"Let $u = {sp.latex(u)}$, then $du = {sp.latex(sp.diff(u, x))} dx$")
                     steps.append(rf"Rewrite: $\int {sp.latex(expr)} \, dx = \int u \, du$")
-                    steps.append(rf"$= {sp.latex(sp.integrate(u, x))}$")
+                    steps.append(rf"$= {sp.latex(result)}$")
                     return steps
 
-    # Integration by Parts: x*sin(x), x*exp(x)
     if expr.is_Mul and any(arg.has(x) for arg in expr.args):
         u, dv = expr.args
         du = sp.diff(u, x)
@@ -65,7 +59,6 @@ def step_by_step_antiderivative(expr):
         steps.append(rf"$= {sp.latex(result)}$")
         return steps
 
-    # Trig/Exp/Log
     if expr == sp.exp(x):
         steps.append("**Exponential Rule:**")
         steps.append(rf"$\int e^x \, dx = e^x$")
@@ -86,7 +79,6 @@ def step_by_step_antiderivative(expr):
         steps.append(rf"$\int \cos x \, dx = \sin x$")
         return steps
 
-    # Fallback
     result = sp.integrate(expr, x)
     steps.append("**General Rule (Auto Integration):**")
     steps.append(rf"$\int {sp.latex(expr)} \, dx = {sp.latex(result)}$")
@@ -99,14 +91,16 @@ def definite_integral_steps(fx, a, b):
     Fb = F.subs(x, b)
     area = Fb - Fa
     steps.append("**Fundamental Theorem of Calculus:**")
-    steps.append(rf"$\int_{{{a}}}^{{{b}}} {sp.latex(fx)} \, dx = F({b}) - F({a})$")
-    steps.append(rf"$= {sp.latex(F)} \Big|_{{{a}}}^{{{b}}} = {sp.latex(Fb)} - {sp.latex(Fa)} = {sp.latex(area)}$")
+    steps.append(rf"$\int_{{{sp.latex(a)}}}^{{{sp.latex(b)}}} {sp.latex(fx)} \, dx = F({sp.latex(b)}) - F({sp.latex(a)})$")
+    steps.append(rf"$= {sp.latex(F)} \Big|_{{{sp.latex(a)}}}^{{{sp.latex(b)}}} = {sp.latex(Fb)} - {sp.latex(Fa)} = {sp.latex(area)}$")
     return steps
 
 def run():
     st.header("∫ Antiderivative Visualizer")
     st.markdown("""
-    Enter a function and explore its antiderivative (indefinite or definite integral) symbolically and graphically.
+    Explore symbolic integration and accumulated area under a curve.
+
+    ✅ Supports: `pi`, `sqrt(2)`, `e`, `1/3`, `oo`, `-oo`
     """)
 
     # Function input
@@ -116,23 +110,22 @@ def run():
         fx = sp.sympify(f_input)
         F = sp.integrate(fx, x)
     except:
-        st.error("Invalid function. Please enter a valid mathematical expression.")
+        st.error("Invalid function. Please enter a valid expression.")
         return
 
-    # Symbolic Antiderivative
-    st.subheader("🧮 Symbolic Antiderivative")
+    # Indefinite Integral
+    st.subheader("🧮 Indefinite Integral")
     st.latex(rf"F(x) = \int {sp.latex(fx)} \, dx = {sp.latex(F)} + C")
 
-    # Step-by-step Explanation
+    # Step-by-step
     st.subheader("🔎 Step-by-Step Integration")
     for step in step_by_step_antiderivative(fx):
         st.markdown("- " + step)
 
-    # Graphs
+    # Graph f(x) and F(x)
     st.subheader("📈 Graph of f(x) and F(x)")
     f_np = sp.lambdify(x, fx, modules=["numpy"])
     F_np = sp.lambdify(x, F, modules=["numpy"])
-
     X = np.linspace(-5, 5, 400)
     Y = f_np(X)
     Y_int = F_np(X)
@@ -142,32 +135,52 @@ def run():
     ax.plot(X, Y_int, label="F(x)", color="orange")
     ax.set_xlabel("x")
     ax.set_ylabel("y")
-    ax.grid(True)
     ax.set_title("Function and Antiderivative")
+    ax.grid(True)
     ax.legend()
     st.pyplot(fig)
 
-    # Area Visualization
-    st.subheader("📊 Visualizing Accumulated Area")
-    a_val = st.slider("Choose starting point a", -5.0, 5.0, value=-2.0, step=0.1)
-    b_val = st.slider("Choose endpoint b", a_val, 5.0, value=2.0, step=0.1)
-    area_val = sp.integrate(fx, (x, a_val, b_val))
-    st.latex(rf"\int_{{{a_val}}}^{{{b_val}}} {sp.latex(fx)} \, dx = {sp.latex(area_val)}")
+    # Definite integral bounds
+    st.subheader("📊 Enter Bounds for Definite Integral")
+    a_str = st.text_input("Lower bound a (e.g., 0, pi, -oo):", "-2")
+    b_str = st.text_input("Upper bound b (e.g., 1, pi/2, oo):", "2")
 
-    st.subheader("📐 Step-by-Step for Definite Integral")
+    try:
+        a_val = sp.sympify(a_str)
+        b_val = sp.sympify(b_str)
+    except:
+        st.error("❌ Invalid symbolic bounds.")
+        return
+
+    # Definite integral result
+    area_val = sp.integrate(fx, (x, a_val, b_val))
+    st.latex(rf"\int_{{{sp.latex(a_val)}}}^{{{sp.latex(b_val)}}} {sp.latex(fx)} \, dx = {sp.latex(area_val)}")
+
+    # Step-by-step for definite
+    st.subheader("📐 Step-by-Step Evaluation")
     for step in definite_integral_steps(fx, a_val, b_val):
         st.markdown("- " + step)
 
-    # Highlight Area
-    x_fill = np.linspace(a_val, b_val, 300)
-    y_fill = f_np(x_fill)
-    fig2, ax2 = plt.subplots(figsize=(8, 5))
-    ax2.plot(X, Y, label="f(x)", color="blue")
-    ax2.fill_between(x_fill, y_fill, alpha=0.3, color="green", label="Accumulated Area")
-    ax2.set_xlabel("x")
-    ax2.set_ylabel("y")
-    ax2.set_title("Accumulated Area from a to b")
-    ax2.grid(True)
-    ax2.legend()
-    st.pyplot(fig2)
+    # Graph filled area (if bounds are finite)
+    if a_val.is_real and b_val.is_real and not (sp.oo in [a_val, b_val] or -sp.oo in [a_val, b_val]):
+        try:
+            a_num = float(a_val.evalf())
+            b_num = float(b_val.evalf())
+            x_fill = np.linspace(a_num, b_num, 300)
+            y_fill = f_np(x_fill)
+            fig2, ax2 = plt.subplots(figsize=(8, 5))
+            ax2.plot(X, Y, label="f(x)", color="blue")
+            ax2.fill_between(x_fill, y_fill, alpha=0.3, color="green", label="Accumulated Area")
+            ax2.set_xlabel("x")
+            ax2.set_ylabel("y")
+            ax2.set_title("Accumulated Area from a to b")
+            ax2.grid(True)
+            ax2.legend()
+            st.pyplot(fig2)
+        except:
+            st.warning("⚠️ Could not plot filled area.")
+    else:
+        st.warning("⚠️ Skipped plot: Infinite bounds cannot be visualized.")
 
+if __name__ == "__main__":
+    run()
