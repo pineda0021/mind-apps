@@ -139,7 +139,9 @@ def step_by_step_antiderivative(expr):
 
     result = sp.integrate(expr, x)
     steps.append("**General Rule (Auto Integration):**")
-    steps.append(rf"$\\int {sp.latex(expr)} \\, dx = {sp.latex(result)}$")
+    steps.append("This function does not match a standard rule. Computing using built-in integration:")
+    steps.append(rf"Let $f(x) = {sp.latex(expr)}$")
+    steps.append(rf"Then $\\int f(x) \\, dx = {sp.latex(result)} + C$")
     return steps
 
 def run():
