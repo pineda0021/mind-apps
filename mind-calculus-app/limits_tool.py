@@ -1,28 +1,24 @@
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+import pandas as pd
 import sympy as sp
 from sympy.abc import x
-from sympy import symbols, sympify, integrate, pi, latex, simplify, Rational
-import streamlit.components.v1 as components
-import random
 import plotly.graph_objs as go
 
-
 def run():
-    st.header("♾️ Limits Visualizer")
-    st.markdown("""
-    Explore removable discontinuities, limits from a table, animation, and symbolic simplification.
-    """)
+    st.header("♾️ Limits Visualizer (with Piecewise + One-Sided Support)")
+    st.markdown("Explore symbolic limits, removable discontinuities, and visual behavior around a number.")
 
-    user_fx_input = st.text_input("Enter a function f(x):", "(x**2 - 5*x + 6)/(x - 2)")
-    user_fx_input = user_fx_input.replace("sqrt", "sp.sqrt")
-    user_a = st.number_input("Approach x → a:", value=2.0, step=0.1, format="%.2f")
+    # User input
+    fx_input = st.text_input("Enter a function f(x):", "Piecewise((x**2, x < 2), (3*x, x >= 2))")
+    fx_input = fx_input.replace("^", "**").replace("sqrt", "sp.sqrt")
+    user_a = st.number_input("Approach x → a:", value=2.0, step=0.1)
+
+    direction = st.radio("Limit direction:", ["Two-sided", "Left-hand", "Right-hand"])
 
     try:
-        fx_expr = sp.sympify(user_fx_input)
-        f = sp.lambdify(x, fx_expr, modules=['numpy'])
+        fx_expr = sp.sympify(fx_input, evaluate=False)
+        f_np = sp.lambdify(x, fx_expr, modules=["numpy"])
     except Exception as e:
         st.error(f"Invalid function: {e}")
         return
@@ -31,93 +27,101 @@ def run():
 
     st.subheader("🧮 Symbolic Simplification")
     st.latex(f"f(x) = {sp.latex(fx_expr)}")
-    st.markdown(f"The simplified expression is: $f(x) = {sp.latex(simplified_expr)}$, if it exists.")
+    st.markdown(f"Simplified:  \n$f(x) = {sp.latex(simplified_expr)}$")
 
-    st.latex(f"\\text{{Graph of }} f(x) = {sp.latex(fx_expr)}")
-
-    # Plot using Plotly with updated layout
+    # --- 3D Plot ---
+    st.subheader("📈 3D Plot of f(x)")
     x_vals = np.linspace(user_a - 4, user_a + 4, 400)
     x_vals_filtered = x_vals[np.abs(x_vals - user_a) > 1e-6]
     try:
-        y_vals = f(x_vals_filtered)
+        y_vals = f_np(x_vals_filtered)
     except:
-        st.error("Error evaluating function for plotting.")
+        st.error("Could not evaluate function.")
         return
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter3d(x=x_vals_filtered.tolist(), y=[0]*len(x_vals_filtered), z=y_vals.tolist(),
+    fig.add_trace(go.Scatter3d(x=x_vals_filtered.tolist(),
+                               y=[0]*len(x_vals_filtered),
+                               z=y_vals.tolist(),
                                mode='lines', name='f(x)', line=dict(color='blue')))
 
-    # Only add hole marker if the original function is undefined at a, but the simplified is defined
+    # Discontinuity/hole marker
     try:
-        original_at_a = fx_expr.subs(x, user_a)
-        simplified_at_a = simplified_expr.subs(x, user_a)
-        if original_at_a.has(sp.zoo) or original_at_a.has(sp.nan) or original_at_a.is_infinite:
-            hole_y_val = float(simplified_at_a)
-            fig.add_trace(go.Scatter3d(x=[float(user_a)], y=[0], z=[hole_y_val], mode='markers',
+        original_val = fx_expr.subs(x, user_a)
+        simplified_val = simplified_expr.subs(x, user_a)
+        if not original_val.is_real and simplified_val.is_real:
+            fig.add_trace(go.Scatter3d(x=[float(user_a)], y=[0], z=[float(simplified_val)],
+                                       mode='markers',
                                        marker=dict(size=6, color='red', symbol='circle-open'),
                                        name=f"Hole at x = {user_a}"))
     except:
         pass
 
     fig.update_layout(
-        title_text=f"Graph of f(x)",
+        title="Graph of f(x)",
         scene=dict(
             xaxis_title='x',
-            yaxis_title='depth (for visual separation)',
+            yaxis_title='',
             zaxis_title='f(x)',
-            camera=dict(eye=dict(x=1.2, y=1.2, z=1.2))
+            camera=dict(eye=dict(x=1.4, y=0.6, z=1.5))
         ),
-        showlegend=True,
         height=600,
-        margin=dict(l=0, r=0, b=0, t=30)
+        showlegend=True
     )
+    st.plotly_chart(fig, use_container_width=True)
 
-    try:
-        st.plotly_chart(fig, use_container_width=True)
-    except Exception as e:
-        st.error(f"Error displaying Plotly chart: {e}")
+    # --- Table of values ---
+    st.subheader(f"📊 Limit Table Around x = {user_a}")
+    deltas = [0.1, 0.01, 0.001]
+    x_left = [round(user_a - d, 6) for d in reversed(deltas)]
+    x_right = [round(user_a + d, 6) for d in deltas]
+    x_points = x_left + x_right
 
-    # Table of values around a
-    st.subheader(f"Limit Table Around $x = {user_a}$ ⟲")
-    delta_list = [0.1, 0.01, 0.001]
-    x_input = [round(user_a - d, 6) for d in delta_list[::-1]] + [round(user_a + d, 6) for d in delta_list]
-    table_data = []
-    for xi in x_input:
+    rows = []
+    for xi in x_points:
         try:
-            table_data.append((xi, round(f(xi), 6)))
+            yi = round(f_np(xi), 6)
         except:
-            table_data.append((xi, "undefined"))
+            yi = "undefined"
+        rows.append((xi, yi))
 
-    st.table({"x": [r[0] for r in table_data], "f(x)": [r[1] for r in table_data]})
+    df = pd.DataFrame(rows, columns=["x", "f(x)"])
+    st.dataframe(df)
 
-    # Step-by-step symbolic limit solving
-    st.subheader("🧮 Step-by-Step Limit Simplification")
+    # --- Symbolic limit ---
+    st.subheader("🔍 Step-by-Step Limit Evaluation")
+
     try:
+        lim_type = {"Two-sided": "both", "Left-hand": "-", "Right-hand": "+"}[direction]
         factored = sp.factor(fx_expr)
         canceled = sp.cancel(fx_expr)
-        limit_val = sp.limit(fx_expr, x, user_a)
-        st.markdown(f"**1. Original Expression:**  $f(x) = {sp.latex(fx_expr)}$")
-        st.markdown(f"**2. Factored Form:**  $f(x) = {sp.latex(factored)}$")
-        st.markdown(f"**3. Simplified Form (after canceling):**  $f(x) = {sp.latex(canceled)}$")
-        st.markdown("**4. Compute the Limit:**")
-        st.latex(r"\lim_{x \to " + str(user_a) + r"} f(x) = " + sp.latex(limit_val))
-    except:
-        st.warning("Could not compute symbolic limit. Try a simpler function.")
 
-    st.subheader("🎯 Challenge: Estimate the Limit")
-    user_limit = st.number_input(f"What do you think is the limit of f(x) as x approaches {user_a}?", step=0.01)
-    try:
-        actual_limit = round(float(simplified_expr.subs(x, user_a)), 6)
-        if st.button("Check Answer"):
-            if abs(user_limit - actual_limit) < 1e-3:
-                st.success(f"✅ Correct! The limit is {actual_limit}.")
-            else:
-                st.error(f"❌ Not quite. The limit appears to be {actual_limit}.")
-    except:
-        st.warning("Limit may not exist or is not numerically evaluable.")
+        # Choose limit type
+        if lim_type == "both":
+            lim_val = sp.limit(fx_expr, x, user_a)
+            lim_notation = r"\lim_{x \to " + str(user_a) + "} f(x)"
+        elif lim_type == "-":
+            lim_val = sp.limit(fx_expr, x, user_a, dir='-')
+            lim_notation = r"\lim_{x \to " + str(user_a) + "^-} f(x)"
+        else:
+            lim_val = sp.limit(fx_expr, x, user_a, dir='+')
+            lim_notation = r"\lim_{x \to " + str(user_a) + "^+} f(x)"
 
+        # Step-by-step display
+        st.markdown(f"**1. Original Expression:**  \n$f(x) = {sp.latex(fx_expr)}$")
+        st.markdown(f"**2. Factored Form:**  \n$f(x) = {sp.latex(factored)}$")
+        st.markdown(f"**3. Simplified:**  \n$f(x) = {sp.latex(canceled)}$")
+        st.markdown(f"**4. Compute the Limit:**")
+        st.latex(lim_notation + " = " + sp.latex(lim_val))
+
+    except Exception as e:
+        st.warning("⚠️ Unable to compute symbolic limit. Try a simpler function.")
+
+    # --- Reflection ---
     st.subheader("💭 Reflection")
     feedback = st.text_area("What did you learn about limits today?")
     if feedback:
-        st.info("Thanks for sharing your reflection! 💬")
+        st.info("🧠 Thanks for sharing your thoughts!")
+
+if __name__ == "__main__":
+    run()
