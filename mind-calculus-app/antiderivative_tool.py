@@ -141,3 +141,29 @@ def step_by_step_antiderivative(expr):
     steps.append("**General Rule (Auto Integration):**")
     steps.append(rf"$\\int {sp.latex(expr)} \\, dx = {sp.latex(result)}$")
     return steps
+
+
+def run():
+    st.header("∫ Antiderivative Visualizer")
+    st.markdown("Enter a function to compute its antiderivative and view integration steps.")
+
+    user_input = st.text_input("Enter a function f(x):", "x*exp(x)")
+    if not user_input:
+        return
+
+    try:
+        expr = sp.sympify(user_input, locals=sympy_locals)
+    except Exception as e:
+        st.error(f"Invalid input: {e}")
+        return
+
+    st.subheader("🧮 Antiderivative")
+    st.latex(rf"\int {sp.latex(expr)} \, dx = {sp.latex(sp.integrate(expr, x))} + C")
+
+    st.subheader("🔎 Step-by-Step")
+    for step in step_by_step_antiderivative(expr):
+        st.markdown("- " + step)
+
+
+if __name__ == "__main__":
+    run()
