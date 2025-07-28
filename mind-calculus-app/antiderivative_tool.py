@@ -7,17 +7,20 @@ import numpy as np
 def step_by_step_antiderivative(expr):
     steps = []
 
+    # Sum Rule
     if expr.is_Add:
         steps.append("**Sum Rule:**")
         for term in expr.args:
             steps += step_by_step_antiderivative(term)
         return steps
 
+    # Constant Rule
     if expr.is_Number:
         steps.append("**Constant Rule:**")
         steps.append(rf"$\int {sp.latex(expr)} \, dx = {sp.latex(expr)}x$")
         return steps
 
+    # Power Rule
     if expr.is_Pow and expr.args[0] == x:
         n = expr.args[1]
         if n != -1:
@@ -30,6 +33,7 @@ def step_by_step_antiderivative(expr):
             steps.append(rf"$\int \frac{{1}}{{x}} \, dx = \ln|x|$")
         return steps
 
+    # Chain Rule (u-substitution)
     if expr.is_Mul:
         factors = expr.args
         for i in range(len(factors)):
@@ -37,13 +41,15 @@ def step_by_step_antiderivative(expr):
                 if i != j and factors[i] == sp.diff(factors[j], x):
                     u = factors[j]
                     du = factors[i]
+                    new_expr = u**1
                     result = sp.integrate(u, x)
                     steps.append("**Chain Rule (u-substitution):**")
                     steps.append(rf"Let $u = {sp.latex(u)}$, then $du = {sp.latex(sp.diff(u, x))} dx$")
                     steps.append(rf"Rewrite: $\int {sp.latex(expr)} \, dx = \int u \, du$")
-                    steps.append(rf"$= {sp.latex(result)}$")
+                    steps.append(rf"$= {sp.latex(sp.integrate(u, x))}$")
                     return steps
 
+    # Integration by Parts: x*sin(x), x*exp(x)
     if expr.is_Mul and any(arg.has(x) for arg in expr.args):
         u, dv = expr.args
         du = sp.diff(u, x)
@@ -59,6 +65,7 @@ def step_by_step_antiderivative(expr):
         steps.append(rf"$= {sp.latex(result)}$")
         return steps
 
+    # Trig/Exp/Log
     if expr == sp.exp(x):
         steps.append("**Exponential Rule:**")
         steps.append(rf"$\int e^x \, dx = e^x$")
@@ -79,6 +86,7 @@ def step_by_step_antiderivative(expr):
         steps.append(rf"$\int \cos x \, dx = \sin x$")
         return steps
 
+    # Fallback
     result = sp.integrate(expr, x)
     steps.append("**General Rule (Auto Integration):**")
     steps.append(rf"$\int {sp.latex(expr)} \, dx = {sp.latex(result)}$")
@@ -139,33 +147,26 @@ def run():
     ax.legend()
     st.pyplot(fig)
 
-    # ✅ Toggle to show/hide definite integral section
-    show_definite = st.checkbox("📕 Show Definite Integral Section", value=True)
+    # Area Visualization
+    st.subheader("📊 Visualizing Accumulated Area")
+    a_val = st.slider("Choose starting point a", -5.0, 5.0, value=-2.0, step=0.1)
+    b_val = st.slider("Choose endpoint b", a_val, 5.0, value=2.0, step=0.1)
+    area_val = sp.integrate(fx, (x, a_val, b_val))
+    st.latex(rf"\int_{{{a_val}}}^{{{b_val}}} {sp.latex(fx)} \, dx = {sp.latex(area_val)}")
 
-    if show_definite:
-        # Area Visualization
-        st.subheader("📊 Visualizing Accumulated Area")
-        a_val = st.slider("Choose starting point a", -5.0, 5.0, value=-2.0, step=0.1)
-        b_val = st.slider("Choose endpoint b", a_val, 5.0, value=2.0, step=0.1)
-        area_val = sp.integrate(fx, (x, a_val, b_val))
-        st.latex(rf"\int_{{{a_val}}}^{{{b_val}}} {sp.latex(fx)} \, dx = {sp.latex(area_val)}")
+    st.subheader("📐 Step-by-Step for Definite Integral")
+    for step in definite_integral_steps(fx, a_val, b_val):
+        st.markdown("- " + step)
 
-        st.subheader("📐 Step-by-Step for Definite Integral")
-        for step in definite_integral_steps(fx, a_val, b_val):
-            st.markdown("- " + step)
-
-        # Highlight Area
-        x_fill = np.linspace(a_val, b_val, 300)
-        y_fill = f_np(x_fill)
-        fig2, ax2 = plt.subplots(figsize=(8, 5))
-        ax2.plot(X, Y, label="f(x)", color="blue")
-        ax2.fill_between(x_fill, y_fill, alpha=0.3, color="green", label="Accumulated Area")
-        ax2.set_xlabel("x")
-        ax2.set_ylabel("y")
-        ax2.set_title("Accumulated Area from a to b")
-        ax2.grid(True)
-        ax2.legend()
-        st.pyplot(fig2)
-
-if __name__ == "__main__":
-    run()
+    # Highlight Area
+    x_fill = np.linspace(a_val, b_val, 300)
+    y_fill = f_np(x_fill)
+    fig2, ax2 = plt.subplots(figsize=(8, 5))
+    ax2.plot(X, Y, label="f(x)", color="blue")
+    ax2.fill_between(x_fill, y_fill, alpha=0.3, color="green", label="Accumulated Area")
+    ax2.set_xlabel("x")
+    ax2.set_ylabel("y")
+    ax2.set_title("Accumulated Area from a to b")
+    ax2.grid(True)
+    ax2.legend()
+    st.pyplot(fig2)
