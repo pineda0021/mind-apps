@@ -9,7 +9,7 @@ def run():
     st.header("♾️ Limits Visualizer")
     st.markdown("Explore removable discontinuities, symbolic limits, and interactive graphs.")
 
-    user_fx_input = st.text_input("Enter a function f(x):", "(x**2 - 5*x + 6)/(x - 2)")
+    user_fx_input = st.text_input("Enter a function f(x):", "Piecewise((x**2, x < 2), (3*x, x >= 2))")
     user_fx_input = user_fx_input.replace("sqrt", "sp.sqrt")
     user_a = st.number_input("Approach x → a:", value=2.0, step=0.1)
 
