@@ -68,7 +68,7 @@ def run():
 
     # Input
     st.subheader("📥 Enter a Function")
-    f_input = st.text_input("f(x) =", "x^3 - 3x + 1")
+    f_input = st.text_input("f(x) =", "x**2+3*x+2")
     try:
         fx = parse_input(f_input)
         dfx = sp.diff(fx, x)
