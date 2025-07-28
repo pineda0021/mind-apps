@@ -142,7 +142,6 @@ def step_by_step_antiderivative(expr):
     steps.append(rf"$\\int {sp.latex(expr)} \\, dx = {sp.latex(result)}$")
     return steps
 
-
 def run():
     st.header("∫ Antiderivative Visualizer")
     st.markdown("Enter a function to compute its antiderivative and view integration steps.")
@@ -164,6 +163,35 @@ def run():
     for step in step_by_step_antiderivative(expr):
         st.markdown("- " + step)
 
+    # Plot f(x) and its antiderivative
+    f_np = sp.lambdify(x, expr, modules=["numpy"])
+    F_np = sp.lambdify(x, sp.integrate(expr, x), modules=["numpy"])
+    X = np.linspace(-5, 5, 400)
+    Y = f_np(X)
+    Y_int = F_np(X)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(X, Y, label="f(x)", color="blue")
+    ax.plot(X, Y_int, label="F(x)", color="orange")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_title("Function and Antiderivative")
+    ax.grid(True)
+    ax.legend()
+    st.pyplot(fig)
+
+    # Definite integral section
+    st.subheader("📊 Definite Integral")
+    a_str = st.text_input("Lower bound a (e.g., 0, pi, -oo):", "0")
+    b_str = st.text_input("Upper bound b (e.g., 1, pi/2, oo):", "1")
+    try:
+        a_val = sp.sympify(a_str, locals=sympy_locals)
+        b_val = sp.sympify(b_str, locals=sympy_locals)
+        definite_result = sp.integrate(expr, (x, a_val, b_val))
+        st.latex(rf"\int_{{{sp.latex(a_val)}}}^{{{sp.latex(b_val)}}} {sp.latex(expr)} \, dx = {sp.latex(definite_result)}")
+    except Exception as e:
+        st.warning(f"Could not compute definite integral: {e}")
 
 if __name__ == "__main__":
     run()
+
