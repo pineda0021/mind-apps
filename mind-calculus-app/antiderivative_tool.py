@@ -3,6 +3,9 @@ import sympy as sp
 from sympy.abc import x
 import matplotlib.pyplot as plt
 import numpy as np
+from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication_application
+
+transformations = (standard_transformations + (implicit_multiplication_application,))
 
 def step_by_step_antiderivative(expr):
     steps = []
@@ -33,54 +36,19 @@ def step_by_step_antiderivative(expr):
             steps.append(rf"$\int \frac{{1}}{{x}} \, dx = \ln|x|$")
         return steps
 
-    # Chain Rule (u-substitution)
-    if expr.is_Mul:
-        factors = expr.args
-        for i in range(len(factors)):
-            for j in range(len(factors)):
-                if i != j and factors[i] == sp.diff(factors[j], x):
-                    u = factors[j]
-                    du = factors[i]
-                    new_expr = u**1
-                    result = sp.integrate(u, x)
-                    steps.append("**Chain Rule (u-substitution):**")
-                    steps.append(rf"Let $u = {sp.latex(u)}$, then $du = {sp.latex(sp.diff(u, x))} dx$")
-                    steps.append(rf"Rewrite: $\int {sp.latex(expr)} \, dx = \int u \, du$")
-                    steps.append(rf"$= {sp.latex(sp.integrate(u, x))}$")
-                    return steps
-
-    # Integration by Parts: x*sin(x), x*exp(x)
-    if expr.is_Mul and any(arg.has(x) for arg in expr.args):
-        u, dv = expr.args
-        du = sp.diff(u, x)
-        v = sp.integrate(dv, x)
-        uv = u * v
-        int_vdu = sp.integrate(v * du, x)
-        result = uv - int_vdu
-        steps.append("**Integration by Parts:**")
-        steps.append(rf"$\int {sp.latex(expr)} \, dx = uv - \int v \, du$")
-        steps.append(rf"Let $u = {sp.latex(u)}, dv = {sp.latex(dv)}dx$")
-        steps.append(rf"Then $du = {sp.latex(du)}dx$, and $v = {sp.latex(v)}$")
-        steps.append(rf"$= {sp.latex(uv)} - \int {sp.latex(v * du)} \, dx$")
-        steps.append(rf"$= {sp.latex(result)}$")
-        return steps
-
-    # Trig/Exp/Log
+    # Exponential and trig cases
     if expr == sp.exp(x):
         steps.append("**Exponential Rule:**")
         steps.append(rf"$\int e^x \, dx = e^x$")
         return steps
-
     if expr == 1/x:
         steps.append("**Log Rule:**")
         steps.append(rf"$\int \frac{{1}}{{x}} \, dx = \ln|x|$")
         return steps
-
     if expr == sp.sin(x):
         steps.append("**Trig Rule:**")
         steps.append(rf"$\int \sin x \, dx = -\cos x$")
         return steps
-
     if expr == sp.cos(x):
         steps.append("**Trig Rule:**")
         steps.append(rf"$\int \cos x \, dx = \sin x$")
@@ -104,19 +72,19 @@ def definite_integral_steps(fx, a, b):
     return steps
 
 def run():
+    st.set_page_config(page_title="Antiderivative Visualizer", layout="wide")
     st.header("∫ Antiderivative Visualizer")
-    st.markdown("""
-    Enter a function and explore its antiderivative (indefinite or definite integral) symbolically and graphically.
-    """)
+    st.markdown("Enter a function and explore its antiderivative (indefinite and definite integrals) with step-by-step explanations and visualizations.")
 
     # Function input
     st.subheader("📥 Enter a Function")
-    f_input = st.text_input("f(x) =", "x**2 + 1")
+    f_input = st.text_input("f(x) =", "x^2 + 2x + 3")
+
     try:
-        fx = sp.sympify(f_input)
+        fx = parse_expr(f_input, transformations=transformations)
         F = sp.integrate(fx, x)
-    except:
-        st.error("Invalid function. Please enter a valid mathematical expression.")
+    except Exception as e:
+        st.error(f"Invalid function: {e}")
         return
 
     # Symbolic Antiderivative
@@ -132,7 +100,6 @@ def run():
     st.subheader("📈 Graph of f(x) and F(x)")
     f_np = sp.lambdify(x, fx, modules=["numpy"])
     F_np = sp.lambdify(x, F, modules=["numpy"])
-
     X = np.linspace(-5, 5, 400)
     Y = f_np(X)
     Y_int = F_np(X)
