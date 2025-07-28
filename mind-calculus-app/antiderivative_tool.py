@@ -96,12 +96,12 @@ def definite_integral_steps(fx, a, b):
     return steps
 
 def run():
-    st.set_page_config("Antiderivative Visualizer", layout="wide")
     st.header("∫ Antiderivative Visualizer")
     st.markdown("""
     Enter a function and explore its antiderivative (indefinite or definite integral) symbolically and graphically.
     """)
 
+    # Function input
     st.subheader("📥 Enter a Function")
     f_input = st.text_input("f(x) =", "x**2 + 1")
     try:
@@ -111,39 +111,50 @@ def run():
         st.error("Invalid function. Please enter a valid mathematical expression.")
         return
 
-    with st.expander("📘 Indefinite Integral"):
-        st.latex(rf"F(x) = \int {sp.latex(fx)} \, dx = {sp.latex(F)} + C")
+    # Symbolic Antiderivative
+    st.subheader("🧮 Symbolic Antiderivative")
+    st.latex(rf"F(x) = \int {sp.latex(fx)} \, dx = {sp.latex(F)} + C")
 
-    with st.expander("🔍 Step-by-Step Integration"):
-        for step in step_by_step_antiderivative(fx):
-            st.markdown("- " + step)
+    # Step-by-step Explanation
+    st.subheader("🔎 Step-by-Step Integration")
+    for step in step_by_step_antiderivative(fx):
+        st.markdown("- " + step)
 
-    with st.expander("📈 Graph of f(x) and F(x)"):
-        f_np = sp.lambdify(x, fx, modules=["numpy"])
-        F_np = sp.lambdify(x, F, modules=["numpy"])
-        X = np.linspace(-5, 5, 400)
-        Y = f_np(X)
-        Y_int = F_np(X)
-        fig, ax = plt.subplots(figsize=(8, 5))
-        ax.plot(X, Y, label="f(x)", color="blue")
-        ax.plot(X, Y_int, label="F(x)", color="orange")
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.grid(True)
-        ax.set_title("Function and Antiderivative")
-        ax.legend()
-        st.pyplot(fig)
+    # Graphs
+    st.subheader("📈 Graph of f(x) and F(x)")
+    f_np = sp.lambdify(x, fx, modules=["numpy"])
+    F_np = sp.lambdify(x, F, modules=["numpy"])
 
-    with st.expander("📕 Definite Integral"):
+    X = np.linspace(-5, 5, 400)
+    Y = f_np(X)
+    Y_int = F_np(X)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(X, Y, label="f(x)", color="blue")
+    ax.plot(X, Y_int, label="F(x)", color="orange")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.grid(True)
+    ax.set_title("Function and Antiderivative")
+    ax.legend()
+    st.pyplot(fig)
+
+    # ✅ Toggle to show/hide definite integral section
+    show_definite = st.checkbox("📕 Show Definite Integral Section", value=True)
+
+    if show_definite:
+        # Area Visualization
+        st.subheader("📊 Visualizing Accumulated Area")
         a_val = st.slider("Choose starting point a", -5.0, 5.0, value=-2.0, step=0.1)
         b_val = st.slider("Choose endpoint b", a_val, 5.0, value=2.0, step=0.1)
         area_val = sp.integrate(fx, (x, a_val, b_val))
         st.latex(rf"\int_{{{a_val}}}^{{{b_val}}} {sp.latex(fx)} \, dx = {sp.latex(area_val)}")
 
-        st.markdown("📐 **Step-by-Step for Definite Integral:**")
+        st.subheader("📐 Step-by-Step for Definite Integral")
         for step in definite_integral_steps(fx, a_val, b_val):
             st.markdown("- " + step)
 
+        # Highlight Area
         x_fill = np.linspace(a_val, b_val, 300)
         y_fill = f_np(x_fill)
         fig2, ax2 = plt.subplots(figsize=(8, 5))
