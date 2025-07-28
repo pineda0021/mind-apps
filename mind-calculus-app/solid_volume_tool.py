@@ -58,18 +58,6 @@ def run():
         st.error(f"Function parsing error: {e}")
         return
 
-    # Compute symbolic integral
-    if method == "Disk/Washer" and axis == "x-axis":
-        integrand = sp.pi * (f ** 2 - g ** 2)
-        volume = sp.integrate(integrand, (x, a, b))
-    elif method == "Shell" and axis == "y-axis":
-        integrand = 2 * sp.pi * x * (f - g)
-        volume = sp.integrate(integrand, (x, a, b))
-    else:
-        st.warning("Only x-axis for Disk/Washer and y-axis for Shell are supported.")
-        return
-
-    # 📘 Step-by-step explanation
     st.markdown("### 📘 Step-by-Step Volume Derivation")
 
     if method == "Disk/Washer" and axis == "x-axis":
@@ -86,10 +74,12 @@ def run():
 
         st.markdown("**Step 4: Integrate and multiply by } \pi**")
         antideriv = sp.integrate(diff_sq, x)
-        eval_at = antideriv.subs(x, b) - antideriv.subs(x, a)
-        final_volume = sp.simplify(sp.pi * eval_at)
-        st.latex(r"\int = " + sp.latex(eval_at))
-        st.latex(r"V = \pi \cdot " + sp.latex(eval_at) + r" = " + sp.latex(final_volume))
+        eval_raw = antideriv.subs(x, b) - antideriv.subs(x, a)
+        eval_exact = sp.nsimplify(eval_raw, rational=True)
+        final_volume = sp.simplify(sp.pi * eval_exact)
+
+        st.latex(r"\int = " + sp.latex(eval_exact))
+        st.latex(r"V = \pi \cdot " + sp.latex(eval_exact) + r" = " + sp.latex(final_volume))
         st.success("✅ Final Answer (Exact Volume)")
         st.latex(r"V = " + sp.latex(final_volume))
 
@@ -104,12 +94,17 @@ def run():
 
         st.markdown("**Step 3: Integrate and multiply by } 2\pi**")
         antideriv = sp.integrate(shell_integrand, x)
-        eval_at = antideriv.subs(x, b) - antideriv.subs(x, a)
-        final_volume = sp.simplify(2 * sp.pi * eval_at)
-        st.latex(r"\int = " + sp.latex(eval_at))
-        st.latex(r"V = 2\pi \cdot " + sp.latex(eval_at) + r" = " + sp.latex(final_volume))
+        eval_raw = antideriv.subs(x, b) - antideriv.subs(x, a)
+        eval_exact = sp.nsimplify(eval_raw, rational=True)
+        final_volume = sp.simplify(2 * sp.pi * eval_exact)
+
+        st.latex(r"\int = " + sp.latex(eval_exact))
+        st.latex(r"V = 2\pi \cdot " + sp.latex(eval_exact) + r" = " + sp.latex(final_volume))
         st.success("✅ Final Answer (Exact Volume)")
         st.latex(r"V = " + sp.latex(final_volume))
+
+    else:
+        st.warning("Only x-axis for Disk/Washer and y-axis for Shell are supported.")
 
     # 3D Visualization
     if st.checkbox("🔭 Show 3D Visualization"):
