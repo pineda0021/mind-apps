@@ -117,7 +117,7 @@ def run():
     except:
         st.warning("Limit may not exist or is not numerically evaluable.")
 
-    st.subheader("🧠 Reflection")
+    st.subheader("💭 Reflection")
     feedback = st.text_area("What did you learn about limits today?")
     if feedback:
         st.info("Thanks for sharing your reflection! 💬")
