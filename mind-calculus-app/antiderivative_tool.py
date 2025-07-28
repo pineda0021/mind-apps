@@ -91,14 +91,15 @@ def definite_integral_steps(fx, a, b):
     Fb = F.subs(x, b)
     area = Fb - Fa
     steps.append("**Fundamental Theorem of Calculus:**")
-    steps.append(rf"$\int_{{{a}}}^{{{b}}} {sp.latex(fx)} \, dx = F({b}) - F({a})$")
-    steps.append(rf"$= {sp.latex(F)} \Big|_{{{a}}}^{{{b}}} = {sp.latex(Fb)} - {sp.latex(Fa)} = {sp.latex(area)}$")
+    steps.append(rf"$\int_{{{sp.latex(a)}}}^{{{sp.latex(b)}}} {sp.latex(fx)} \, dx = F({sp.latex(b)}) - F({sp.latex(a)})$")
+    steps.append(rf"$= {sp.latex(F)} \Big|_{{{sp.latex(a)}}}^{{{sp.latex(b)}}} = {sp.latex(Fb)} - {sp.latex(Fa)} = {sp.latex(area)}$")
     return steps
 
 def run():
     st.header("∫ Antiderivative Visualizer")
     st.markdown("""
     Enter a function and explore its antiderivative (indefinite or definite integral) symbolically and graphically.
+    You can now enter bounds like `pi`, `sqrt(2)`, or `1/3`.
     """)
 
     # Function input
@@ -141,34 +142,40 @@ def run():
 
     # Area Visualization
     st.subheader("📊 Visualizing Accumulated Area")
-    a_str = st.text_input("Enter lower bound a:", "-2.0")
-    b_str = st.text_input("Enter upper bound b:", "2.0")
+    a_str = st.text_input("Enter lower bound a (e.g. 0, pi, sqrt(2)):", "-2")
+    b_str = st.text_input("Enter upper bound b (e.g. 1, pi/2, 3):", "2")
     try:
-        a_val = float(a_str)
-        b_val = float(b_str)
+        a_val = sp.sympify(a_str)
+        b_val = sp.sympify(b_str)
     except:
-        st.error("Please enter valid numbers for bounds a and b.")
+        st.error("Please enter valid bounds (e.g. 0, pi, 1/2, sqrt(2)).")
         return
 
     area_val = sp.integrate(fx, (x, a_val, b_val))
-    st.latex(rf"\int_{{{a_val}}}^{{{b_val}}} {sp.latex(fx)} \, dx = {sp.latex(area_val)}")
+    st.latex(rf"\int_{{{sp.latex(a_val)}}}^{{{sp.latex(b_val)}}} {sp.latex(fx)} \, dx = {sp.latex(area_val)}")
 
     st.subheader("📐 Step-by-Step for Definite Integral")
     for step in definite_integral_steps(fx, a_val, b_val):
         st.markdown("- " + step)
 
-    # Highlight Area
-    x_fill = np.linspace(a_val, b_val, 300)
-    y_fill = f_np(x_fill)
-    fig2, ax2 = plt.subplots(figsize=(8, 5))
-    ax2.plot(X, Y, label="f(x)", color="blue")
-    ax2.fill_between(x_fill, y_fill, alpha=0.3, color="green", label="Accumulated Area")
-    ax2.set_xlabel("x")
-    ax2.set_ylabel("y")
-    ax2.set_title("Accumulated Area from a to b")
-    ax2.grid(True)
-    ax2.legend()
-    st.pyplot(fig2)
+    # Highlight Area (numeric only)
+    try:
+        a_float = float(a_val.evalf())
+        b_float = float(b_val.evalf())
+        x_fill = np.linspace(a_float, b_float, 300)
+        y_fill = f_np(x_fill)
+        fig2, ax2 = plt.subplots(figsize=(8, 5))
+        ax2.plot(X, Y, label="f(x)", color="blue")
+        ax2.fill_between(x_fill, y_fill, alpha=0.3, color="green", label="Accumulated Area")
+        ax2.set_xlabel("x")
+        ax2.set_ylabel("y")
+        ax2.set_title("Accumulated Area from a to b")
+        ax2.grid(True)
+        ax2.legend()
+        st.pyplot(fig2)
+    except:
+        st.warning("Plotting only works for numeric bounds. Symbolic bounds like `pi` or `sqrt(2)` will still be calculated and displayed correctly above.")
 
 if __name__ == "__main__":
     run()
+
