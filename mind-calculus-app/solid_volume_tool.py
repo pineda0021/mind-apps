@@ -1,4 +1,3 @@
-# solid_volume_tool.py
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
@@ -59,27 +58,58 @@ def run():
         st.error(f"Function parsing error: {e}")
         return
 
-    # Symbolic setup
+    # Compute symbolic integral
     if method == "Disk/Washer" and axis == "x-axis":
         integrand = sp.pi * (f ** 2 - g ** 2)
-        formula = rf"V = \pi \int_{{{a}}}^{{{b}}} \left[ {sp.latex(f)}^2 - {sp.latex(g)}^2 \right] \, dx"
         volume = sp.integrate(integrand, (x, a, b))
     elif method == "Shell" and axis == "y-axis":
         integrand = 2 * sp.pi * x * (f - g)
-        formula = rf"V = 2\pi \int_{{{a}}}^{{{b}}} x({sp.latex(f)} - {sp.latex(g)}) \, dx"
         volume = sp.integrate(integrand, (x, a, b))
     else:
-        st.warning("Only x-axis for Disk/Washer and y-axis for Shell are currently supported.")
+        st.warning("Only x-axis for Disk/Washer and y-axis for Shell are supported.")
         return
 
-    # Display formula and volume
-    st.markdown("### 📘 Volume Formula")
-    st.latex(formula)
+    # 📘 Step-by-step explanation
+    st.markdown("### 📘 Step-by-Step Volume Derivation")
 
-    st.markdown("### 📝 Integration Steps")
-    st.latex(r"\text{Integrand: }" + sp.latex(integrand))
-    st.latex(r"\text{Integral result: }" + sp.latex(volume))
-    st.success(f"Exact volume: {sp.latex(sp.simplify(volume))}")
+    if method == "Disk/Washer" and axis == "x-axis":
+        st.markdown("**Step 1: Square the functions**")
+        st.latex(r"f(x)^2 = " + sp.latex(f**2))
+        st.latex(r"g(x)^2 = " + sp.latex(g**2))
+
+        st.markdown("**Step 2: Subtract the squares**")
+        diff_sq = sp.simplify(f**2 - g**2)
+        st.latex(r"f(x)^2 - g(x)^2 = " + sp.latex(diff_sq))
+
+        st.markdown("**Step 3: Set up the definite integral**")
+        st.latex(r"\int_{" + str(a) + r"}^{" + str(b) + r"} \left[" + sp.latex(diff_sq) + r"\right] dx")
+
+        st.markdown("**Step 4: Integrate and multiply by } \pi**")
+        antideriv = sp.integrate(diff_sq, x)
+        eval_at = antideriv.subs(x, b) - antideriv.subs(x, a)
+        final_volume = sp.simplify(sp.pi * eval_at)
+        st.latex(r"\int = " + sp.latex(eval_at))
+        st.latex(r"V = \pi \cdot " + sp.latex(eval_at) + r" = " + sp.latex(final_volume))
+        st.success("✅ Final Answer (Exact Volume)")
+        st.latex(r"V = " + sp.latex(final_volume))
+
+    elif method == "Shell" and axis == "y-axis":
+        st.markdown("**Step 1: Set up the Shell integrand**")
+        height_expr = sp.simplify(f - g)
+        shell_integrand = sp.simplify(x * height_expr)
+        st.latex(r"2\pi \cdot x \cdot \left(" + sp.latex(f) + r" - " + sp.latex(g) + r"\right) = 2\pi \cdot " + sp.latex(shell_integrand))
+
+        st.markdown("**Step 2: Set up the definite integral**")
+        st.latex(r"\int_{" + str(a) + r"}^{" + str(b) + r"} \left[" + sp.latex(shell_integrand) + r"\right] dx")
+
+        st.markdown("**Step 3: Integrate and multiply by } 2\pi**")
+        antideriv = sp.integrate(shell_integrand, x)
+        eval_at = antideriv.subs(x, b) - antideriv.subs(x, a)
+        final_volume = sp.simplify(2 * sp.pi * eval_at)
+        st.latex(r"\int = " + sp.latex(eval_at))
+        st.latex(r"V = 2\pi \cdot " + sp.latex(eval_at) + r" = " + sp.latex(final_volume))
+        st.success("✅ Final Answer (Exact Volume)")
+        st.latex(r"V = " + sp.latex(final_volume))
 
     # 3D Visualization
     if st.checkbox("🔭 Show 3D Visualization"):
@@ -99,11 +129,10 @@ def run():
                           scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'))
         st.plotly_chart(fig)
 
-    # Tips
     st.markdown("## 💡 Interpretation Tip")
     st.info(
-        "- **Disk/Washer**: Best for x-axis rotations when the region is vertical.\n"
-        "- **Shell**: Ideal for y-axis rotations with vertical slices.\n"
+        "- **Disk/Washer**: Best for x-axis rotations with vertical slices.\n"
+        "- **Shell**: Ideal for y-axis rotations with vertical functions.\n"
         "- Visualize volume as accumulation of circular or cylindrical slices!"
     )
 
