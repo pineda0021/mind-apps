@@ -18,6 +18,13 @@ sympy_locals = {
     "sec": sp.sec,
     "csc": sp.csc,
     "cot": sp.cot,
+    "asin": sp.asin,
+    "acos": sp.acos,
+    "atan": sp.atan,
+    "sinh": sp.sinh,
+    "cosh": sp.cosh,
+    "tanh": sp.tanh,
+    "log": sp.log,
 }
 
 def step_by_step_antiderivative(expr):
@@ -44,6 +51,61 @@ def step_by_step_antiderivative(expr):
         else:
             steps.append("**Special Case:**")
             steps.append(rf"$\\int \\frac{{1}}{{x}} \\, dx = \\ln|x|$")
+        return steps
+
+    if expr == sp.exp(x):
+        steps.append("**Exponential Rule:**")
+        steps.append(rf"$\\int e^x \\, dx = e^x$")
+        return steps
+
+    if expr == sp.log(x):
+        steps.append("**Logarithmic Rule:**")
+        steps.append(rf"$\\int \\ln x \\, dx = x\\ln x - x$")
+        return steps
+
+    if expr == sp.sin(x):
+        steps.append("**Trig Rule:**")
+        steps.append(rf"$\\int \\sin x \\, dx = -\\cos x$")
+        return steps
+
+    if expr == sp.cos(x):
+        steps.append("**Trig Rule:**")
+        steps.append(rf"$\\int \\cos x \\, dx = \\sin x$")
+        return steps
+
+    if expr == sp.tan(x):
+        steps.append("**Trig Rule:**")
+        steps.append(rf"$\\int \\tan x \\, dx = -\\ln|\\cos x|$")
+        return steps
+
+    if expr == sp.asin(x):
+        steps.append("**Inverse Trig Rule:**")
+        steps.append(rf"$\\int \\sin^{{-1}} x \\, dx = x \\sin^{{-1}} x + \\sqrt{{1 - x^2}}$")
+        return steps
+
+    if expr == sp.acos(x):
+        steps.append("**Inverse Trig Rule:**")
+        steps.append(rf"$\\int \\cos^{{-1}} x \\, dx = x \\cos^{{-1}} x - \\sqrt{{1 - x^2}}$")
+        return steps
+
+    if expr == sp.atan(x):
+        steps.append("**Inverse Trig Rule:**")
+        steps.append(rf"$\\int \\tan^{{-1}} x \\, dx = x \\tan^{{-1}} x - \\frac{{1}}{{2}} \\ln(1 + x^2)$")
+        return steps
+
+    if expr == sp.sinh(x):
+        steps.append("**Hyperbolic Rule:**")
+        steps.append(rf"$\\int \\sinh x \\, dx = \\cosh x$")
+        return steps
+
+    if expr == sp.cosh(x):
+        steps.append("**Hyperbolic Rule:**")
+        steps.append(rf"$\\int \\cosh x \\, dx = \\sinh x$")
+        return steps
+
+    if expr == sp.tanh(x):
+        steps.append("**Hyperbolic Rule:**")
+        steps.append(rf"$\\int \\tanh x \\, dx = \\ln(\\cosh x)$")
         return steps
 
     if expr.is_Mul:
@@ -75,113 +137,7 @@ def step_by_step_antiderivative(expr):
         steps.append(rf"$= {sp.latex(result)}$")
         return steps
 
-    if expr == sp.exp(x):
-        steps.append("**Exponential Rule:**")
-        steps.append(rf"$\\int e^x \\, dx = e^x$")
-        return steps
-
-    if expr == 1/x:
-        steps.append("**Log Rule:**")
-        steps.append(rf"$\\int \\frac{{1}}{{x}} \\, dx = \\ln|x|$")
-        return steps
-
-    if expr == sp.sin(x):
-        steps.append("**Trig Rule:**")
-        steps.append(rf"$\\int \\sin x \\, dx = -\\cos x$")
-        return steps
-
-    if expr == sp.cos(x):
-        steps.append("**Trig Rule:**")
-        steps.append(rf"$\\int \\cos x \\, dx = \\sin x$")
-        return steps
-
     result = sp.integrate(expr, x)
     steps.append("**General Rule (Auto Integration):**")
     steps.append(rf"$\\int {sp.latex(expr)} \\, dx = {sp.latex(result)}$")
     return steps
-
-definite_integral_steps = lambda fx, a, b: [
-    "**Fundamental Theorem of Calculus:**",
-    rf"$\\int_{{{sp.latex(a)}}}^{{{sp.latex(b)}}} {sp.latex(fx)} \\, dx = F({sp.latex(b)}) - F({sp.latex(a)})$",
-    rf"$= {sp.latex(sp.integrate(fx, x))} \\Big|_{{{sp.latex(a)}}}^{{{sp.latex(b)}}} = {sp.latex(sp.integrate(fx, x).subs(x, b))} - {sp.latex(sp.integrate(fx, x).subs(x, a))} = {sp.latex(sp.integrate(fx, (x, a, b)))}$"
-]
-
-def run():
-    st.header("∫ Antiderivative Visualizer")
-    st.markdown("""
-    Explore symbolic integration and accumulated area under a curve.
-
-    ✅ Supports: `pi`, `sqrt(2)`, `e`, `1/3`, `oo`, `-oo`
-    """)
-
-    st.subheader("📥 Enter a Function")
-    f_input = st.text_input("f(x) =", "x**2 + 1")
-    try:
-        fx = sp.sympify(f_input, locals=sympy_locals)
-        F = sp.integrate(fx, x)
-    except:
-        st.error("Invalid function. Please enter a valid expression.")
-        return
-
-    st.subheader("🧮 Indefinite Integral")
-    st.latex(rf"F(x) = \\int {sp.latex(fx)} \\, dx = {sp.latex(F)} + C")
-
-    st.subheader("🔎 Step-by-Step Integration")
-    for step in step_by_step_antiderivative(fx):
-        st.markdown("- " + step)
-
-    st.subheader("📈 Graph of f(x) and F(x)")
-    f_np = sp.lambdify(x, fx, modules=["numpy"])
-    F_np = sp.lambdify(x, F, modules=["numpy"])
-    X = np.linspace(-5, 5, 400)
-    Y = f_np(X)
-    Y_int = F_np(X)
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(X, Y, label="f(x)", color="blue")
-    ax.plot(X, Y_int, label="F(x)", color="orange")
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_title("Function and Antiderivative")
-    ax.grid(True)
-    ax.legend()
-    st.pyplot(fig)
-
-    st.subheader("📊 Enter Bounds for Definite Integral")
-    a_str = st.text_input("Lower bound a (e.g., 0, pi, -oo):", "-2")
-    b_str = st.text_input("Upper bound b (e.g., 1, pi/2, oo):", "2")
-    try:
-        a_val = sp.sympify(a_str, locals=sympy_locals)
-        b_val = sp.sympify(b_str, locals=sympy_locals)
-    except:
-        st.error("❌ Invalid symbolic bounds.")
-        return
-
-    area_val = sp.integrate(fx, (x, a_val, b_val))
-    st.latex(rf"\\int_{{{sp.latex(a_val)}}}^{{{sp.latex(b_val)}}} {sp.latex(fx)} \\, dx = {sp.latex(area_val)}")
-
-    st.subheader("📐 Step-by-Step Evaluation")
-    for step in definite_integral_steps(fx, a_val, b_val):
-        st.markdown("- " + step)
-
-    if a_val.is_real and b_val.is_real and not (sp.oo in [a_val, b_val] or -sp.oo in [a_val, b_val]):
-        try:
-            a_num = float(a_val.evalf())
-            b_num = float(b_val.evalf())
-            x_fill = np.linspace(a_num, b_num, 300)
-            y_fill = f_np(x_fill)
-            fig2, ax2 = plt.subplots(figsize=(8, 5))
-            ax2.plot(X, Y, label="f(x)", color="blue")
-            ax2.fill_between(x_fill, y_fill, alpha=0.3, color="green", label="Accumulated Area")
-            ax2.set_xlabel("x")
-            ax2.set_ylabel("y")
-            ax2.set_title("Accumulated Area from a to b")
-            ax2.grid(True)
-            ax2.legend()
-            st.pyplot(fig2)
-        except:
-            st.warning("⚠️ Could not plot filled area.")
-    else:
-        st.warning("⚠️ Skipped plot: Infinite bounds cannot be visualized.")
-
-if __name__ == "__main__":
-    run()
