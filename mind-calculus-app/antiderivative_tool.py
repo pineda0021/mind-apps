@@ -170,3 +170,4 @@ def run():
     ax2.grid(True)
     ax2.legend()
     st.pyplot(fig2)
+
