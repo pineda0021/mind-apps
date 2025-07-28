@@ -103,23 +103,6 @@ def run():
     ax.legend()
     st.pyplot(fig)
 
-    # 3D ZOOM-IN Plot
-    st.subheader("🔭 3D Zoomable Plot of $f(x)$ and $f'(x)$")
-    fig3d = go.Figure()
-    fig3d.add_trace(go.Scatter3d(x=X, y=Y, z=Y_prime, mode='lines', name='f(x) vs f\'(x)',
-                                 line=dict(color='royalblue')))
-    fig3d.update_layout(
-        scene=dict(
-            xaxis_title='x',
-            yaxis_title='f(x)',
-            zaxis_title="f'(x)",
-            camera=dict(eye=dict(x=1.5, y=1.5, z=1)),
-        ),
-        margin=dict(l=0, r=0, b=0, t=40),
-        title="Zoom and Rotate to Explore!"
-    )
-    st.plotly_chart(fig3d)
-
     # Tangent line visualization
     st.subheader("📍 Tangent Line at a Point")
     a_val = st.slider("Choose a point x = a", -5.0, 5.0, value=1.0, step=0.1)
