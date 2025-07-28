@@ -1,144 +1,80 @@
 import streamlit as st
 import sympy as sp
-from sympy.abc import x
-import matplotlib.pyplot as plt
+import re
 import numpy as np
+import matplotlib.pyplot as plt
 from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication_application
 
-transformations = (standard_transformations + (implicit_multiplication_application,))
+transformations = standard_transformations + (implicit_multiplication_application,)
+x = sp.symbols('x')
 
-def step_by_step_antiderivative(expr):
-    steps = []
+def parse_latex_integral(latex_input):
+    # Normalize input
+    latex_input = latex_input.replace(" ", "").replace("dx", "")
+    pattern_definite = r"\\int_({[^}]+})\^({[^}]+})(.+)"
+    pattern_indefinite = r"\\int(.+)"
 
-    # Sum Rule
-    if expr.is_Add:
-        steps.append("**Sum Rule:**")
-        for term in expr.args:
-            steps += step_by_step_antiderivative(term)
-        return steps
+    match_def = re.match(pattern_definite, latex_input)
+    if match_def:
+        a = float(match_def.group(1).strip("{}"))
+        b = float(match_def.group(2).strip("{}"))
+        expr = match_def.group(3)
+        fx = parse_expr(expr, transformations=transformations)
+        return "definite", fx, x, a, b
 
-    # Constant Rule
-    if expr.is_Number:
-        steps.append("**Constant Rule:**")
-        steps.append(rf"$\int {sp.latex(expr)} \, dx = {sp.latex(expr)}x$")
-        return steps
+    match_indef = re.match(pattern_indefinite, latex_input)
+    if match_indef:
+        expr = match_indef.group(1)
+        fx = parse_expr(expr, transformations=transformations)
+        return "indefinite", fx, x, None, None
 
-    # Power Rule
-    if expr.is_Pow and expr.args[0] == x:
-        n = expr.args[1]
-        if n != -1:
-            result = sp.integrate(expr, x)
-            steps.append("**Power Rule:**")
-            steps.append(rf"$\int x^{{{sp.latex(n)}}} \, dx = \frac{{x^{{{sp.latex(n+1)}}}}}{{{sp.latex(n+1)}}}$")
-            steps.append(rf"$= {sp.latex(result)}$")
-        else:
-            steps.append("**Special Case:**")
-            steps.append(rf"$\int \frac{{1}}{{x}} \, dx = \ln|x|$")
-        return steps
-
-    # Exponential and trig cases
-    if expr == sp.exp(x):
-        steps.append("**Exponential Rule:**")
-        steps.append(rf"$\int e^x \, dx = e^x$")
-        return steps
-    if expr == 1/x:
-        steps.append("**Log Rule:**")
-        steps.append(rf"$\int \frac{{1}}{{x}} \, dx = \ln|x|$")
-        return steps
-    if expr == sp.sin(x):
-        steps.append("**Trig Rule:**")
-        steps.append(rf"$\int \sin x \, dx = -\cos x$")
-        return steps
-    if expr == sp.cos(x):
-        steps.append("**Trig Rule:**")
-        steps.append(rf"$\int \cos x \, dx = \sin x$")
-        return steps
-
-    # Fallback
-    result = sp.integrate(expr, x)
-    steps.append("**General Rule (Auto Integration):**")
-    steps.append(rf"$\int {sp.latex(expr)} \, dx = {sp.latex(result)}$")
-    return steps
-
-def definite_integral_steps(fx, a, b):
-    steps = []
-    F = sp.integrate(fx, x)
-    Fa = F.subs(x, a)
-    Fb = F.subs(x, b)
-    area = Fb - Fa
-    steps.append("**Fundamental Theorem of Calculus:**")
-    steps.append(rf"$\int_{{{a}}}^{{{b}}} {sp.latex(fx)} \, dx = F({b}) - F({a})$")
-    steps.append(rf"$= {sp.latex(F)} \Big|_{{{a}}}^{{{b}}} = {sp.latex(Fb)} - {sp.latex(Fa)} = {sp.latex(area)}$")
-    return steps
+    raise ValueError("Unrecognized LaTeX integral format. Try '\\int x^2 dx' or '\\int_0^1 x^2 dx'")
 
 def run():
-    st.set_page_config(page_title="Antiderivative Visualizer", layout="wide")
-    st.header("∫ Antiderivative Visualizer")
-    st.markdown("Enter a function and explore its antiderivative (indefinite and definite integrals) with step-by-step explanations and visualizations.")
+    st.set_page_config("Antiderivative LaTeX Visualizer", layout="wide")
+    st.header("∫ LaTeX Integral Visualizer")
+    st.markdown("Enter a LaTeX-style integral like `\\int x^2 dx` or `\\int_0^1 sqrt(x+1) dx`.")
 
-    # Function input
-    st.subheader("📥 Enter a Function")
-    f_input = st.text_input("f(x) =", "x^2 + 2x + 3")
+    user_input = st.text_input("Enter integral (LaTeX style):", "\\int_0^1 x^2 dx")
 
     try:
-        fx = parse_expr(f_input, transformations=transformations)
-        F = sp.integrate(fx, x)
+        mode, fx, var, a, b = parse_latex_integral(user_input)
     except Exception as e:
-        st.error(f"Invalid function: {e}")
+        st.error(f"❌ {e}")
         return
 
-    # Symbolic Antiderivative
-    st.subheader("🧮 Symbolic Antiderivative")
-    st.latex(rf"F(x) = \int {sp.latex(fx)} \, dx = {sp.latex(F)} + C")
+    if mode == "indefinite":
+        F = sp.integrate(fx, var)
+        st.subheader("🧮 Indefinite Integral")
+        st.latex(rf"\int {sp.latex(fx)} \, d{sp.latex(var)} = {sp.latex(F)} + C")
+    else:
+        F = sp.integrate(fx, (var, a, b))
+        st.subheader("🧮 Definite Integral")
+        st.latex(rf"\int_{{{a}}}^{{{b}}} {sp.latex(fx)} \, d{sp.latex(var)} = {sp.latex(F)}")
 
-    # Step-by-step Explanation
-    st.subheader("🔎 Step-by-Step Integration")
-    for step in step_by_step_antiderivative(fx):
-        st.markdown("- " + step)
+        # Step-by-step breakdown
+        antiderivative = sp.integrate(fx, var)
+        Fa = antiderivative.subs(var, a)
+        Fb = antiderivative.subs(var, b)
+        st.markdown("**Step-by-Step:**")
+        st.latex(rf"F(x) = {sp.latex(antiderivative)}")
+        st.latex(rf"\int_{{{a}}}^{{{b}}} {sp.latex(fx)} \, dx = F({b}) - F({a}) = {sp.latex(Fb)} - {sp.latex(Fa)} = {sp.latex(F)}")
 
-    # Graphs
-    st.subheader("📈 Graph of f(x) and F(x)")
-    f_np = sp.lambdify(x, fx, modules=["numpy"])
-    F_np = sp.lambdify(x, F, modules=["numpy"])
-    X = np.linspace(-5, 5, 400)
+    # Graph f(x) and filled area if definite
+    st.subheader("📈 Graph of f(x)")
+    f_np = sp.lambdify(var, fx, modules=["numpy"])
+    X = np.linspace(a - 1 if a else -5, b + 1 if b else 5, 400)
     Y = f_np(X)
-    Y_int = F_np(X)
-
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots()
     ax.plot(X, Y, label="f(x)", color="blue")
-    ax.plot(X, Y_int, label="F(x)", color="orange")
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
+    if mode == "definite":
+        x_fill = np.linspace(a, b, 300)
+        y_fill = f_np(x_fill)
+        ax.fill_between(x_fill, y_fill, alpha=0.3, color="green", label="Area")
+    ax.axhline(0, color='black', lw=0.5)
     ax.grid(True)
-    ax.set_title("Function and Antiderivative")
     ax.legend()
     st.pyplot(fig)
 
-    # Area Visualization
-    st.subheader("📊 Visualizing Accumulated Area")
-    a_val = st.slider("Choose starting point a", -5.0, 5.0, value=-2.0, step=0.1)
-    b_val = st.slider("Choose endpoint b", a_val, 5.0, value=2.0, step=0.1)
-    area_val = sp.integrate(fx, (x, a_val, b_val))
-    st.latex(rf"\int_{{{a_val}}}^{{{b_val}}} {sp.latex(fx)} \, dx = {sp.latex(area_val)}")
-
-    st.subheader("📐 Step-by-Step for Definite Integral")
-    for step in definite_integral_steps(fx, a_val, b_val):
-        st.markdown("- " + step)
-
-    # Highlight Area
-    x_fill = np.linspace(a_val, b_val, 300)
-    y_fill = f_np(x_fill)
-    fig2, ax2 = plt.subplots(figsize=(8, 5))
-    ax2.plot(X, Y, label="f(x)", color="blue")
-    ax2.fill_between(x_fill, y_fill, alpha=0.3, color="green", label="Accumulated Area")
-    ax2.set_xlabel("x")
-    ax2.set_ylabel("y")
-    ax2.set_title("Accumulated Area from a to b")
-    ax2.grid(True)
-    ax2.legend()
-    st.pyplot(fig2)
-
 if __name__ == "__main__":
     run()
-
-
