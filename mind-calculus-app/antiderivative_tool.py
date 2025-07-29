@@ -1,4 +1,8 @@
-import streamlit as st
+try:
+    import streamlit as st
+except ModuleNotFoundError:
+    raise ImportError("The Streamlit package is not installed. Please run 'pip install streamlit' in your environment.")
+
 import sympy as sp
 from sympy.abc import x
 import matplotlib.pyplot as plt
@@ -64,7 +68,7 @@ def step_by_step_antiderivative(expr):
 
     if expr == sp.log(x):
         steps.append("Logarithmic Rule:")
-        steps.append(r"\[ \int \ln x \, dx = x \ln x - x + C \]")
+        steps.append(r"\[ \int \ln x \, dx = x\ln x - x + C \]")
         return steps
 
     if expr == sp.sin(x):
@@ -122,21 +126,23 @@ def step_by_step_antiderivative(expr):
             result = uv - int_vdu
             steps.append("Integration by Parts:")
             steps.append(r"\[\begin{aligned}")
-            steps.append(r"  &\textbf{Let:}\quad u = %s,\quad dv = %s\,dx \\" % (sp.latex(u), sp.latex(dv)))
-            steps.append(r"  &\textbf{Then:}\quad du = %s,\quad v = %s \\" % (sp.latex(du), sp.latex(v)))
-            steps.append(r"  &\int %s\,dx = uv - \int v\,du \\" % sp.latex(expr))
-            steps.append(r"  &= %s - \int %s\,dx \\" % (sp.latex(uv), sp.latex(v * du)))
-            steps.append(r"  &= %s + C" % sp.latex(result))
+            steps.append(r"&\textbf{Let:}\quad u = %s,\quad dv = %s\,dx \\" % (sp.latex(u), sp.latex(dv)))
+            steps.append(r"&\textbf{Then:}\quad du = %s,\quad v = %s \\" % (sp.latex(du), sp.latex(v)))
+            steps.append(r"&\int %s\,dx = uv - \int v\,du \\" % sp.latex(expr))
+            steps.append(r"&= %s - \int %s\,dx \\" % (sp.latex(uv), sp.latex(v * du)))
+            steps.append(r"&= %s + C" % sp.latex(result))
             steps.append(r"\end{aligned}\]")
             return steps
 
     result = sp.integrate(expr, x)
     steps.append("General Rule (Auto Integration):")
     steps.append(r"\[\begin{aligned}")
-    steps.append(r"  &\text{Let } f(x) = %s \\" % sp.latex(expr))
-    steps.append(r"  &\int f(x) \, dx = %s + C" % sp.latex(result))
+    steps.append(r"&\text{Let } f(x) = %s \\" % sp.latex(expr))
+    steps.append(r"&\int f(x) \, dx = %s + C" % sp.latex(result))
     steps.append(r"\end{aligned}\]")
     return steps
+
+
 def run():
     st.header("∫ Antiderivative Visualizer")
     st.markdown("Enter a function to compute its antiderivative and view integration steps.")
