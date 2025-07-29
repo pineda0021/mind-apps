@@ -1,181 +1,138 @@
-try:
-    import streamlit as st
-except ModuleNotFoundError:
-    raise ImportError("The Streamlit package is not installed. Please run 'pip install streamlit' in your environment.")
-
+import streamlit as st
 import sympy as sp
 from sympy.abc import x
 import matplotlib.pyplot as plt
 import numpy as np
 
-sympy_locals = {
-    "e": sp.E,
-    "pi": sp.pi,
-    "oo": sp.oo,
-    "-oo": -sp.oo,
-    "sqrt": sp.sqrt,
-    "ln": sp.log,
-    "exp": sp.exp,
-    "sin": sp.sin,
-    "cos": sp.cos,
-    "tan": sp.tan,
-    "sec": sp.sec,
-    "csc": sp.csc,
-    "cot": sp.cot,
-    "asin": sp.asin,
-    "acos": sp.acos,
-    "atan": sp.atan,
-    "sinh": sp.sinh,
-    "cosh": sp.cosh,
-    "tanh": sp.tanh,
-    "log": sp.log,
-}
-
 def step_by_step_antiderivative(expr):
     steps = []
 
+    # Sum Rule
     if expr.is_Add:
-        steps.append("Sum Rule:")
+        steps.append("**Sum Rule:**")
         for term in expr.args:
             steps += step_by_step_antiderivative(term)
         return steps
 
+    # Constant Rule
     if expr.is_Number:
-        steps.append("Constant Rule:")
-        steps.append(r"$$\\int %s \, dx = %sx + C$$" % (sp.latex(expr), sp.latex(expr)))
+        steps.append("**Constant Rule:**")
+        steps.append(rf"$\int {sp.latex(expr)} \, dx = {sp.latex(expr)}x$")
         return steps
 
-    if expr.is_Pow:
-        base, exponent = expr.args
-        if base == x:
-            if exponent != -1:
-                steps.append("Power Rule:")
-                steps.append(r"$$\\int x^{%s} \, dx = \\frac{x^{%s}}{%s} + C$$" % (sp.latex(exponent), sp.latex(exponent+1), sp.latex(exponent+1)))
-            else:
-                steps.append("Special Case:")
-                steps.append(r"$$\\int \\frac{1}{x} \, dx = \\ln|x| + C$$")
-            return steps
+    # Power Rule
+    if expr.is_Pow and expr.args[0] == x:
+        n = expr.args[1]
+        if n != -1:
+            result = sp.integrate(expr, x)
+            steps.append("**Power Rule:**")
+            steps.append(rf"$\int x^{{{sp.latex(n)}}} \, dx = \frac{{x^{{{sp.latex(n+1)}}}}}{{{sp.latex(n+1)}}}$")
+            steps.append(rf"$= {sp.latex(result)}$")
         else:
-            u = base
-            du = sp.diff(u, x)
-            if du != 0:
-                steps.append("**Chain Rule (u-substitution):**")
-                steps.append(r"$$\\begin{aligned}")
-                steps.append(r"\\text{Let } u = %s,\\quad du = %s \\" % (sp.latex(u), sp.latex(du)))
-                steps.append(r"\\int %s \, dx = \\int u^{%s} \, du \\" % (sp.latex(expr), sp.latex(exponent)))
-                steps.append(r"= %s + C" % sp.latex(sp.integrate(expr, x)))
-                steps.append(r"\\end{aligned}$$")
-                return steps
+            steps.append("**Special Case:**")
+            steps.append(rf"$\int \frac{{1}}{{x}} \, dx = \ln|x|$")
+        return steps
 
+    # Chain Rule (u-substitution)
+    if expr.is_Mul:
+        factors = expr.args
+        for i in range(len(factors)):
+            for j in range(len(factors)):
+                if i != j and factors[i] == sp.diff(factors[j], x):
+                    u = factors[j]
+                    du = factors[i]
+                    new_expr = u**1
+                    result = sp.integrate(u, x)
+                    steps.append("**Chain Rule (u-substitution):**")
+                    steps.append(rf"Let $u = {sp.latex(u)}$, then $du = {sp.latex(sp.diff(u, x))} dx$")
+                    steps.append(rf"Rewrite: $\int {sp.latex(expr)} \, dx = \int u \, du$")
+                    steps.append(rf"$= {sp.latex(sp.integrate(u, x))}$")
+                    return steps
+
+    # Integration by Parts: x*sin(x), x*exp(x)
+    if expr.is_Mul and any(arg.has(x) for arg in expr.args):
+        u, dv = expr.args
+        du = sp.diff(u, x)
+        v = sp.integrate(dv, x)
+        uv = u * v
+        int_vdu = sp.integrate(v * du, x)
+        result = uv - int_vdu
+        steps.append("**Integration by Parts:**")
+        steps.append(rf"$\int {sp.latex(expr)} \, dx = uv - \int v \, du$")
+        steps.append(rf"Let $u = {sp.latex(u)}, dv = {sp.latex(dv)}dx$")
+        steps.append(rf"Then $du = {sp.latex(du)}dx$, and $v = {sp.latex(v)}$")
+        steps.append(rf"$= {sp.latex(uv)} - \int {sp.latex(v * du)} \, dx$")
+        steps.append(rf"$= {sp.latex(result)}$")
+        return steps
+
+    # Trig/Exp/Log
     if expr == sp.exp(x):
-        steps.append("Exponential Rule:")
-        steps.append(r"$$\\int e^x \, dx = e^x + C$$")
+        steps.append("**Exponential Rule:**")
+        steps.append(rf"$\int e^x \, dx = e^x$")
         return steps
 
-    if expr == sp.exp(-x):
-        steps.append("Exponential Rule (Negative Exponent):")
-        steps.append(r"$$\\int e^{-x} \, dx = -e^{-x} + C$$")
-        return steps
-
-    if expr == sp.log(x):
-        steps.append("Logarithmic Rule:")
-        steps.append(r"$$\\int \\ln x \, dx = x\\ln x - x + C$$")
+    if expr == 1/x:
+        steps.append("**Log Rule:**")
+        steps.append(rf"$\int \frac{{1}}{{x}} \, dx = \ln|x|$")
         return steps
 
     if expr == sp.sin(x):
-        steps.append("Trig Rule:")
-        steps.append(r"$$\\int \\sin x \, dx = -\\cos x + C$$")
+        steps.append("**Trig Rule:**")
+        steps.append(rf"$\int \sin x \, dx = -\cos x$")
         return steps
 
     if expr == sp.cos(x):
-        steps.append("Trig Rule:")
-        steps.append(r"$$\\int \\cos x \, dx = \\sin x + C$$")
+        steps.append("**Trig Rule:**")
+        steps.append(rf"$\int \cos x \, dx = \sin x$")
         return steps
 
-    if expr == sp.tan(x):
-        steps.append("Trig Rule:")
-        steps.append(r"$$\\int \\tan x \, dx = -\\ln|\\cos x| + C$$")
-        return steps
-
-    if expr == sp.asin(x):
-        steps.append("Inverse Trig Rule:")
-        steps.append(r"$$\\int \\sin^{-1} x \, dx = x \\sin^{-1} x + \\sqrt{1 - x^2} + C$$")
-        return steps
-
-    if expr == sp.acos(x):
-        steps.append("Inverse Trig Rule:")
-        steps.append(r"$$\\int \\cos^{-1} x \, dx = x \\cos^{-1} x - \\sqrt{1 - x^2} + C$$")
-        return steps
-
-    if expr == sp.atan(x):
-        steps.append("Inverse Trig Rule:")
-        steps.append(r"$$\\int \\tan^{-1} x \, dx = x \\tan^{-1} x - \\frac{1}{2} \\ln(1 + x^2) + C$$")
-        return steps
-
-    if expr == sp.sinh(x):
-        steps.append("Hyperbolic Rule:")
-        steps.append(r"$$\\int \\sinh x \, dx = \\cosh x + C$$")
-        return steps
-
-    if expr == sp.cosh(x):
-        steps.append("Hyperbolic Rule:")
-        steps.append(r"$$\\int \\cosh x \, dx = \\sinh x + C$$")
-        return steps
-
-    if expr == sp.tanh(x):
-        steps.append("Hyperbolic Rule:")
-        steps.append(r"$$\\int \\tanh x \, dx = \\ln(\\cosh x) + C$$")
-        return steps
-
-    if expr.is_Mul:
-        if len(expr.args) == 2:
-            u, dv = expr.args
-            du = sp.diff(u, x)
-            v = sp.integrate(dv, x)
-            uv = u * v
-            int_vdu = sp.integrate(v * du, x)
-            result = uv - int_vdu
-            steps.append("**Integration by Parts:**")
-            steps.append(r"$$\\begin{aligned}")
-            steps.append(r"\\textbf{Let:}\\quad u = %s,\\quad dv = %s \\" % (sp.latex(u), sp.latex(dv)))
-            steps.append(r"\\textbf{Then:}\\quad du = %s,\\quad v = %s \\" % (sp.latex(du), sp.latex(v)))
-            steps.append(r"\\int %s \, dx = uv - \\int v \, du \\" % sp.latex(expr))
-            steps.append(r"= %s - \\int %s \, dx \\" % (sp.latex(uv), sp.latex(v * du)))
-            steps.append(r"= %s + C" % sp.latex(result))
-            steps.append(r"\\end{aligned}$$")
-            return steps
-
+    # Fallback
     result = sp.integrate(expr, x)
-    steps.append("General Rule (Auto Integration):")
-    steps.append(r"$$\\begin{aligned}")
-    steps.append(r"\\text{Let } f(x) = %s \\" % sp.latex(expr))
-    steps.append(r"\\int f(x) \, dx = %s + C" % sp.latex(result))
-    steps.append(r"\\end{aligned}$$")
+    steps.append("**General Rule (Auto Integration):**")
+    steps.append(rf"$\int {sp.latex(expr)} \, dx = {sp.latex(result)}$")
+    return steps
+
+def definite_integral_steps(fx, a, b):
+    steps = []
+    F = sp.integrate(fx, x)
+    Fa = F.subs(x, a)
+    Fb = F.subs(x, b)
+    area = Fb - Fa
+    steps.append("**Fundamental Theorem of Calculus:**")
+    steps.append(rf"$\int_{{{a}}}^{{{b}}} {sp.latex(fx)} \, dx = F({b}) - F({a})$")
+    steps.append(rf"$= {sp.latex(F)} \Big|_{{{a}}}^{{{b}}} = {sp.latex(Fb)} - {sp.latex(Fa)} = {sp.latex(area)}$")
     return steps
 
 def run():
     st.header("∫ Antiderivative Visualizer")
-    st.markdown("Enter a function to compute its antiderivative and view integration steps.")
+    st.markdown("""
+    Enter a function and explore its antiderivative (indefinite or definite integral) symbolically and graphically.
+    """)
 
-    user_input = st.text_input("Enter a function f(x):", "x*exp(x)")
-    if not user_input:
-        return
-
+    # Function input
+    st.subheader("📥 Enter a Function")
+    f_input = st.text_input("f(x) =", "x**2 + 1")
     try:
-        expr = sp.sympify(user_input, locals=sympy_locals)
-    except Exception as e:
-        st.error(f"Invalid input: {e}")
+        fx = sp.sympify(f_input)
+        F = sp.integrate(fx, x)
+    except:
+        st.error("Invalid function. Please enter a valid mathematical expression.")
         return
 
-    st.subheader("🧮 Antiderivative")
-    st.latex(rf"\int {sp.latex(expr)} \, dx = {sp.latex(sp.integrate(expr, x))} + C")
+    # Symbolic Antiderivative
+    st.subheader("🧮 Symbolic Antiderivative")
+    st.latex(rf"F(x) = \int {sp.latex(fx)} \, dx = {sp.latex(F)} + C")
 
-    st.subheader("🔎 Step-by-Step")
-    for step in step_by_step_antiderivative(expr):
-        st.markdown(f"{step}", unsafe_allow_html=True)
+    # Step-by-step Explanation
+    st.subheader("🔎 Step-by-Step Integration")
+    for step in step_by_step_antiderivative(fx):
+        st.markdown("- " + step)
 
-    f_np = sp.lambdify(x, expr, modules=["numpy"])
-    F_np = sp.lambdify(x, sp.integrate(expr, x), modules=["numpy"])
+    # Graphs
+    st.subheader("📈 Graph of f(x) and F(x)")
+    f_np = sp.lambdify(x, fx, modules=["numpy"])
+    F_np = sp.lambdify(x, F, modules=["numpy"])
+
     X = np.linspace(-5, 5, 400)
     Y = f_np(X)
     Y_int = F_np(X)
@@ -185,21 +142,31 @@ def run():
     ax.plot(X, Y_int, label="F(x)", color="orange")
     ax.set_xlabel("x")
     ax.set_ylabel("y")
-    ax.set_title("Function and Antiderivative")
     ax.grid(True)
+    ax.set_title("Function and Antiderivative")
     ax.legend()
     st.pyplot(fig)
 
-    st.subheader("📊 Definite Integral")
-    a_str = st.text_input("Lower bound a (e.g., 0, pi, -oo):", "0")
-    b_str = st.text_input("Upper bound b (e.g., 1, pi/2, oo):", "1")
-    try:
-        a_val = sp.sympify(a_str, locals=sympy_locals)
-        b_val = sp.sympify(b_str, locals=sympy_locals)
-        definite_result = sp.integrate(expr, (x, a_val, b_val))
-        st.latex(rf"\int_{{{sp.latex(a_val)}}}^{{{sp.latex(b_val)}}} {sp.latex(expr)} \, dx = {sp.latex(definite_result)}")
-    except Exception as e:
-        st.warning(f"Could not compute definite integral: {e}")
+    # Area Visualization
+    st.subheader("📊 Visualizing Accumulated Area")
+    a_val = st.slider("Choose starting point a", -5.0, 5.0, value=-2.0, step=0.1)
+    b_val = st.slider("Choose endpoint b", a_val, 5.0, value=2.0, step=0.1)
+    area_val = sp.integrate(fx, (x, a_val, b_val))
+    st.latex(rf"\int_{{{a_val}}}^{{{b_val}}} {sp.latex(fx)} \, dx = {sp.latex(area_val)}")
 
-if __name__ == "__main__":
-    run()
+    st.subheader("📐 Step-by-Step for Definite Integral")
+    for step in definite_integral_steps(fx, a_val, b_val):
+        st.markdown("- " + step)
+
+    # Highlight Area
+    x_fill = np.linspace(a_val, b_val, 300)
+    y_fill = f_np(x_fill)
+    fig2, ax2 = plt.subplots(figsize=(8, 5))
+    ax2.plot(X, Y, label="f(x)", color="blue")
+    ax2.fill_between(x_fill, y_fill, alpha=0.3, color="green", label="Accumulated Area")
+    ax2.set_xlabel("x")
+    ax2.set_ylabel("y")
+    ax2.set_title("Accumulated Area from a to b")
+    ax2.grid(True)
+    ax2.legend()
+    st.pyplot(fig2)
