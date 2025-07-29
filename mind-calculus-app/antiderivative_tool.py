@@ -31,81 +31,81 @@ def step_by_step_antiderivative(expr):
     steps = []
 
     if expr.is_Add:
-        steps.append("**Sum Rule:**")
+        steps.append(r"\textbf{Sum Rule:}")
         for term in expr.args:
             steps += step_by_step_antiderivative(term)
         return steps
 
     if expr.is_Number:
-        steps.append("**Constant Rule:**")
-        steps.append(r"\int %s \, dx = %sx" % (sp.latex(expr), sp.latex(expr)))
+        steps.append(r"\textbf{Constant Rule:}")
+        steps.append(r"\int %s \, dx = %sx + C" % (sp.latex(expr), sp.latex(expr)))
         return steps
 
     if expr.is_Pow and expr.args[0] == x:
         n = expr.args[1]
         if n != -1:
             result = sp.integrate(expr, x)
-            steps.append("**Power Rule:**")
-            steps.append(r"\int x^{%s} \, dx = \frac{x^{%s}}{%s}" % (sp.latex(n), sp.latex(n+1), sp.latex(n+1)))
-            steps.append("= %s" % sp.latex(result))
+            steps.append(r"\textbf{Power Rule:}")
+            steps.append(r"\int x^{%s} \, dx = \frac{x^{%s}}{%s} + C" % (sp.latex(n), sp.latex(n+1), sp.latex(n+1)))
+            steps.append(r"= %s + C" % sp.latex(result))
         else:
-            steps.append("**Special Case:**")
-            steps.append(r"\int \frac{1}{x} \, dx = \ln|x|")
+            steps.append(r"\textbf{Special Case:}")
+            steps.append(r"\int \frac{1}{x} \, dx = \ln|x| + C")
         return steps
 
     if expr == sp.exp(x):
-        steps.append("**Exponential Rule:**")
-        steps.append(r"\int e^x \, dx = e^x")
+        steps.append(r"\textbf{Exponential Rule:}")
+        steps.append(r"\int e^x \, dx = e^x + C")
         return steps
 
     if expr == sp.log(x):
-        steps.append("**Logarithmic Rule:**")
-        steps.append(r"\int \ln x \, dx = x\ln x - x")
+        steps.append(r"\textbf{Logarithmic Rule:}")
+        steps.append(r"\int \ln x \, dx = x\ln x - x + C")
         return steps
 
     if expr == sp.sin(x):
-        steps.append("**Trig Rule:**")
-        steps.append(r"\int \sin x \, dx = -\cos x")
+        steps.append(r"\textbf{Trig Rule:}")
+        steps.append(r"\int \sin x \, dx = -\cos x + C")
         return steps
 
     if expr == sp.cos(x):
-        steps.append("**Trig Rule:**")
-        steps.append(r"\int \cos x \, dx = \sin x")
+        steps.append(r"\textbf{Trig Rule:}")
+        steps.append(r"\int \cos x \, dx = \sin x + C")
         return steps
 
     if expr == sp.tan(x):
-        steps.append("**Trig Rule:**")
-        steps.append(r"\int \tan x \, dx = -\ln|\cos x|")
+        steps.append(r"\textbf{Trig Rule:}")
+        steps.append(r"\int \tan x \, dx = -\ln|\cos x| + C")
         return steps
 
     if expr == sp.asin(x):
-        steps.append("**Inverse Trig Rule:**")
-        steps.append(r"\int \sin^{-1} x \, dx = x \sin^{-1} x + \sqrt{1 - x^2}")
+        steps.append(r"\textbf{Inverse Trig Rule:}")
+        steps.append(r"\int \sin^{-1} x \, dx = x \sin^{-1} x + \sqrt{1 - x^2} + C")
         return steps
 
     if expr == sp.acos(x):
-        steps.append("**Inverse Trig Rule:**")
-        steps.append(r"\int \cos^{-1} x \, dx = x \cos^{-1} x - \sqrt{1 - x^2}")
+        steps.append(r"\textbf{Inverse Trig Rule:}")
+        steps.append(r"\int \cos^{-1} x \, dx = x \cos^{-1} x - \sqrt{1 - x^2} + C")
         return steps
 
     if expr == sp.atan(x):
-        steps.append("**Inverse Trig Rule:**")
-        steps.append(r"\int \tan^{-1} x \, dx = x \tan^{-1} x - \frac{1}{2} \ln(1 + x^2)")
+        steps.append(r"\textbf{Inverse Trig Rule:}")
+        steps.append(r"\int \tan^{-1} x \, dx = x \tan^{-1} x - \frac{1}{2} \ln(1 + x^2) + C")
         return steps
 
     if expr == sp.sinh(x):
-        steps.append("**Hyperbolic Rule:**")
-        steps.append(r"\int \sinh x \, dx = \cosh x")
+        steps.append(r"\textbf{Hyperbolic Rule:}")
+        steps.append(r"\int \sinh x \, dx = \cosh x + C")
         return steps
 
     if expr == sp.cosh(x):
-        steps.append("**Hyperbolic Rule:**")
-        steps.append(r"\int \cosh x \, dx = \sinh x")
+        steps.append(r"\textbf{Hyperbolic Rule:}")
+        steps.append(r"\int \cosh x \, dx = \sinh x + C")
         return steps
 
     if expr == sp.tanh(x):
-        steps.append("**Hyperbolic Rule:**")
-        steps.append(r"\int \tanh x \, dx = \ln(\cosh x)")
+        steps.append(r"\textbf{Hyperbolic Rule:}")
+        steps.append(r"\int \tanh x \, dx = \ln(\cosh x) + C")
         return steps
 
     if expr.is_Mul:
@@ -116,10 +116,10 @@ def step_by_step_antiderivative(expr):
                     u = factors[j]
                     du = factors[i]
                     result = sp.integrate(u, x)
-                    steps.append("**Chain Rule (u-substitution):**")
+                    steps.append(r"\textbf{Chain Rule (u-substitution):}")
                     steps.append(r"Let \( u = %s \), then \( du = %s \, dx \)" % (sp.latex(u), sp.latex(sp.diff(u, x))))
                     steps.append(r"Rewrite: \( \int %s \, dx = \int u \, du \)" % sp.latex(expr))
-                    steps.append(r"= %s" % sp.latex(result))
+                    steps.append(r"= %s + C" % sp.latex(result))
                     return steps
 
     if expr.is_Mul and any(arg.has(x) for arg in expr.args):
@@ -129,17 +129,17 @@ def step_by_step_antiderivative(expr):
         uv = u * v
         int_vdu = sp.integrate(v * du, x)
         result = uv - int_vdu
-        steps.append("**Integration by Parts:**")
+        steps.append(r"\textbf{Integration by Parts:}")
         steps.append(r"\int %s \, dx = uv - \int v \, du" % sp.latex(expr))
-        steps.append(r"Let \( u = %s \), \( dv = %s dx \)" % (sp.latex(u), sp.latex(dv)))
-        steps.append(r"Then \( du = %s dx \), and \( v = %s \)" % (sp.latex(du), sp.latex(v)))
+        steps.append(r"Let \( u = %s \), \( dv = %s \, dx \)" % (sp.latex(u), sp.latex(dv)))
+        steps.append(r"Then \( du = %s \, dx \), and \( v = %s \)" % (sp.latex(du), sp.latex(v)))
         steps.append(r"= %s - \int %s \, dx" % (sp.latex(uv), sp.latex(v * du)))
-        steps.append(r"= %s" % sp.latex(result))
+        steps.append(r"= %s + C" % sp.latex(result))
         return steps
 
     result = sp.integrate(expr, x)
-    steps.append("**General Rule (Auto Integration):**")
-    steps.append("This function does not match a standard rule. Computing using built-in integration:")
+    steps.append(r"\textbf{General Rule (Auto Integration):}")
+    steps.append(r"This function does not match a standard rule. Computing using built-in integration:")
     steps.append(r"Let \( f(x) = %s \)" % sp.latex(expr))
     steps.append(r"Then \( \int f(x) \, dx = %s + C \)" % sp.latex(result))
     return steps
@@ -196,5 +196,4 @@ def run():
 
 if __name__ == "__main__":
     run()
-
 
