@@ -117,20 +117,6 @@ def step_by_step_antiderivative(expr):
         return steps
 
     if expr.is_Mul:
-        factors = expr.args
-        for i in range(len(factors)):
-            for j in range(len(factors)):
-                if i != j and factors[i] == sp.diff(factors[j], x):
-                    u = factors[j]
-                    du = factors[i]
-                    steps.append("**Chain Rule (u-substitution):**")
-                    steps.append(r"$$\begin{aligned}")
-                    steps.append(r"\text{Let } u = %s,\quad du = %s \\" % (sp.latex(u), sp.latex(sp.diff(u, x))))
-                    steps.append(r"\text{Then } \int %s \, dx = \int u \, du \\" % sp.latex(expr))
-                    steps.append(r"= %s + C" % sp.latex(sp.integrate(u, x)))
-                    steps.append(r"\end{aligned}$$")
-                    return steps
-
         if len(expr.args) == 2:
             u, dv = expr.args
             du = sp.diff(u, x)
