@@ -17,7 +17,7 @@ def step_by_step_antiderivative(expr):
     # Constant Rule
     if expr.is_Number:
         steps.append("**Constant Rule:**")
-        steps.append(rf"$\int {sp.latex(expr)} \, dx = {sp.latex(expr)}x$")
+        steps.append(rf"$\\int {sp.latex(expr)} \\, dx = {sp.latex(expr)}x$")
         return steps
 
     # Power Rule
@@ -26,28 +26,23 @@ def step_by_step_antiderivative(expr):
         if n != -1:
             result = sp.integrate(expr, x)
             steps.append("**Power Rule:**")
-            steps.append(rf"$\int x^{{{sp.latex(n)}}} \, dx = \frac{{x^{{{sp.latex(n+1)}}}}}{{{sp.latex(n+1)}}}$")
+            steps.append(rf"$\\int x^{{{sp.latex(n)}}} \\, dx = \\frac{{x^{{{sp.latex(n+1)}}}}}{{{sp.latex(n+1)}}}$")
             steps.append(rf"$= {sp.latex(result)}$")
         else:
             steps.append("**Special Case:**")
-            steps.append(rf"$\int \frac{{1}}{{x}} \, dx = \ln|x|$")
+            steps.append(rf"$\\int \\frac{{1}}{{x}} \\, dx = \\ln|x|$")
         return steps
 
     # Chain Rule (u-substitution)
-    if expr.is_Mul:
-        factors = expr.args
-        for i in range(len(factors)):
-            for j in range(len(factors)):
-                if i != j and factors[i] == sp.diff(factors[j], x):
-                    u = factors[j]
-                    du = factors[i]
-                    new_expr = u**1
-                    result = sp.integrate(u, x)
-                    steps.append("**Chain Rule (u-substitution):**")
-                    steps.append(rf"Let $u = {sp.latex(u)}$, then $du = {sp.latex(sp.diff(u, x))} dx$")
-                    steps.append(rf"Rewrite: $\int {sp.latex(expr)} \, dx = \int u \, du$")
-                    steps.append(rf"$= {sp.latex(sp.integrate(u, x))}$")
-                    return steps
+    if expr.func == sp.Pow and expr.args[0].has(x):
+        u = expr.args[0]
+        n = expr.args[1]
+        steps.append("**Chain Rule (u-substitution):**")
+        steps.append(rf"Let $u = {sp.latex(u)}$, then $du = {sp.latex(sp.diff(u, x))} dx$")
+        steps.append(rf"Rewrite: $\\int {sp.latex(expr)} \\, dx = \\int u^{{{sp.latex(n)}}} \\, du$")
+        result = sp.integrate(expr, x)
+        steps.append(rf"$= {sp.latex(result)}$")
+        return steps
 
     # Integration by Parts: x*sin(x), x*exp(x)
     if expr.is_Mul and any(arg.has(x) for arg in expr.args):
@@ -58,38 +53,38 @@ def step_by_step_antiderivative(expr):
         int_vdu = sp.integrate(v * du, x)
         result = uv - int_vdu
         steps.append("**Integration by Parts:**")
-        steps.append(rf"$\int {sp.latex(expr)} \, dx = uv - \int v \, du$")
+        steps.append(rf"$\\int {sp.latex(expr)} \\, dx = uv - \\int v \\, du$")
         steps.append(rf"Let $u = {sp.latex(u)}, dv = {sp.latex(dv)}dx$")
         steps.append(rf"Then $du = {sp.latex(du)}dx$, and $v = {sp.latex(v)}$")
-        steps.append(rf"$= {sp.latex(uv)} - \int {sp.latex(v * du)} \, dx$")
+        steps.append(rf"$= {sp.latex(uv)} - \\int {sp.latex(v * du)} \\, dx$")
         steps.append(rf"$= {sp.latex(result)}$")
         return steps
 
     # Trig/Exp/Log
     if expr == sp.exp(x):
         steps.append("**Exponential Rule:**")
-        steps.append(rf"$\int e^x \, dx = e^x$")
+        steps.append(rf"$\\int e^x \\, dx = e^x$")
         return steps
 
     if expr == 1/x:
         steps.append("**Log Rule:**")
-        steps.append(rf"$\int \frac{{1}}{{x}} \, dx = \ln|x|$")
+        steps.append(rf"$\\int \\frac{{1}}{{x}} \\, dx = \\ln|x|$")
         return steps
 
     if expr == sp.sin(x):
         steps.append("**Trig Rule:**")
-        steps.append(rf"$\int \sin x \, dx = -\cos x$")
+        steps.append(rf"$\\int \\sin x \\, dx = -\\cos x$")
         return steps
 
     if expr == sp.cos(x):
         steps.append("**Trig Rule:**")
-        steps.append(rf"$\int \cos x \, dx = \sin x$")
+        steps.append(rf"$\\int \\cos x \\, dx = \\sin x$")
         return steps
 
     # Fallback
     result = sp.integrate(expr, x)
     steps.append("**General Rule (Auto Integration):**")
-    steps.append(rf"$\int {sp.latex(expr)} \, dx = {sp.latex(result)}$")
+    steps.append(rf"$\\int {sp.latex(expr)} \\, dx = {sp.latex(result)}$")
     return steps
 
 def definite_integral_steps(fx, a, b):
@@ -99,8 +94,8 @@ def definite_integral_steps(fx, a, b):
     Fb = F.subs(x, b)
     area = Fb - Fa
     steps.append("**Fundamental Theorem of Calculus:**")
-    steps.append(rf"$\int_{{{a}}}^{{{b}}} {sp.latex(fx)} \, dx = F({b}) - F({a})$")
-    steps.append(rf"$= {sp.latex(F)} \Big|_{{{a}}}^{{{b}}} = {sp.latex(Fb)} - {sp.latex(Fa)} = {sp.latex(area)}$")
+    steps.append(rf"$\\int_{{{a}}}^{{{b}}} {sp.latex(fx)} \\, dx = F({b}) - F({a})$")
+    steps.append(rf"$= {sp.latex(F)} \\Big|_{{{a}}}^{{{b}}} = {sp.latex(Fb)} - {sp.latex(Fa)} = {sp.latex(area)}$")
     return steps
 
 def run():
@@ -121,7 +116,7 @@ def run():
 
     # Symbolic Antiderivative
     st.subheader("🧮 Symbolic Antiderivative")
-    st.latex(rf"F(x) = \int {sp.latex(fx)} \, dx = {sp.latex(F)} + C")
+    st.latex(rf"F(x) = \\int {sp.latex(fx)} \\, dx = {sp.latex(F)} + C")
 
     # Step-by-step Explanation
     st.subheader("🔎 Step-by-Step Integration")
@@ -152,7 +147,7 @@ def run():
     a_val = st.slider("Choose starting point a", -5.0, 5.0, value=-2.0, step=0.1)
     b_val = st.slider("Choose endpoint b", a_val, 5.0, value=2.0, step=0.1)
     area_val = sp.integrate(fx, (x, a_val, b_val))
-    st.latex(rf"\int_{{{a_val}}}^{{{b_val}}} {sp.latex(fx)} \, dx = {sp.latex(area_val)}")
+    st.latex(rf"\\int_{{{a_val}}}^{{{b_val}}} {sp.latex(fx)} \\, dx = {sp.latex(area_val)}")
 
     st.subheader("📐 Step-by-Step for Definite Integral")
     for step in definite_integral_steps(fx, a_val, b_val):
@@ -170,3 +165,6 @@ def run():
     ax2.grid(True)
     ax2.legend()
     st.pyplot(fig2)
+
+if __name__ == "__main__":
+    run()
