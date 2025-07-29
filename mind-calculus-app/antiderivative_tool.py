@@ -127,7 +127,8 @@ def step_by_step_antiderivative(expr):
             steps.append(r"& \int %s \, dx = uv - \int v \, du \\" % sp.latex(expr))
             steps.append(r"& = %s - \int %s \, dx \\" % (sp.latex(uv), sp.latex(v * du)))
             steps.append(r"& = %s + C" % sp.latex(result))
-            steps.append(r"\end{aligned} \]")
+            steps.append(r"\end{aligned}")
+            steps.append(r"\]")
             return steps
 
     result = sp.integrate(expr, x)
@@ -135,7 +136,8 @@ def step_by_step_antiderivative(expr):
     steps.append(r"\[ \begin{aligned}")
     steps.append(r"& \text{Let } f(x) = %s \\" % sp.latex(expr))
     steps.append(r"& \int f(x) \, dx = %s + C" % sp.latex(result))
-    steps.append(r"\end{aligned} \]")
+    steps.append(r"\end{aligned}")
+    steps.append(r"\]")
     return steps
 
 
@@ -189,3 +191,4 @@ def run():
 
 if __name__ == "__main__":
     run()
+
