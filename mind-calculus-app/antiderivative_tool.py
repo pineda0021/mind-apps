@@ -108,40 +108,38 @@ def step_by_step_antiderivative(expr):
         steps.append(r"\int \tanh x \, dx = \ln(\cosh x) + C")
         return steps
 
-    if expr.is_Mul:
-        factors = expr.args
-        for i in range(len(factors)):
-            for j in range(len(factors)):
-                if i != j and factors[i] == sp.diff(factors[j], x):
-                    u = factors[j]
-                    du = factors[i]
-                    result = sp.integrate(u, x)
-                    steps.append(r"\textbf{Chain Rule (u-substitution):}")
-                    steps.append(r"Let \( u = %s \), then \( du = %s \, dx \)" % (sp.latex(u), sp.latex(sp.diff(u, x))))
-                    steps.append(r"Rewrite: \( \int %s \, dx = \int u \, du \)" % sp.latex(expr))
-                    steps.append(r"= %s + C" % sp.latex(result))
-                    return steps
-
     if expr.is_Mul and any(arg.has(x) for arg in expr.args):
-        u, dv = expr.args
-        du = sp.diff(u, x)
-        v = sp.integrate(dv, x)
-        uv = u * v
-        int_vdu = sp.integrate(v * du, x)
-        result = uv - int_vdu
-        steps.append(r"\textbf{Integration by Parts:}")
-        steps.append(r"Let \( u = %s \), \( dv = %s \, dx \)" % (sp.latex(u), sp.latex(dv)))
-        steps.append(r"Then \( du = %s \, dx \), and \( v = %s \)" % (sp.latex(du), sp.latex(v)))
-        steps.append(r"\int %s \, dx = uv - \int v \, du" % sp.latex(expr))
-        steps.append(r"= %s - \int %s \, dx" % (sp.latex(uv), sp.latex(v * du)))
-        steps.append(r"= %s + C" % sp.latex(result))
-        return steps
+        if len(expr.args) == 2:
+            u, dv = expr.args
+            du = sp.diff(u, x)
+            v = sp.integrate(dv, x)
+            uv = u * v
+            int_vdu = sp.integrate(v * du, x)
+            result = uv - int_vdu
+            steps.append(r"\textbf{Integration by Parts:}")
+            steps.append(r"Let \\( u = %s \\), \\( dv = %s \\, dx \\)" % (sp.latex(u), sp.latex(dv)))
+            steps.append(r"Then \\( du = %s \\, dx \\), and \\( v = %s \\)" % (sp.latex(du), sp.latex(v)))
+            steps.append(r"\\[ \int %s \, dx = uv - \int v \, du \\]" % sp.latex(expr))
+            steps.append(r"\\[ = %s - \int %s \, dx \\]" % (sp.latex(uv), sp.latex(v * du)))
+            steps.append(r"\\[ = %s + C \\]" % sp.latex(result))
+            return steps
+
+    if expr.is_rational_function(x):
+        num, den = expr.as_numer_denom()
+        if den.as_poly(x).degree() > 1:
+            result = sp.apart(expr, x)
+            steps.append(r"\textbf{Partial Fractions Decomposition:}")
+            steps.append(r"Rewrite: \( %s = %s \)" % (sp.latex(expr), sp.latex(result)))
+            steps.append(r"Now integrate each term:")
+            for term in result.as_ordered_terms():
+                steps += step_by_step_antiderivative(term)
+            return steps
 
     result = sp.integrate(expr, x)
     steps.append(r"\textbf{General Rule (Auto Integration):}")
     steps.append(r"This function does not match a standard rule. Computing using built-in integration:")
-    steps.append(r"Let \( f(x) = %s \)" % sp.latex(expr))
-    steps.append(r"Then \( \int f(x) \, dx = %s + C \)" % sp.latex(result))
+    steps.append(r"Let \\( f(x) = %s \\)" % sp.latex(expr))
+    steps.append(r"Then \\( \int f(x) \, dx = %s + C \\)" % sp.latex(result))
     return steps
 
 
@@ -195,4 +193,5 @@ def run():
 
 if __name__ == "__main__":
     run()
+
 
