@@ -126,10 +126,10 @@ def step_by_step_antiderivative(expr):
             result = uv - int_vdu
             steps.append("Integration by Parts:")
             steps.append(r"$$\begin{aligned}")
-            steps.append(r"&\textbf{Let:}\quad u = %s,\quad dv = %s\,dx \\" % (sp.latex(u), sp.latex(dv)))
-            steps.append(r"&\textbf{Then:}\quad du = %s,\quad v = %s \\" % (sp.latex(du), sp.latex(v)))
-            steps.append(r"&\int %s\,dx = uv - \int v\,du \\" % sp.latex(expr))
-            steps.append(r"&= %s - \int %s\,dx \\" % (sp.latex(uv), sp.latex(v * du)))
+            steps.append(r"&\textbf{Let:}\quad u = %s,\quad dv = %s\\" % (sp.latex(u), sp.latex(dv)))
+            steps.append(r"&\textbf{Then:}\quad du = %s,\quad v = %s\\" % (sp.latex(du), sp.latex(v)))
+            steps.append(r"&\int %s\,dx = uv - \int v\,du\\" % sp.latex(expr))
+            steps.append(r"&= %s - \int %s\,dx\\" % (sp.latex(uv), sp.latex(v * du)))
             steps.append(r"&= %s + C" % sp.latex(result))
             steps.append(r"\end{aligned}$$")
             return steps
@@ -141,7 +141,6 @@ def step_by_step_antiderivative(expr):
     steps.append(r"&\int f(x) \, dx = %s + C" % sp.latex(result))
     steps.append(r"\end{aligned}$$")
     return steps
-
 
 def run():
     st.header("∫ Antiderivative Visualizer")
