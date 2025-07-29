@@ -130,9 +130,9 @@ def step_by_step_antiderivative(expr):
         int_vdu = sp.integrate(v * du, x)
         result = uv - int_vdu
         steps.append(r"\textbf{Integration by Parts:}")
-        steps.append(r"\int %s \, dx = uv - \int v \, du" % sp.latex(expr))
         steps.append(r"Let \( u = %s \), \( dv = %s \, dx \)" % (sp.latex(u), sp.latex(dv)))
         steps.append(r"Then \( du = %s \, dx \), and \( v = %s \)" % (sp.latex(du), sp.latex(v)))
+        steps.append(r"\int %s \, dx = uv - \int v \, du" % sp.latex(expr))
         steps.append(r"= %s - \int %s \, dx" % (sp.latex(uv), sp.latex(v * du)))
         steps.append(r"= %s + C" % sp.latex(result))
         return steps
@@ -143,6 +143,7 @@ def step_by_step_antiderivative(expr):
     steps.append(r"Let \( f(x) = %s \)" % sp.latex(expr))
     steps.append(r"Then \( \int f(x) \, dx = %s + C \)" % sp.latex(result))
     return steps
+
 
 def run():
     st.header("∫ Antiderivative Visualizer")
@@ -165,7 +166,6 @@ def run():
     for step in step_by_step_antiderivative(expr):
         st.latex(step)
 
-    # Plot f(x) and its antiderivative
     f_np = sp.lambdify(x, expr, modules=["numpy"])
     F_np = sp.lambdify(x, sp.integrate(expr, x), modules=["numpy"])
     X = np.linspace(-5, 5, 400)
@@ -182,7 +182,6 @@ def run():
     ax.legend()
     st.pyplot(fig)
 
-    # Definite integral section
     st.subheader("📊 Definite Integral")
     a_str = st.text_input("Lower bound a (e.g., 0, pi, -oo):", "0")
     b_str = st.text_input("Upper bound b (e.g., 1, pi/2, oo):", "1")
