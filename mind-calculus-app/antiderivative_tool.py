@@ -116,7 +116,19 @@ def step_by_step_antiderivative(expr):
         steps.append(r"$$ \int \tanh x \, dx = \ln(\cosh x) + C $$")
         return steps
 
-    if expr.is_Mul and any(arg.has(x) for arg in expr.args):
+    if expr.is_Mul:
+        factors = expr.args
+        for i in range(len(factors)):
+            for j in range(len(factors)):
+                if i != j and factors[i] == sp.diff(factors[j], x):
+                    u = factors[j]
+                    du = factors[i]
+                    steps.append("**Chain Rule (u-substitution):**")
+                    steps.append(rf"Let $u = {sp.latex(u)}$, then $du = {sp.latex(sp.diff(u, x))} \, dx$")
+                    steps.append(rf"Rewrite: $\int {sp.latex(expr)} \, dx = \int u \, du$")
+                    steps.append(rf"$= {sp.latex(sp.integrate(u, x))} + C$")
+                    return steps
+
         if len(expr.args) == 2:
             u, dv = expr.args
             du = sp.diff(u, x)
