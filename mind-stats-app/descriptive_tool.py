@@ -15,12 +15,35 @@ def run():
         ["Qualitative", "Quantitative (Discrete)", "Quantitative (Continuous)"]
     )
 
-    raw_data = st.text_area("Enter comma-separated values:", "")
+    # --- New Upload Feature ---
+    st.markdown("### 📤 Upload Data File (CSV or Excel)")
+    uploaded_file = st.file_uploader("Upload your dataset:", type=["csv", "xlsx"])
+    raw_data = ""
+
+    if uploaded_file:
+        try:
+            if uploaded_file.name.endswith(".csv"):
+                df_uploaded = pd.read_csv(uploaded_file)
+            else:
+                df_uploaded = pd.read_excel(uploaded_file)
+            st.success("✅ File uploaded successfully!")
+            st.dataframe(df_uploaded)
+
+            # Use first column for analysis
+            raw_data = df_uploaded.iloc[:, 0].dropna().astype(str).tolist()
+        except Exception as e:
+            st.error(f"Error reading file: {e}")
+    else:
+        raw_data = st.text_area("Or enter comma-separated values:", "")
 
     if raw_data:
-        data = [val.strip() for val in raw_data.split(',')]
+        # If text input, convert string -> list
+        if isinstance(raw_data, str):
+            data = [val.strip() for val in raw_data.split(',')]
+        else:
+            data = raw_data  # from uploaded file
 
-        df = None  # Initialize df for export
+        df = None
         fig = None
 
         if choice == "Qualitative":
@@ -37,10 +60,7 @@ def run():
                 st.dataframe(df)
                 plot_bar_and_pie(df, qualitative=False)
                 plot_relative_bar(df)
-
-                # Summary stats
                 show_summary_statistics(numeric_data)
-
             except ValueError:
                 st.error("Please enter valid integers for discrete quantitative data.")
 
@@ -52,10 +72,7 @@ def run():
                 st.subheader("Grouped Frequency Table (Continuous Data)")
                 st.dataframe(df)
                 st.pyplot(fig)
-
-                # Summary stats
                 show_summary_statistics(numeric_data)
-
             except ValueError:
                 st.error("Please enter valid numeric values for continuous data.")
 
@@ -101,13 +118,11 @@ def plot_bar_and_pie(df, qualitative=True):
 
     fig, axes = plt.subplots(1, 2 if qualitative else 1, figsize=(10, 4))
 
-    # Bar chart
     axes[0].bar(labels, freq, color='skyblue')
     axes[0].set_title('Frequency Bar Chart')
     axes[0].set_xlabel('Category')
     axes[0].set_ylabel('Frequency')
 
-    # Pie chart (only for qualitative)
     if qualitative:
         axes[1].pie(rel_freq, labels=labels, autopct='%.2f%%', startangle=90)
         axes[1].set_title('Pie Chart (Relative Frequency)')
@@ -148,15 +163,13 @@ def group_continuous_data(data, bins=5):
     return df, fig
 
 def show_summary_statistics(data):
-    """Display mean, median, mode, and standard deviation for quantitative data."""
-    st.subheader("📈 Summary Statistics")
-    stats_df = pd.DataFrame({
-        'Statistic': ['Mean', 'Median', 'Mode', 'Standard Deviation'],
-        'Value': [
-            np.mean(data),
-            np.median(data),
-            Counter(data).most_common(1)[0][0],
-            np.std(data, ddof=1)
-        ]
-    })
-    st.table(stats_df)
+    st.markdown("### 📈 Summary Statistics")
+    stats = {
+        "Mean": np.mean(data),
+        "Median": np.median(data),
+        "Standard Deviation": np.std(data),
+        "Variance": np.var(data),
+        "Min": np.min(data),
+        "Max": np.max(data)
+    }
+    st.json(stats)
