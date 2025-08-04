@@ -65,7 +65,7 @@ Make sure to install the following Python packages:
     └── config.toml
 </code></pre>
 
-<p>Your app will be live at:</p>
+<p>My app will be live at:</p>
 <pre><code>https://your-statistics-app.streamlit.app
 </code></pre>
 
