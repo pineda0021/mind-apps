@@ -1,114 +1,79 @@
-🧠 MIND: Statistics Visualizer Suite
-Created by Professor Edward Pineda-Castro at Los Angeles City College, this interactive Streamlit app helps students explore core statistics concepts using visuals, interactive tools, and hands-on simulations.
+# 📊 MIND: Statistics Visualizer Suite
 
-🚀 Tools Included
-1. Descriptive Statistics Tool
-Generate frequency and relative frequency tables
-Create bar charts, pie charts, and histograms
-View summary statistics (mean, median, mode, std deviation)
-✅ Challenge: Interpret which category has the highest frequency and explain its impact on central tendency.
-Probability Explorer (coming soon)
-Visualize probability experiments and outcomes
-Simulate coin tosses, dice rolls, and events
-✅ Challenge: Calculate 
-Discrete Distributions Visualizer (coming soon)
-Explore binomial and Poisson distributions
-Plot PMFs and cumulative probabilities
-✅ Challenge: Find the probability of exactly 
-Continuous Distributions Visualizer (coming soon)
+Created by **Professor Edward Pineda-Castro** at Los Angeles City College, this interactive Streamlit app helps students explore core statistics concepts using visuals, simulations, and hands-on data analysis tools.
 
-Visualize Normal, Exponential, and Uniform distributions
+## 🚀 Tools Included
 
-Compute and shade areas under the curve
+1. **Descriptive Statistics Tool**
+   - Create frequency and relative frequency tables
+   - Generate bar charts, pie charts, and histograms
+   - Handle qualitative, discrete quantitative, and continuous data
+   - ✅ *Challenge*: Build a grouped frequency table and interpret relative frequencies.
 
-✅ Challenge: Determine probabilities for intervals using the standard normal table.
+2. **Probability Explorer** *(coming soon)*
+   - Visualize basic probability concepts
+   - Interactive tree diagrams and Venn diagrams
+   - ✅ *Challenge*: Solve compound probability problems using diagrams.
 
-Confidence Interval Builder (coming soon)
+3. **Discrete Distributions Tool** *(coming soon)*
+   - Explore Binomial, Poisson, and other discrete distributions
+   - Plot probability mass functions (PMFs)
+   - ✅ *Challenge*: Compute probabilities for given discrete random variables.
 
-Construct confidence intervals for means and proportions
+4. **Continuous Distributions Tool** *(coming soon)*
+   - Visualize normal, exponential, and other continuous distributions
+   - Calculate areas under the curve
+   - ✅ *Challenge*: Find probabilities and percentiles for continuous data.
 
-Interactive sliders for confidence level and sample size
+5. **Confidence Interval Builder** *(coming soon)*
+   - Construct confidence intervals for means and proportions
+   - Visualize sampling distributions
+   - ✅ *Challenge*: Interpret confidence levels for real-world datasets.
 
-✅ Challenge: Interpret a 95% CI and explain its meaning in context.
+6. **Hypothesis Testing Tools** *(coming soon)*
+   - Perform one-sample and two-sample hypothesis tests
+   - Visual representation of rejection regions
+   - ✅ *Challenge*: Decide whether to reject \(H_0\) based on test statistics and p-values.
 
-Hypothesis Testing Modules (coming soon)
+7. **Chi-Square and ANOVA Analyzer** *(coming soon)*
+   - Conduct Chi-square tests and ANOVA for categorical and multi-group comparisons
+   - ✅ *Challenge*: Interpret results and significance levels.
 
-One-sample and two-sample tests (z, t-tests)
+8. **Regression Analysis Explorer** *(coming soon)*
+   - Visualize linear regression with real-time plots
+   - Display slope, intercept, and correlation coefficient
+   - ✅ *Challenge*: Predict outcomes and evaluate model fit.
 
-Chi-Square and ANOVA testing
+## 🏁 Getting Started
 
-Visual rejection regions with critical values
-
-✅ Challenge: Decide whether to reject 
-𝐻
-0
-H 
-0
-​
-  based on 
-𝑝
-p-value.
-
-Regression and Correlation Explorer (coming soon)
-
-Fit linear regression models
-
-Visualize correlation strength and direction
-
-✅ Challenge: Interpret slope and 
-𝑅
-2
-R 
-2
-  in a regression model.
-
-🏁 Getting Started
-🔧 Requirements
+### 🔧 Requirements
 Make sure to install the following Python packages:
-
-nginx
-Copy
-Edit
-streamlit
-numpy
-matplotlib
-pandas
-scipy
-📁 File Structure
-arduino
-Copy
-Edit
+### 📁 File Structure
 mind-statistics-app/
 ├── statsmain.py
 ├── descriptive_tool.py
 ├── probability_tool.py
-├── discrete_dist_tool.py
-├── continuous_dist_tool.py
-├── ci_tool.py
+├── discrete_tool.py
+├── continuous_tool.py
+├── confidence_tool.py
 ├── hypothesis_tool.py
+├── chi_anova_tool.py
 ├── regression_tool.py
 ├── requirements.txt
 ├── README.md
 └── .streamlit/
-    └── config.toml
-Your app will be live at:
+└── config.toml
 
-arduino
-Copy
-Edit
-https://your-statistics-app.streamlit.app
-🎓 Educational Value
+## 🎓 Educational Value
 Each module includes:
+- 💡 Concept overviews
+- 📘 Challenge problems with step-by-step guidance
+- 📊 Interactive visualizations
+- 🛠️ Hands-on data exploration
 
-💡 Concept explanations
+Students can learn by experimenting with parameters, visualizing statistical processes, and practicing real-world data analysis.
 
-📘 Practice challenges with randomized input
+---
 
-✏️ Step-by-step solutions
-
-📊 Interactive visual exploration
-
-Students can manipulate parameters, observe results in real-time, and strengthen their understanding of statistical reasoning and data analysis.
-
-Made with ❤️ for Statistics students everywhere by Professor Edward Pineda-Castro.
+Made with ❤️ for Statistics students everywhere by **Professor Edward Pineda-Castro**.
 
