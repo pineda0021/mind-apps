@@ -2,41 +2,19 @@
 Created by Professor Edward Pineda-Castro at Los Angeles City College, this interactive Streamlit app helps students explore core statistics concepts using visuals, interactive tools, and hands-on simulations.
 
 🚀 Tools Included
-Descriptive Statistics Tool
-
+1. Descriptive Statistics Tool
 Generate frequency and relative frequency tables
-
 Create bar charts, pie charts, and histograms
-
 View summary statistics (mean, median, mode, std deviation)
-
 ✅ Challenge: Interpret which category has the highest frequency and explain its impact on central tendency.
-
 Probability Explorer (coming soon)
-
 Visualize probability experiments and outcomes
-
 Simulate coin tosses, dice rolls, and events
-
 ✅ Challenge: Calculate 
-𝑃
-(
-𝐴
- or 
-𝐵
-)
-P(A or B) from a two-way table.
-
 Discrete Distributions Visualizer (coming soon)
-
 Explore binomial and Poisson distributions
-
 Plot PMFs and cumulative probabilities
-
 ✅ Challenge: Find the probability of exactly 
-𝑘
-k successes in a binomial trial.
-
 Continuous Distributions Visualizer (coming soon)
 
 Visualize Normal, Exponential, and Uniform distributions
