@@ -5,3 +5,4 @@ sympy
 plotly
 pandas
 xlsxwriter
+openpyxl
