@@ -49,20 +49,25 @@ Created by **Professor Edward Pineda-Castro** at Los Angeles City College, this 
 ### 🔧 Requirements
 Make sure to install the following Python packages:
 ### 📁 File Structure
-mind-statistics-app/
+
+<pre><code>mind-statistics-app/
 ├── statsmain.py
 ├── descriptive_tool.py
 ├── probability_tool.py
-├── discrete_tool.py
-├── continuous_tool.py
-├── confidence_tool.py
+├── discrete_dist_tool.py
+├── continuous_dist_tool.py
+├── ci_tool.py
 ├── hypothesis_tool.py
-├── chi_anova_tool.py
 ├── regression_tool.py
 ├── requirements.txt
 ├── README.md
 └── .streamlit/
-└── config.toml
+    └── config.toml
+</code></pre>
+
+<p>Your app will be live at:</p>
+<pre><code>https://your-statistics-app.streamlit.app
+</code></pre>
 
 ## 🎓 Educational Value
 Each module includes:
