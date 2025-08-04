@@ -39,8 +39,8 @@ st.markdown("""
 ---
 📘 Explore calculus with interactive tools built for conceptual clarity, practice, and fun.
 
-👨‍🏫 About the Creator: Professor Edward Pineda-Castro                                                                                                              
-Department of Mathematics at Los Angeles City College                                                                                                           
-E-Mail: pinedaem@lacitycollege.edu | Tel:(323)953-4000 ext. 2827                                                                                                      
+👨‍🏫 **About the Creator:** Professor Edward Pineda-Castro  
+Department of Mathematics, Los Angeles City College  
+📧 Email: pinedaem@lacitycollege.edu | 📞 Tel: (323) 953-4000 ext. 2827                                                                                                   
 Founder of MIND — Making Inference Digestible
 """)
