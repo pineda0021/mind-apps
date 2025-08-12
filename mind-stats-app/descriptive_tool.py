@@ -60,12 +60,10 @@ def run():
             try:
                 numeric_data = list(map(float, data))
 
-                # User input for class intervals
                 st.markdown("Enter class interval endpoints separated by commas, e.g. 0,5,10,15")
                 class_interval_input = st.text_input("Class Interval Endpoints (must be sorted)")
 
                 if class_interval_input.strip():
-                    # Parse input
                     try:
                         edges = [float(x.strip()) for x in class_interval_input.split(",")]
                         edges = sorted(set(edges))
@@ -76,7 +74,6 @@ def run():
                         st.error("Invalid input for class intervals. Please enter numbers separated by commas.")
                         return
                 else:
-                    # Default bins if no input
                     default_bins = 5
                     edges = np.histogram_bin_edges(numeric_data, bins=default_bins)
 
@@ -88,7 +85,6 @@ def run():
             except ValueError:
                 st.error("Please enter valid numeric values for continuous data.")
 
-        # Export Options
         if df is not None:
             st.markdown("### 📥 Download Results")
             csv = df.to_csv(index=False).encode('utf-8')
@@ -110,7 +106,79 @@ def run():
             )
 
 
-# Helper functions (same as before)...
+# ---------- Helper Functions ----------
+
+def display_frequency_table(data):
+    freq = dict(Counter(data))
+    total = sum(freq.values())
+    rel_freq = {k: round(v / total, 4) for k, v in freq.items()}
+    df = pd.DataFrame({
+        'Category': list(freq.keys()),
+        'Frequency': list(freq.values()),
+        'Relative Frequency': list(rel_freq.values())
+    })
+    # Sort by Category if numeric or alphabetically
+    try:
+        df['Category'] = pd.to_numeric(df['Category'])
+        df = df.sort_values(by='Category')
+    except:
+        df = df.sort_values(by='Category')
+    return df.reset_index(drop=True)
+
+
+def plot_qualitative(df):
+    labels = df['Category'].astype(str)
+    freq = df['Frequency']
+    rel_freq = df['Relative Frequency']
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+
+    axes[0].bar(labels, freq, color='skyblue')
+    axes[0].set_title('Frequency Bar Chart')
+    axes[0].set_xlabel('Category')
+    axes[0].set_ylabel('Frequency')
+
+    axes[1].pie(rel_freq, labels=labels, autopct='%.2f%%', startangle=90)
+    axes[1].set_title('Pie Chart (Relative Frequency)')
+
+    plt.tight_layout()
+    st.pyplot(fig)
+
+
+def plot_histograms(data, discrete=True, bins=None):
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+
+    if discrete:
+        # Frequency histogram
+        axes[0].hist(data, bins=range(min(data), max(data) + 2), edgecolor='black', color='lightblue')
+        axes[0].set_title('Frequency Histogram')
+        axes[0].set_xlabel('Value')
+        axes[0].set_ylabel('Frequency')
+
+        # Relative frequency histogram using weights
+        weights = np.ones_like(data) / len(data)
+        axes[1].hist(data, bins=range(min(data), max(data) + 2), weights=weights, edgecolor='black', color='salmon')
+        axes[1].set_title('Relative Frequency Histogram')
+        axes[1].set_xlabel('Value')
+        axes[1].set_ylabel('Relative Frequency')
+
+    else:
+        # Frequency histogram
+        axes[0].hist(data, bins=bins, edgecolor='black', color='lightgreen')
+        axes[0].set_title('Frequency Histogram')
+        axes[0].set_xlabel('Class Intervals')
+        axes[0].set_ylabel('Frequency')
+
+        # Relative frequency histogram using weights
+        weights = np.ones_like(data) / len(data)
+        axes[1].hist(data, bins=bins, weights=weights, edgecolor='black', color='orange')
+        axes[1].set_title('Relative Frequency Histogram')
+        axes[1].set_xlabel('Class Intervals')
+        axes[1].set_ylabel('Relative Frequency')
+
+    plt.tight_layout()
+    st.pyplot(fig)
+
 
 def group_continuous_data(data, bin_edges):
     counts, _ = np.histogram(data, bins=bin_edges)
@@ -125,35 +193,5 @@ def group_continuous_data(data, bin_edges):
     return df, bin_edges
 
 
-def plot_histograms(data, discrete=True, bins=None):
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-
-    if discrete:
-        axes[0].hist(data, bins=range(min(data), max(data) + 2), edgecolor='black', color='lightblue')
-        axes[0].set_title('Frequency Histogram')
-        axes[0].set_xlabel('Value')
-        axes[0].set_ylabel('Frequency')
-
-        counts, bin_edges = np.histogram(data, bins=range(min(data), max(data) + 2))
-        rel_freq = counts / counts.sum()
-        axes[1].bar(bin_edges[:-1], rel_freq, width=0.8, align='center', color='salmon', edgecolor='black')
-        axes[1].set_title('Relative Frequency Histogram')
-        axes[1].set_xlabel('Value')
-        axes[1].set_ylabel('Relative Frequency')
-
-    else:
-        axes[0].hist(data, bins=bins, edgecolor='black', color='lightgreen')
-        axes[0].set_title('Frequency Histogram')
-        axes[0].set_xlabel('Class Intervals')
-        axes[0].set_ylabel('Frequency')
-
-        counts, _ = np.histogram(data, bins=bins)
-        rel_freq = counts / counts.sum()
-        midpoints = [(bins[i] + bins[i+1]) / 2 for i in range(len(bins)-1)]
-        axes[1].bar(midpoints, rel_freq, width=(bins[1]-bins[0])*0.9, color='orange', edgecolor='black')
-        axes[1].set_title('Relative Frequency Histogram')
-        axes[1].set_xlabel('Class Intervals')
-        axes[1].set_ylabel('Relative Frequency')
-
-    plt.tight_layout()
-    st.pyplot(fig)
+if __name__ == "__main__":
+    run()
