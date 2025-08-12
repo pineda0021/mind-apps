@@ -60,24 +60,50 @@ def run():
             try:
                 numeric_data = list(map(float, data))
 
-                st.markdown("Enter class interval endpoints separated by commas, e.g. 0,5,10,15")
-                class_interval_input = st.text_input("Class Interval Endpoints (must be sorted)")
+                st.markdown("Enter class intervals as comma-separated ranges, e.g.: 0-2,3-5,6-8")
+                class_interval_input = st.text_input("Class Intervals")
 
                 if class_interval_input.strip():
                     try:
-                        edges = [float(x.strip()) for x in class_interval_input.split(",")]
-                        edges = sorted(set(edges))
-                        if len(edges) < 2:
-                            st.error("Please enter at least two numeric endpoints for class intervals.")
-                            return
-                    except Exception:
-                        st.error("Invalid input for class intervals. Please enter numbers separated by commas.")
+                        intervals = [item.strip() for item in class_interval_input.split(",") if item.strip()]
+                        bins = []
+
+                        # Parse intervals like "0-2"
+                        for interval in intervals:
+                            if "-" not in interval:
+                                st.error(f"Invalid interval format: '{interval}'. Use format like 0-2.")
+                                return
+                            left_str, right_str = interval.split("-")
+                            left, right = float(left_str), float(right_str)
+                            if right <= left:
+                                st.error(f"Invalid interval: upper bound must be > lower bound in '{interval}'")
+                                return
+                            bins.append((left, right))
+
+                        # Sort intervals by lower bound
+                        bins = sorted(bins, key=lambda x: x[0])
+
+                        # Construct bin edges from intervals:
+                        # Start with first lower bound, then all upper bounds
+                        bin_edges = [bins[0][0]]
+                        for left, right in bins:
+                            bin_edges.append(right)
+
+                        # Check for overlapping or unsorted intervals (optional)
+                        for i in range(len(bin_edges)-1):
+                            if bin_edges[i] > bin_edges[i+1]:
+                                st.error("Intervals are not sorted properly.")
+                                return
+
+                    except Exception as e:
+                        st.error(f"Error parsing intervals: {e}")
                         return
                 else:
+                    # Default bins if empty input
                     default_bins = 5
-                    edges = np.histogram_bin_edges(numeric_data, bins=default_bins)
+                    bin_edges = np.histogram_bin_edges(numeric_data, bins=default_bins)
 
-                df, bin_edges = group_continuous_data(numeric_data, edges)
+                df, bin_edges = group_continuous_data(numeric_data, bin_edges)
                 st.subheader("Grouped Frequency Table (Continuous Data)")
                 st.dataframe(df)
                 plot_histograms(numeric_data, discrete=False, bins=bin_edges)
