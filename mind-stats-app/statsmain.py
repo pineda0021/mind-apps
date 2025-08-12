@@ -22,7 +22,7 @@ st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College 
 st.sidebar.header("📚 Select a Concept")
 tool = st.sidebar.radio("Choose a tool:", [
     "Descriptive Statistics",
-    # "Probability",
+    "Probability",
     # "Discrete Distributions",
     # "Continuous Distributions",
     # "Confidence Interval",
@@ -36,8 +36,8 @@ tool = st.sidebar.radio("Choose a tool:", [
 # Route to tools
 if tool == "Descriptive Statistics":
     descriptive_tool.run()
-# elif tool == "Probability":
-#     probability_tool.run()
+elif tool == "Probability":
+   probability_tool.run()
 # elif tool == "Discrete Distributions":
 #     discrete_dist_tool.run()
 # elif tool == "Continuous Distributions":
