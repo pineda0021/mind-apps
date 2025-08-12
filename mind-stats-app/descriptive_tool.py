@@ -75,8 +75,8 @@ def run():
                                 return
                             left_str, right_str = interval.split("-")
                             left, right = float(left_str), float(right_str)
-                            if right <= left:
-                                st.error(f"Invalid interval: upper bound must be > lower bound in '{interval}'")
+                            if right < left:
+                                st.error(f"Invalid interval: upper bound must be >= lower bound in '{interval}'")
                                 return
                             bins.append((left, right))
 
@@ -190,14 +190,14 @@ def plot_histograms(data, discrete=True, bins=None):
 
     else:
         # Frequency histogram
-        axes[0].hist(data, bins=bins, edgecolor='black', color='lightgreen')
+        axes[0].hist(data, bins=bins_adjusted_for_inclusivity(bins), edgecolor='black', color='lightgreen')
         axes[0].set_title('Frequency Histogram')
         axes[0].set_xlabel('Class Intervals')
         axes[0].set_ylabel('Frequency')
 
         # Relative frequency histogram using weights
         weights = np.ones_like(data) / len(data)
-        axes[1].hist(data, bins=bins, weights=weights, edgecolor='black', color='orange')
+        axes[1].hist(data, bins=bins_adjusted_for_inclusivity(bins), weights=weights, edgecolor='black', color='orange')
         axes[1].set_title('Relative Frequency Histogram')
         axes[1].set_xlabel('Class Intervals')
         axes[1].set_ylabel('Relative Frequency')
@@ -205,9 +205,17 @@ def plot_histograms(data, discrete=True, bins=None):
     plt.tight_layout()
     st.pyplot(fig)
 
+def bins_adjusted_for_inclusivity(bin_edges):
+    """Add tiny epsilon to all bin edges except last for inclusivity on both ends."""
+    eps = 1e-8
+    adjusted = bin_edges.copy()
+    adjusted = np.array(adjusted)
+    adjusted[:-1] = adjusted[:-1] + eps
+    return adjusted
 
 def group_continuous_data(data, bin_edges):
-    counts, _ = np.histogram(data, bins=bin_edges)
+    adjusted_edges = bins_adjusted_for_inclusivity(bin_edges)
+    counts, _ = np.histogram(data, bins=adjusted_edges)
     rel_freq = np.round(counts / counts.sum(), 4)
     categories = [f"{bin_edges[i]:.2f} - {bin_edges[i+1]:.2f}" for i in range(len(bin_edges)-1)]
 
@@ -221,3 +229,4 @@ def group_continuous_data(data, bin_edges):
 
 if __name__ == "__main__":
     run()
+
