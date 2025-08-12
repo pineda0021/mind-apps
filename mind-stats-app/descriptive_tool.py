@@ -4,14 +4,114 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from collections import Counter
 import io
+import plotly.graph_objects as go
+from scipy import stats
+
+# ---------- Summary Stats Functions ----------
+
+def get_summary_stats(data, decimals=2):
+    minimum = round(np.min(data), decimals)
+    q1 = round(np.percentile(data, 25), decimals)
+    median = round(np.median(data), decimals)
+    q3 = round(np.percentile(data, 75), decimals)
+    maximum = round(np.max(data), decimals)
+    iqr = round(q3 - q1, decimals)
+
+    lower_bound = q1 - 1.5 * iqr
+    upper_bound = q3 + 1.5 * iqr
+    outliers = sorted([round(x, decimals) for x in data if x < lower_bound or x > upper_bound])
+
+    mean = round(np.mean(data), decimals)
+    mode_result = stats.mode(data, keepdims=True)
+    mode = list(np.round(mode_result.mode, decimals))
+    range_val = round(maximum - minimum, decimals)
+    pop_var = round(np.var(data), decimals)
+    pop_std = round(np.std(data), decimals)
+    samp_var = round(np.var(data, ddof=1), decimals)
+    samp_std = round(np.std(data, ddof=1), decimals)
+
+    return {
+        "Minimum": minimum,
+        "Q1": q1,
+        "Median": median,
+        "Q3": q3,
+        "Maximum": maximum,
+        "IQR": iqr,
+        "Outliers": outliers,
+        "Mean": mean,
+        "Mode": mode,
+        "Range": range_val,
+        "Population Variance": pop_var,
+        "Population Std Dev": pop_std,
+        "Sample Variance": samp_var,
+        "Sample Std Dev": samp_std
+    }
+
+def display_summary_streamlit(data):
+    stats = get_summary_stats(data)
+    st.markdown("### 📊 Five-Number Summary & IQR")
+    for key in ["Minimum", "Q1", "Median", "Q3", "Maximum", "IQR"]:
+        st.write(f"**{key}:** {stats[key]}")
+
+    st.markdown("### 📈 Descriptive Statistics")
+    st.write(f"**Mean:** {stats['Mean']}")
+    st.write(f"**Mode:** {', '.join(map(str, stats['Mode']))}")
+    st.write(f"**Range:** {stats['Range']}")
+    st.write(f"**Population Variance:** {stats['Population Variance']}")
+    st.write(f"**Population Std Dev:** {stats['Population Std Dev']}")
+    st.write(f"**Sample Variance:** {stats['Sample Variance']}")
+    st.write(f"**Sample Std Dev:** {stats['Sample Std Dev']}")
+
+    st.markdown("### 🚨 Outlier Analysis")
+    if stats["Outliers"]:
+        st.warning(f"Potential outliers: {stats['Outliers']}")
+    else:
+        st.success("No potential outliers detected.")
+
+def display_plotly_boxplot_streamlit(data):
+    stats = get_summary_stats(data)
+    fig = go.Figure()
+
+    fig.add_trace(go.Box(
+        x=data,
+        boxpoints='outliers',
+        orientation='h',
+        marker=dict(color='red'),
+        line=dict(color='black'),
+        fillcolor='lightblue',
+        name='Boxplot'
+    ))
+
+    fig.update_layout(
+        title="Interactive Boxplot for the Dataset",
+        xaxis_title="Values",
+        yaxis=dict(showticklabels=False),
+        showlegend=False,
+        template="simple_white"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown("### 🚨 Outlier Analysis")
+    if stats["Outliers"]:
+        st.warning(f"Potential outliers: {stats['Outliers']}")
+    else:
+        st.success("No potential outliers detected.")
+
+# ---------- Main App ----------
 
 def run():
     st.header("📊 Descriptive Statistics Tool")
-    st.write("Analyze qualitative, discrete, or continuous data with frequency tables and charts.")
+    st.write("Analyze qualitative, discrete, continuous data or get detailed summary statistics with boxplot.")
 
     choice = st.sidebar.radio(
         "Select Data Type:",
-        ["Qualitative", "Quantitative (Discrete)", "Quantitative (Continuous)"]
+        [
+            "Qualitative",
+            "Quantitative (Discrete)",
+            "Quantitative (Continuous)",
+            "Summary & Boxplot (Advanced)"
+        ]
     )
 
     st.markdown("### 📤 Upload Data File (CSV or Excel)")
@@ -59,7 +159,6 @@ def run():
         elif choice == "Quantitative (Continuous)":
             try:
                 numeric_data = list(map(float, data))
-
                 st.markdown("Enter class intervals as comma-separated ranges, e.g.: 0-2,3-5,6-8")
                 class_interval_input = st.text_input("Class Intervals")
 
@@ -68,7 +167,6 @@ def run():
                         intervals = [item.strip() for item in class_interval_input.split(",") if item.strip()]
                         bins = []
 
-                        # Parse intervals like "0-2"
                         for interval in intervals:
                             if "-" not in interval:
                                 st.error(f"Invalid interval format: '{interval}'. Use format like 0-2.")
@@ -80,26 +178,14 @@ def run():
                                 return
                             bins.append((left, right))
 
-                        # Sort intervals by lower bound
                         bins = sorted(bins, key=lambda x: x[0])
-
-                        # Construct bin edges from intervals:
-                        # Start with first lower bound, then all upper bounds
                         bin_edges = [bins[0][0]]
                         for left, right in bins:
                             bin_edges.append(right)
-
-                        # Check for overlapping or unsorted intervals (optional)
-                        for i in range(len(bin_edges)-1):
-                            if bin_edges[i] > bin_edges[i+1]:
-                                st.error("Intervals are not sorted properly.")
-                                return
-
                     except Exception as e:
                         st.error(f"Error parsing intervals: {e}")
                         return
                 else:
-                    # Default bins if empty input
                     default_bins = 5
                     bin_edges = np.histogram_bin_edges(numeric_data, bins=default_bins)
 
@@ -110,6 +196,14 @@ def run():
 
             except ValueError:
                 st.error("Please enter valid numeric values for continuous data.")
+
+        elif choice == "Summary & Boxplot (Advanced)":
+            try:
+                numeric_data = np.array(list(map(float, data)))
+                display_summary_streamlit(numeric_data)
+                display_plotly_boxplot_streamlit(numeric_data)
+            except ValueError:
+                st.error("Please enter valid numeric values for summary statistics.")
 
         if df is not None:
             st.markdown("### 📥 Download Results")
@@ -131,8 +225,7 @@ def run():
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
 
-
-# ---------- Helper Functions ----------
+# ---------- Other Helper Functions ----------
 
 def display_frequency_table(data):
     freq = dict(Counter(data))
@@ -143,14 +236,12 @@ def display_frequency_table(data):
         'Frequency': list(freq.values()),
         'Relative Frequency': list(rel_freq.values())
     })
-    # Sort by Category if numeric or alphabetically
     try:
         df['Category'] = pd.to_numeric(df['Category'])
         df = df.sort_values(by='Category')
     except:
         df = df.sort_values(by='Category')
     return df.reset_index(drop=True)
-
 
 def plot_qualitative(df):
     labels = df['Category'].astype(str)
@@ -170,18 +261,15 @@ def plot_qualitative(df):
     plt.tight_layout()
     st.pyplot(fig)
 
-
 def plot_histograms(data, discrete=True, bins=None):
     fig, axes = plt.subplots(1, 2, figsize=(10, 4))
 
     if discrete:
-        # Frequency histogram
         axes[0].hist(data, bins=range(min(data), max(data) + 2), edgecolor='black', color='lightblue')
         axes[0].set_title('Frequency Histogram')
         axes[0].set_xlabel('Value')
         axes[0].set_ylabel('Frequency')
 
-        # Relative frequency histogram using weights
         weights = np.ones_like(data) / len(data)
         axes[1].hist(data, bins=range(min(data), max(data) + 2), weights=weights, edgecolor='black', color='salmon')
         axes[1].set_title('Relative Frequency Histogram')
@@ -189,13 +277,11 @@ def plot_histograms(data, discrete=True, bins=None):
         axes[1].set_ylabel('Relative Frequency')
 
     else:
-        # Frequency histogram
         axes[0].hist(data, bins=bins_adjusted_for_inclusivity(bins), edgecolor='black', color='lightgreen')
         axes[0].set_title('Frequency Histogram')
         axes[0].set_xlabel('Class Intervals')
         axes[0].set_ylabel('Frequency')
 
-        # Relative frequency histogram using weights
         weights = np.ones_like(data) / len(data)
         axes[1].hist(data, bins=bins_adjusted_for_inclusivity(bins), weights=weights, edgecolor='black', color='orange')
         axes[1].set_title('Relative Frequency Histogram')
@@ -206,7 +292,6 @@ def plot_histograms(data, discrete=True, bins=None):
     st.pyplot(fig)
 
 def bins_adjusted_for_inclusivity(bin_edges):
-    """Add tiny epsilon to all bin edges except last for inclusivity on both ends."""
     eps = 1e-8
     adjusted = bin_edges.copy()
     adjusted = np.array(adjusted)
@@ -226,7 +311,5 @@ def group_continuous_data(data, bin_edges):
     })
     return df, bin_edges
 
-
 if __name__ == "__main__":
     run()
-
