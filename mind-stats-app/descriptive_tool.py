@@ -116,7 +116,7 @@ def run():
             "Qualitative",
             "Quantitative (Discrete)",
             "Quantitative (Continuous)",
-            "Summary & Boxplot (Advanced)"
+            "Summary Statistics & Boxplot"
         ]
     )
 
