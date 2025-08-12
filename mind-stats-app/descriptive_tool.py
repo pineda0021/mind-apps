@@ -19,6 +19,7 @@ def get_summary_stats(data, decimals=2):
 
     lower_bound = q1 - 1.5 * iqr
     upper_bound = q3 + 1.5 * iqr
+    # Convert outliers to plain floats
     outliers = sorted([float(round(x, decimals)) for x in data if x < lower_bound or x > upper_bound])
 
     mean = round(np.mean(data), decimals)
@@ -202,7 +203,7 @@ def run():
             except ValueError:
                 st.error("Please enter valid numeric values for continuous data.")
 
-        elif choice == "Summary & Boxplot (Advanced)":
+        elif choice == "Summary Statstics & Boxplot":
             try:
                 numeric_data = np.array(list(map(float, data)))
                 display_summary_streamlit(numeric_data)
