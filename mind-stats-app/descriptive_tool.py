@@ -203,7 +203,7 @@ def run():
             except ValueError:
                 st.error("Please enter valid numeric values for continuous data.")
 
-        elif choice == "Summary Statstics & Boxplot":
+        elif choice == "Summary Statistics & Boxplot":
             try:
                 numeric_data = np.array(list(map(float, data)))
                 display_summary_streamlit(numeric_data)
