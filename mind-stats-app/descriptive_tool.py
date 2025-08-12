@@ -19,7 +19,7 @@ def get_summary_stats(data, decimals=2):
 
     lower_bound = q1 - 1.5 * iqr
     upper_bound = q3 + 1.5 * iqr
-    outliers = sorted([round(x, decimals) for x in data if x < lower_bound or x > upper_bound])
+    outliers = sorted([float(round(x, decimals)) for x in data if x < lower_bound or x > upper_bound])
 
     mean = round(np.mean(data), decimals)
     mode_result = stats.mode(data, keepdims=True)
