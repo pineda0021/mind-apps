@@ -37,6 +37,8 @@ def get_summary_stats(data, decimals=2):
         "Q3": q3,
         "Maximum": maximum,
         "IQR": iqr,
+        "Lower Bound": round(lower_bound, decimals),
+        "Upper Bound": round(upper_bound, decimals),
         "Outliers": outliers,
         "Mean": mean,
         "Mode": mode,
@@ -63,6 +65,9 @@ def display_summary_streamlit(data):
     st.write(f"**Sample Std Dev:** {stats['Sample Std Dev']}")
 
     st.markdown("### 🚨 Outlier Analysis")
+    st.write(f"**Lower Bound:** {stats['Lower Bound']}")
+    st.write(f"**Upper Bound:** {stats['Upper Bound']}")
+
     if stats["Outliers"]:
         st.warning(f"Potential outliers: {stats['Outliers']}")
     else:
@@ -277,13 +282,14 @@ def plot_histograms(data, discrete=True, bins=None):
         axes[1].set_ylabel('Relative Frequency')
 
     else:
-        axes[0].hist(data, bins=bins_adjusted_for_inclusivity(bins), edgecolor='black', color='lightgreen')
+        bins_adj = bins_adjusted_for_inclusivity(bins)
+        axes[0].hist(data, bins=bins_adj, edgecolor='black', color='lightgreen')
         axes[0].set_title('Frequency Histogram')
         axes[0].set_xlabel('Class Intervals')
         axes[0].set_ylabel('Frequency')
 
         weights = np.ones_like(data) / len(data)
-        axes[1].hist(data, bins=bins_adjusted_for_inclusivity(bins), weights=weights, edgecolor='black', color='orange')
+        axes[1].hist(data, bins=bins_adj, weights=weights, edgecolor='black', color='orange')
         axes[1].set_title('Relative Frequency Histogram')
         axes[1].set_xlabel('Class Intervals')
         axes[1].set_ylabel('Relative Frequency')
@@ -292,10 +298,10 @@ def plot_histograms(data, discrete=True, bins=None):
     st.pyplot(fig)
 
 def bins_adjusted_for_inclusivity(bin_edges):
+    # Shift bins slightly to include upper bound in last bin
     eps = 1e-8
-    adjusted = bin_edges.copy()
-    adjusted = np.array(adjusted)
-    adjusted[:-1] = adjusted[:-1] + eps
+    adjusted = np.array(bin_edges, dtype=float)
+    adjusted[:-1] = adjusted[:-1] - eps  # subtract tiny amount to make intervals closed on right
     return adjusted
 
 def group_continuous_data(data, bin_edges):
