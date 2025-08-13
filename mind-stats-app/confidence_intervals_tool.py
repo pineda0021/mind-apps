@@ -62,12 +62,13 @@ def run():
         confidence_level = st.number_input("Confidence level", value=0.95)
 
         if st.button("Calculate"):
-            z = stats.norm.ppf((1 + confidence_level) / 2)
+            df = n - 1
+            t_crit = stats.t.ppf((1 + confidence_level) / 2, df=df)
             se = sd / np.sqrt(n)
-            moe = z * se
+            moe = t_crit * se
             lower, upper = mean - moe, mean + moe
 
-            st.latex(rf"Critical Value (Z-Score) = {z:.{decimal}f}")
+            st.latex(rf"Critical Value (t-Score) = {t_crit:.{decimal}f}")
             st.latex(rf"{confidence_level*100:.1f}\% \text{{ Confidence Interval: }} \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
 
     # 4. CI for Mean (With Data)
