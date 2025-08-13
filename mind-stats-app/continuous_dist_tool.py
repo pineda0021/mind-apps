@@ -1,16 +1,22 @@
+import streamlit as st
 import uniform_tool
 import normal_tool
 import inverse_normal_tool
-import streamlit as st
+import sample_mean_tool
+import sample_proportion_tool
 
 def run():
-    st.header("📈 Continuous Distributions")
-
-    choice = st.radio("Choose Distribution:", [
-        "Uniform Distribution",
-        "Normal Distribution",
-        "Inverse Normal Distribution"
-    ])
+    st.sidebar.title("Choose a Continuous Distribution")
+    choice = st.sidebar.radio(
+        "",
+        [
+            "Uniform Distribution",
+            "Normal Distribution",
+            "Inverse Normal Distribution",
+            "Distribution of the Sample Mean",
+            "Distribution of the Sample Proportion"
+        ]
+    )
 
     if choice == "Uniform Distribution":
         uniform_tool.run()
@@ -18,3 +24,7 @@ def run():
         normal_tool.run()
     elif choice == "Inverse Normal Distribution":
         inverse_normal_tool.run()
+    elif choice == "Distribution of the Sample Mean":
+        sample_mean_tool.run()
+    elif choice == "Distribution of the Sample Proportion":
+        sample_proportion_tool.run()
