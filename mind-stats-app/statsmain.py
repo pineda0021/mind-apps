@@ -28,7 +28,6 @@ elif tool == "Discrete Distributions":
 elif tool == "Continuous Distributions":
     continuous_dist_tool.run()
 
-
 st.markdown("""
 ---
 📘 Explore statistics with interactive tools built for conceptual clarity, practice, and fun.
