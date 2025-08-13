@@ -82,6 +82,5 @@ def run():
 
         st.pyplot(fig)
 
-
 if __name__ == "__main__":
     run()
