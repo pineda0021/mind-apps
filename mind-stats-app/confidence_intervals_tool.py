@@ -53,7 +53,6 @@ def run():
             z = stats.norm.ppf((1 + confidence_level) / 2)
             n_req = (z**2 * p_est * (1 - p_est)) / (moe**2)
             st.write("Required sample size:", int(np.ceil(n_req)))
-            st.latex(rf"Critical Value (Z-Score) = {z:.{decimal}f}")
 
     # 3. CI for Mean (Known SD)
     elif choice == categories[2]:
@@ -101,7 +100,7 @@ def run():
             st.latex(rf"Critical Value (t-Score) = {t_crit:.{decimal}f}")
             st.latex(rf"{confidence_level*100:.1f}\% \text{{ Confidence Interval: }} \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
 
-            # Plot with shaded CI
+            # Histogram with shaded CI
             fig, ax = plt.subplots()
             ax.hist(data, bins=10, color="skyblue", edgecolor="black", alpha=0.7)
             ax.axvline(lower, color="red", linestyle="--", label="Lower CI")
@@ -121,10 +120,26 @@ def run():
             z = stats.norm.ppf((1 + confidence_level) / 2)
             n_req = (z * sigma / moe)**2
             st.write("Required sample size:", int(np.ceil(n_req)))
-            st.latex(rf"Critical Value (Z-Score) = {z:.{decimal}f}")
 
-    # 6-9. CI for Variance & Std Dev (With Data)
-    elif choice in [categories[6], categories[8]]:
+    # 6. Confidence Interval for Variance (Without Data)
+    elif choice == categories[5]:
+        n = st.number_input("Sample size", min_value=1, step=1)
+        var = st.number_input("Sample variance", min_value=0.0)
+        confidence_level = st.number_input("Confidence level", value=0.95)
+
+        if st.button("Calculate"):
+            df = n - 1
+            chi2_lower = stats.chi2.ppf((1 - confidence_level)/2, df=df)
+            chi2_upper = stats.chi2.ppf(1 - (1 - confidence_level)/2, df=df)
+            lower = df * var / chi2_upper
+            upper = df * var / chi2_lower
+
+            st.latex(rf"s^2 = {var:.{decimal}f}")
+            st.latex(rf"Critical Values (Chi-Square): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}")
+            st.latex(rf"{confidence_level*100:.1f}\% \text{{ CI for Variance: }} \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
+
+    # 7. Confidence Interval for Variance (With Data)
+    elif choice == categories[6]:
         st.write("Upload CSV/Excel or enter data manually.")
         file = st.file_uploader("Upload file", type=["csv", "xlsx"])
         if file:
@@ -142,18 +157,78 @@ def run():
             n = len(data)
             var = np.var(data, ddof=1)
             df = n - 1
-            chi2_lower = stats.chi2.ppf((1 - confidence_level) / 2, df=df)
-            chi2_upper = stats.chi2.ppf(1 - (1 - confidence_level) / 2, df=df)
+            chi2_lower = stats.chi2.ppf((1 - confidence_level)/2, df=df)
+            chi2_upper = stats.chi2.ppf(1 - (1 - confidence_level)/2, df=df)
+            lower = df * var / chi2_upper
+            upper = df * var / chi2_lower
 
-            if choice == categories[6]:  # Variance
-                lower = (df * var) / chi2_upper
-                upper = (df * var) / chi2_lower
-                st.latex(rf"s^2 = {var:.{decimal}f}")
-                st.latex(rf"Critical Values (Chi-Square): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}")
-                st.latex(rf"{confidence_level*100:.1f}\% \text{{ CI for Variance: }} \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
-            else:  # Std Dev
-                lower = np.sqrt((df * var) / chi2_upper)
-                upper = np.sqrt((df * var) / chi2_lower)
-                st.latex(rf"s = {np.sqrt(var):.{decimal}f}")
-                st.latex(rf"Critical Values (Chi-Square): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}")
+            st.latex(rf"s^2 = {var:.{decimal}f}")
+            st.latex(rf"Critical Values (Chi-Square): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}")
+            st.latex(rf"{confidence_level*100:.1f}\% \text{{ CI for Variance: }} \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
+
+            # Histogram with shaded CI
+            fig, ax = plt.subplots()
+            ax.hist(data, bins=10, color="skyblue", edgecolor="black", alpha=0.7)
+            ax.axvline(np.sqrt(lower), color="red", linestyle="--", label="Lower CI")
+            ax.axvline(np.sqrt(upper), color="green", linestyle="--", label="Upper CI")
+            ax.axvspan(np.sqrt(lower), np.sqrt(upper), color="yellow", alpha=0.3)
+            ax.set_title("Histogram with Variance CI")
+            ax.legend()
+            st.pyplot(fig)
+
+    # 8. Confidence Interval for Std Dev (Without Data)
+    elif choice == categories[7]:
+        n = st.number_input("Sample size", min_value=1, step=1)
+        sd = st.number_input("Sample standard deviation", min_value=0.0)
+        confidence_level = st.number_input("Confidence level", value=0.95)
+
+        if st.button("Calculate"):
+            df = n - 1
+            chi2_lower = stats.chi2.ppf((1 - confidence_level)/2, df=df)
+            chi2_upper = stats.chi2.ppf(1 - (1 - confidence_level)/2, df=df)
+            lower = np.sqrt(df * sd**2 / chi2_upper)
+            upper = np.sqrt(df * sd**2 / chi2_lower)
+
+            st.latex(rf"s = {sd:.{decimal}f}")
+            st.latex(rf"Critical Values (Chi-Square): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}")
+            st.latex(rf"{confidence_level*100:.1f}\% \text{{ CI for Std Dev: }} \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
+
+    # 9. Confidence Interval for Std Dev (With Data)
+    elif choice == categories[8]:
+        st.write("Upload CSV/Excel or enter data manually.")
+        file = st.file_uploader("Upload file", type=["csv", "xlsx"])
+        if file:
+            if file.name.endswith(".csv"):
+                data = pd.read_csv(file).iloc[:, 0]
+            else:
+                data = pd.read_excel(file).iloc[:, 0]
+        else:
+            raw_data = st.text_area("Enter values separated by commas")
+            data = pd.Series([float(x) for x in raw_data.split(",") if x.strip() != ""]) if raw_data else None
+
+        confidence_level = st.number_input("Confidence level", value=0.95)
+
+        if st.button("Calculate") and data is not None and len(data) > 0:
+            n = len(data)
+            var = np.var(data, ddof=1)
+            df = n - 1
+            chi2_lower = stats.chi2.ppf((1 - confidence_level)/2, df=df)
+            chi2_upper = stats.chi2.ppf(1 - (1 - confidence_level)/2, df=df)
+            lower = np.sqrt(df * var / chi2_upper)
+            upper = np.sqrt(df * var / chi2_lower)
+
+            st.latex(rf"s = {np.sqrt(var):.{decimal}f}")
+            st.latex(rf"Critical Values (Chi-Square): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}")
+            st.latex(rf"{confidence_level*100:.1f}\% \text{{ CI for Std Dev: }} \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
+
+            # Histogram with shaded CI
+            fig, ax = plt.subplots()
+            ax.hist(data, bins=10, color="skyblue", edgecolor="black", alpha=0.7)
+            ax.axvline(lower, color="red", linestyle="--", label="Lower CI")
+            ax.axvline(upper, color="green", linestyle="--", label="Upper CI")
+            ax.axvspan(lower, upper, color="yellow", alpha=0.3)
+            ax.set_title("Histogram with Confidence Interval")
+            ax.legend()
+            st.pyplot(fig)
+
                
