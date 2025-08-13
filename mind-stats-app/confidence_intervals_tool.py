@@ -46,8 +46,8 @@ def run():
     # 2. Sample Size for Proportion
     elif choice == categories[1]:
         confidence_level = st.number_input("Confidence level", value=0.95)
-        p_est = st.number_input("Estimated proportion", value=0.5)
-        moe = st.number_input("Margin of error", value=0.05)
+        p_est = st.number_input("Estimated proportion", value=0.5, min_value=0.0, max_value=1.0, step=0.001, format="%.5f")
+        moe = st.number_input("Margin of error", value=0.05, min_value=0.0, step=0.001, format="%.5f")
 
         if st.button("Calculate"):
             z = stats.norm.ppf((1 + confidence_level) / 2)
