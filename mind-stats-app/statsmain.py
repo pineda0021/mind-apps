@@ -3,6 +3,7 @@ import descriptive_tool
 import discrete_dist_tool
 import binomial_tool
 import poisson_tool
+import probability_tool  # <-- add this import
 
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
 st.title("🧠 MIND: Statistics Visualizer Suite")
@@ -10,6 +11,7 @@ st.title("🧠 MIND: Statistics Visualizer Suite")
 st.sidebar.header("📚 Select a Concept")
 tool = st.sidebar.radio("Choose a tool:", [
     "Descriptive Statistics",
+    "Probability",               # <-- add Probability here
     "Discrete Distributions",
     "Binomial Distribution",
     "Poisson Distribution",
@@ -17,6 +19,8 @@ tool = st.sidebar.radio("Choose a tool:", [
 
 if tool == "Descriptive Statistics":
     descriptive_tool.run()
+elif tool == "Probability":      # <-- route to probability_tool
+    probability_tool.run()
 elif tool == "Discrete Distributions":
     discrete_dist_tool.run()
 elif tool == "Binomial Distribution":
