@@ -1,36 +1,15 @@
 import streamlit as st
+import importlib
 
-# Import existing tool modules
-import descriptive_tool
-import discrete_dist_tool
-import binomial_tool
-import poisson_tool
-
-# Future modules (placeholders — safe to leave commented until ready)
-# import continuous_dist_tool
-# import ci_tool
-# import ht_one_sample_tool
-# import ht_two_samples_tool
-# import chi_square_tool
-# import anova_tool
-# import regression_tool
-
-# -------------------------
-# APP CONFIGURATION
-# -------------------------
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
 st.title("🧠 MIND: Statistics Visualizer Suite")
 st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College — built with the students in MIND.")
 
-# -------------------------
-# SIDEBAR NAVIGATION
-# -------------------------
 st.sidebar.header("📚 Select a Concept")
 tool = st.sidebar.radio("Choose a tool:", [
     "Descriptive Statistics",
+    "Probability",
     "Discrete Distributions",
-    "Binomial Distribution",
-    "Poisson Distribution",
     # "Continuous Distributions",
     # "Confidence Interval",
     # "Hypothesis Testing (One Sample)",
@@ -40,35 +19,39 @@ tool = st.sidebar.radio("Choose a tool:", [
     # "Regression Analysis"
 ])
 
-# -------------------------
-# TOOL ROUTING
-# -------------------------
-if tool == "Descriptive Statistics":
-    descriptive_tool.run()
-elif tool == "Discrete Distributions":
-    discrete_dist_tool.run()
-elif tool == "Binomial Distribution":
-    binomial_tool.run()
-elif tool == "Poisson Distribution":
-    poisson_tool.run()
-# elif tool == "Continuous Distributions":
-#     continuous_dist_tool.run()
-# elif tool == "Confidence Interval":
-#     ci_tool.run()
-# elif tool == "Hypothesis Testing (One Sample)":
-#     ht_one_sample_tool.run()
-# elif tool == "Hypothesis Testing (Two Samples)":
-#     ht_two_samples_tool.run()
-# elif tool == "Chi-Square Test":
-#     chi_square_tool.run()
-# elif tool == "ANOVA":
-#     anova_tool.run()
-# elif tool == "Regression Analysis":
-#     regression_tool.run()
+def load_and_run(tool_module_name):
+    try:
+        module = importlib.import_module(tool_module_name)
+        if hasattr(module, "run"):
+            module.run()
+        else:
+            st.error(f"Module '{tool_module_name}' does not have a run() function.")
+    except ModuleNotFoundError:
+        st.error(f"Module '{tool_module_name}' not found. Please ensure the file exists.")
+    except Exception as e:
+        st.error(f"Error running '{tool_module_name}': {e}")
 
-# -------------------------
-# FOOTER
-# -------------------------
+if tool == "Descriptive Statistics":
+    load_and_run("descriptive_tool")
+elif tool == "Probability":
+    load_and_run("probability_tool")
+elif tool == "Discrete Distributions":
+    load_and_run("discrete_dist_tool")
+# elif tool == "Continuous Distributions":
+#     load_and_run("continuous_dist_tool")
+# elif tool == "Confidence Interval":
+#     load_and_run("ci_tool")
+# elif tool == "Hypothesis Testing (One Sample)":
+#     load_and_run("ht_one_sample_tool")
+# elif tool == "Hypothesis Testing (Two Samples)":
+#     load_and_run("ht_two_samples_tool")
+# elif tool == "Chi-Square Test":
+#     load_and_run("chi_square_tool")
+# elif tool == "ANOVA":
+#     load_and_run("anova_tool")
+# elif tool == "Regression Analysis":
+#     load_and_run("regression_tool")
+
 st.markdown("""
 ---
 📘 Explore statistics with interactive tools built for conceptual clarity, practice, and fun.
