@@ -24,6 +24,7 @@ def run():
     ]
 
     choice = st.selectbox("Choose a category:", categories)
+    decimal = st.number_input("Decimal places for output (except Sample Size)", min_value=0, max_value=10, value=4, step=1)
 
     # 1. Confidence Interval for Proportion
     if choice == categories[0]:
@@ -38,8 +39,9 @@ def run():
             moe = z * se
             lower, upper = p_hat - moe, p_hat + moe
 
-            st.latex(rf"\hat{{p}} = {p_hat:.4f}")
-            st.latex(rf"CI_{{{confidence_level*100:.0f}\%}} = \left({lower:.4f}, {upper:.4f}\right)")
+            st.latex(rf"\hat{{p}} = {p_hat:.{decimal}f}")
+            st.latex(rf"Critical Value (Z-Score) = {z:.{decimal}f}")
+            st.latex(rf"CI_{{{confidence_level*100:.1f}\%}} = \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
 
     # 2. Sample Size for Proportion
     elif choice == categories[1]:
@@ -51,6 +53,7 @@ def run():
             z = stats.norm.ppf((1 + confidence_level) / 2)
             n_req = (z**2 * p_est * (1 - p_est)) / (moe**2)
             st.write("Required sample size:", int(np.ceil(n_req)))
+            st.write(f"Critical Value (Z-Score) = {round_value(z, decimal)}")
 
     # 3. CI for Mean (Known SD)
     elif choice == categories[2]:
@@ -64,7 +67,8 @@ def run():
             se = sd / np.sqrt(n)
             moe = z * se
             lower, upper = mean - moe, mean + moe
-            st.latex(rf"CI = \left({lower:.4f}, {upper:.4f}\right)")
+            st.latex(rf"Critical Value (Z-Score) = {z:.{decimal}f}")
+            st.latex(rf"CI = \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
 
     # 4. CI for Mean (With Data)
     elif choice == categories[3]:
@@ -91,8 +95,9 @@ def run():
             moe = t_crit * se
             lower, upper = mean - moe, mean + moe
 
-            st.latex(rf"\bar{{x}} = {mean:.4f},\ s = {sd:.4f}")
-            st.latex(rf"CI_{{{confidence_level*100:.0f}\%}} = \left({lower:.4f}, {upper:.4f}\right)")
+            st.latex(rf"\bar{{x}} = {mean:.{decimal}f},\ s = {sd:.{decimal}f}")
+            st.latex(rf"Critical Value (t-Score) = {t_crit:.{decimal}f}")
+            st.latex(rf"CI_{{{confidence_level*100:.1f}\%}} = \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
 
             # Plot with shaded CI
             fig, ax = plt.subplots()
@@ -114,10 +119,10 @@ def run():
             z = stats.norm.ppf((1 + confidence_level) / 2)
             n_req = (z * sigma / moe)**2
             st.write("Required sample size:", int(np.ceil(n_req)))
+            st.write(f"Critical Value (Z-Score) = {round_value(z, decimal)}")
 
-    # 6-9. CI for Variance & Std Dev (similar approach with file uploads)
+    # 6-9. CI for Variance & Std Dev (with data)
     elif choice in [categories[6], categories[8]]:
-        with_data = choice in [categories[6], categories[8]]
         st.write("Upload CSV/Excel or enter data manually.")
 
         file = st.file_uploader("Upload file", type=["csv", "xlsx"])
@@ -142,13 +147,15 @@ def run():
             if choice == categories[6]:  # Variance
                 lower = (df * var) / chi2_upper
                 upper = (df * var) / chi2_lower
-                st.latex(rf"s^2 = {var:.4f}")
-                st.latex(rf"CI = \left({lower:.4f}, {upper:.4f}\right)")
+                st.latex(rf"s^2 = {var:.{decimal}f}")
+                st.latex(rf"Critical Values (Chi-Square): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}")
+                st.latex(rf"CI = \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
             else:  # Std Dev
                 lower = np.sqrt((df * var) / chi2_upper)
                 upper = np.sqrt((df * var) / chi2_lower)
-                st.latex(rf"s = {np.sqrt(var):.4f}")
-                st.latex(rf"CI = \left({lower:.4f}, {upper:.4f}\right)")
+                st.latex(rf"s = {np.sqrt(var):.{decimal}f}")
+                st.latex(rf"Critical Values (Chi-Square): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}")
+                st.latex(rf"CI = \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
 
             # Histogram with shaded CI
             fig, ax = plt.subplots()
