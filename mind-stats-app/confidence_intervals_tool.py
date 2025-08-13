@@ -9,7 +9,7 @@ def round_value(value, decimals=4):
     return round(value, decimals)
 
 def run():
-    st.header("📏 Confidence Interval Calculator")
+    st.header("🔮 Confidence Interval Calculator")
 
     categories = [
         "Confidence Interval for Proportion",
@@ -32,7 +32,7 @@ def run():
         x = st.number_input("Number of successes", min_value=0, max_value=n, step=1)
         confidence_level = st.number_input("Confidence level (e.g., 0.95)", min_value=0.0, max_value=1.0, value=0.95)
 
-        if st.button("Calculate"):
+        if st.button("👨‍💻 Calculate"):
             p_hat = x / n
             se = np.sqrt((p_hat * (1 - p_hat)) / n)
             z = stats.norm.ppf((1 + confidence_level) / 2)
@@ -49,7 +49,7 @@ def run():
         p_est = st.number_input("Estimated proportion", value=0.5, min_value=0.0, max_value=1.0, step=0.001, format="%.5f")
         moe = st.number_input("Margin of error", value=0.05, min_value=0.0, step=0.001, format="%.5f")
 
-        if st.button("Calculate"):
+        if st.button("👨‍💻 Calculate"):
             z = stats.norm.ppf((1 + confidence_level) / 2)
             n_req = (z**2 * p_est * (1 - p_est)) / (moe**2)
             st.write("Required sample size:", int(np.ceil(n_req)))
@@ -61,7 +61,7 @@ def run():
         n = st.number_input("Sample size", min_value=1, step=1)
         confidence_level = st.number_input("Confidence level", value=0.95)
 
-        if st.button("Calculate"):
+        if st.button("👨‍💻 Calculate"):
             df = n - 1
             t_crit = stats.t.ppf((1 + confidence_level) / 2, df=df)
             se = sd / np.sqrt(n)
@@ -86,7 +86,7 @@ def run():
 
         confidence_level = st.number_input("Confidence level", value=0.95)
 
-        if st.button("Calculate") and data is not None and len(data) > 0:
+        if st.button("👨‍💻 Calculate") and data is not None and len(data) > 0:
             n = len(data)
             mean = np.mean(data)
             sd = np.std(data, ddof=1)
@@ -116,7 +116,7 @@ def run():
         sigma = st.number_input("Population standard deviation", min_value=0.0)
         moe = st.number_input("Margin of error", min_value=0.0)
 
-        if st.button("Calculate"):
+        if st.button("👨‍💻 Calculate"):
             z = stats.norm.ppf((1 + confidence_level) / 2)
             n_req = (z * sigma / moe)**2
             st.write("Required sample size:", int(np.ceil(n_req)))
@@ -127,7 +127,7 @@ def run():
         var = st.number_input("Sample variance", min_value=0.0)
         confidence_level = st.number_input("Confidence level", value=0.95)
 
-        if st.button("Calculate"):
+        if st.button("👨‍💻 Calculate"):
             df = n - 1
             chi2_lower = stats.chi2.ppf((1 - confidence_level)/2, df=df)
             chi2_upper = stats.chi2.ppf(1 - (1 - confidence_level)/2, df=df)
@@ -153,7 +153,7 @@ def run():
 
         confidence_level = st.number_input("Confidence level", value=0.95)
 
-        if st.button("Calculate") and data is not None and len(data) > 0:
+        if st.button("👨‍💻 Calculate") and data is not None and len(data) > 0:
             n = len(data)
             var = np.var(data, ddof=1)
             df = n - 1
@@ -166,15 +166,6 @@ def run():
             st.latex(rf"Critical Values (Chi-Square): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}")
             st.latex(rf"{confidence_level*100:.1f}\% \text{{ CI for Variance: }} \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
 
-            # Histogram with shaded CI
-            fig, ax = plt.subplots()
-            ax.hist(data, bins=10, color="skyblue", edgecolor="black", alpha=0.7)
-            ax.axvline(np.sqrt(lower), color="red", linestyle="--", label="Lower CI")
-            ax.axvline(np.sqrt(upper), color="green", linestyle="--", label="Upper CI")
-            ax.axvspan(np.sqrt(lower), np.sqrt(upper), color="yellow", alpha=0.3)
-            ax.set_title("Histogram with Variance CI")
-            ax.legend()
-            st.pyplot(fig)
 
     # 8. Confidence Interval for Std Dev (Without Data)
     elif choice == categories[7]:
@@ -182,7 +173,7 @@ def run():
         sd = st.number_input("Sample standard deviation", min_value=0.0)
         confidence_level = st.number_input("Confidence level", value=0.95)
 
-        if st.button("Calculate"):
+        if st.button("👨‍💻 Calculate"):
             df = n - 1
             chi2_lower = stats.chi2.ppf((1 - confidence_level)/2, df=df)
             chi2_upper = stats.chi2.ppf(1 - (1 - confidence_level)/2, df=df)
@@ -208,7 +199,7 @@ def run():
 
         confidence_level = st.number_input("Confidence level", value=0.95)
 
-        if st.button("Calculate") and data is not None and len(data) > 0:
+        if st.button("👨‍💻 Calculate") and data is not None and len(data) > 0:
             n = len(data)
             var = np.var(data, ddof=1)
             df = n - 1
@@ -221,14 +212,6 @@ def run():
             st.latex(rf"Critical Values (Chi-Square): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}")
             st.latex(rf"{confidence_level*100:.1f}\% \text{{ CI for Std Dev: }} \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
 
-            # Histogram with shaded CI
-            fig, ax = plt.subplots()
-            ax.hist(data, bins=10, color="skyblue", edgecolor="black", alpha=0.7)
-            ax.axvline(lower, color="red", linestyle="--", label="Lower CI")
-            ax.axvline(upper, color="green", linestyle="--", label="Upper CI")
-            ax.axvspan(lower, upper, color="yellow", alpha=0.3)
-            ax.set_title("Histogram with Confidence Interval")
-            ax.legend()
-            st.pyplot(fig)
+           
 
                
