@@ -27,7 +27,7 @@ def run():
     decimal = st.number_input("Decimal places for output (except Sample Size)", min_value=0, max_value=10, value=4, step=1)
 
    # 1. Confidence Interval for Proportion
-if choice == categories[0]:
+    if choice == categories[0]:
     n = st.number_input("Sample size", min_value=1, step=1)
     x = st.number_input("Number of successes", min_value=0, max_value=n, step=1)
     confidence_level = st.number_input("Confidence level (e.g., 0.95)", min_value=0.0, max_value=1.0, value=0.95)
