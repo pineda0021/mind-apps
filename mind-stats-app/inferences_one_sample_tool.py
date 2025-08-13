@@ -258,4 +258,4 @@ def run_hypothesis_tool():
             st.write(f"Conclusion: {'Reject' if reject else 'Do not reject'} the null hypothesis")
 
 if __name__ == "__main__":
-    run_hypothesis_tool()
+    inferences_one_sample_tool.run()
