@@ -16,28 +16,18 @@ tool = st.sidebar.radio("Choose a tool:", [
     "Descriptive Statistics",
     "Probability",              
     "Discrete Distributions",
+    "Continuous Distributions",
 ])
 
 if tool == "Descriptive Statistics":
     descriptive_tool.run()
-elif tool == "Probability":      # <-- route to probability_tool
+elif tool == "Probability":      
     probability_tool.run()
 elif tool == "Discrete Distributions":
     discrete_dist_tool.run()
+elif tool == "Continuous Distributions":
+    continuous_dist_tool.run()
 
-st.sidebar.header("📊 Continuous Distributions")
-cont_dist = st.sidebar.radio("Choose Distribution:", [
-    "Uniform Distribution",
-    "Normal Distribution",
-    "Inverse Normal Distribution",
-])
-
-if cont_dist == "Uniform Distribution":
-    uniform_tool.run()
-elif cont_dist == "Normal Distribution":
-    normal_tool.run()
-elif cont_dist == "Inverse Normal Distribution":
-    inverse_normal_tool.run()
 
 st.markdown("""
 ---
