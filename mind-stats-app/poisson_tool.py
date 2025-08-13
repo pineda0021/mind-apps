@@ -1,66 +1,68 @@
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.stats import poisson
-
-def display_poisson_table(lmbda):
-    table_data = {
-        "x": list(range(0, int(lmbda*3) + 1)),
-        "P(X = x)": [poisson.pmf(x, lmbda) for x in range(0, int(lmbda*3) + 1)]
-    }
-    st.table(table_data)
-
-def display_poisson_plot(lmbda):
-    x = np.arange(0, int(lmbda*3) + 1)
-    y = poisson.pmf(x, lmbda)
-    fig, ax = plt.subplots()
-    ax.bar(x, y, color='salmon', edgecolor='black')
-    ax.set_title(f'Poisson Distribution (λ={lmbda})')
-    ax.set_xlabel('Number of Events')
-    ax.set_ylabel('Probability')
-    ax.grid(True, axis='y', linestyle='--', alpha=0.7)
-    st.pyplot(fig)
+import matplotlib.pyplot as plt
+from fractions import Fraction
 
 def run():
-    st.header("📦 Poisson Probability Calculator")
+    st.header("🕒 Poisson Distribution Calculator")
 
-    lmbda = st.number_input("Enter the average rate (λ):", min_value=0.01, value=2.0)
+    lam_input = st.text_input("Enter the mean (λ):", "1.0")
 
-    option = st.selectbox("Choose probability calculation:", [
-        "Exactly x events",
-        "At most x events",
-        "At least x events",
-        "Between x and y events",
-        "More than x events",
-        "Fewer than x events",
-        "View Probability Table and Graph"
+    try:
+        lam = float(Fraction(lam_input.strip()))
+        if lam <= 0:
+            st.error("λ must be a positive number.")
+            return
+    except:
+        st.error("Invalid input for λ.")
+        return
+
+    st.write("Choose a probability query:")
+    option = st.selectbox("", [
+        "P(X = x) Exactly x events",
+        "P(X ≤ x) At most x events",
+        "P(X ≥ x) At least x events",
+        "P(a ≤ X ≤ b) Between a and b events",
+        "View full distribution table and plot"
     ])
 
-    if option == "Exactly x events":
-        x = st.number_input("Enter x:", min_value=0, value=2)
-        st.write(f"P(X = {x}) = {poisson.pmf(x, lmbda):.5f}")
+    max_x = max(15, int(lam + 4 * np.sqrt(lam)))  # heuristic range for plot
 
-    elif option == "At most x events":
-        x = st.number_input("Enter x:", min_value=0, value=2)
-        st.write(f"P(X ≤ {x}) = {poisson.cdf(x, lmbda):.5f}")
+    if option == "View full distribution table and plot":
+        x_vals = np.arange(0, max_x + 1)
+        probs = poisson.pmf(x_vals, lam)
+        df = { "x": x_vals, "P(X=x)": np.round(probs, 5) }
+        st.table(df)
 
-    elif option == "At least x events":
-        x = st.number_input("Enter x:", min_value=0, value=2)
-        st.write(f"P(X ≥ {x}) = {1 - poisson.cdf(x - 1, lmbda):.5f}")
+        fig, ax = plt.subplots()
+        ax.bar(x_vals, probs, color='lightgreen', edgecolor='black')
+        ax.set_title(f'Poisson Distribution (λ={lam})')
+        ax.set_xlabel('Number of Events')
+        ax.set_ylabel('Probability')
+        st.pyplot(fig)
+        return
 
-    elif option == "Between x and y events":
-        a = st.number_input("Enter lower bound (a):", min_value=0, value=1)
-        b = st.number_input("Enter upper bound (b):", min_value=a, value=3)
-        st.write(f"P({a} ≤ X ≤ {b}) = {poisson.cdf(b, lmbda) - poisson.cdf(a - 1, lmbda):.5f}")
+    if option == "P(X = x) Exactly x events":
+        x = st.number_input("x (number of events):", min_value=0, step=1)
+        prob = poisson.pmf(x, lam)
+        st.write(f"P(X = {x}) = {prob:.5f}")
 
-    elif option == "More than x events":
-        x = st.number_input("Enter x:", min_value=0, value=2)
-        st.write(f"P(X > {x}) = {1 - poisson.cdf(x, lmbda):.5f}")
+    elif option == "P(X ≤ x) At most x events":
+        x = st.number_input("x (number of events):", min_value=0, step=1)
+        prob = poisson.cdf(x, lam)
+        st.write(f"P(X ≤ {x}) = {prob:.5f}")
 
-    elif option == "Fewer than x events":
-        x = st.number_input("Enter x:", min_value=0, value=2)
-        st.write(f"P(X < {x}) = {poisson.cdf(x - 1, lmbda):.5f}")
+    elif option == "P(X ≥ x) At least x events":
+        x = st.number_input("x (number of events):", min_value=0, step=1)
+        prob = 1 - poisson.cdf(x - 1, lam) if x > 0 else 1
+        st.write(f"P(X ≥ {x}) = {prob:.5f}")
 
-    elif option == "View Probability Table and Graph":
-        display_poisson_table(lmbda)
-        display_poisson_plot(lmbda)
+    elif option == "P(a ≤ X ≤ b) Between a and b events":
+        a = st.number_input("a (lower bound):", min_value=0, step=1)
+        b = st.number_input("b (upper bound):", min_value=0, step=1)
+        if b < a:
+            st.error("Upper bound b must be ≥ lower bound a.")
+        else:
+            prob = poisson.cdf(b, lam) - poisson.cdf(a - 1, lam) if a > 0 else poisson.cdf(b, lam)
+            st.write(f"P({a} ≤ X ≤ {b}) = {prob:.5f}")
