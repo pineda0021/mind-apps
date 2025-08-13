@@ -1,60 +1,48 @@
 import streamlit as st
 
-# App header configuration
+# MUST be first Streamlit command
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
 
 st.title("🧠 MIND: Statistics Visualizer Suite")
 st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College — built with the students in MIND.")
 
-# Try importing tools, but handle if they are missing
-try:
-    import descriptive_tool
-except ImportError:
-    descriptive_tool = None
+# Safe imports — do not crash if missing
+def safe_import(name):
+    try:
+        return __import__(name)
+    except ImportError:
+        return None
 
-try:
-    import probability_tool
-except ImportError:
-    probability_tool = None
+descriptive_tool = safe_import("descriptive_tool")
+probability_tool = safe_import("probability_tool")
+discrete_dist_tool = safe_import("discrete_dist_tool")
 
-try:
-    import discrete_dist_tool
-except ImportError:
-    discrete_dist_tool = None
-
-# Sidebar navigation
+# Sidebar
 st.sidebar.header("📚 Select a Concept")
 tool = st.sidebar.radio("Choose a tool:", [
     "Descriptive Statistics",
     "Probability",
-    "Discrete Distributions",
-    # "Continuous Distributions",
-    # "Confidence Interval",
-    # "Hypothesis Testing (One Sample)",
-    # "Hypothesis Testing (Two Samples)",
-    # "Chi-Square Test",
-    # "ANOVA",
-    # "Regression Analysis"
+    "Discrete Distributions"
 ])
 
-# Tool routing with safe execution
+# Route
 if tool == "Descriptive Statistics":
-    if descriptive_tool:
+    if descriptive_tool and hasattr(descriptive_tool, "run"):
         descriptive_tool.run()
     else:
-        st.error("❌ Descriptive Statistics module is missing.")
+        st.warning("Module not available yet.")
 
 elif tool == "Probability":
-    if probability_tool:
+    if probability_tool and hasattr(probability_tool, "run"):
         probability_tool.run()
     else:
-        st.error("❌ Probability module is missing.")
+        st.warning("Module not available yet.")
 
 elif tool == "Discrete Distributions":
-    if discrete_dist_tool:
+    if discrete_dist_tool and hasattr(discrete_dist_tool, "run"):
         discrete_dist_tool.run()
     else:
-        st.error("❌ Discrete Distributions module is missing.")
+        st.warning("Module not available yet.")
 
 # Footer
 st.markdown("""
