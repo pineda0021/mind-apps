@@ -115,7 +115,7 @@ def run():
             "Qualitative",
             "Quantitative (Discrete)",
             "Quantitative (Continuous)",
-            "Summary & Boxplot (Advanced)"
+            "Summary Statistics & Boxplot"
         ]
     )
 
@@ -202,7 +202,7 @@ def run():
             except ValueError:
                 st.error("Please enter valid numeric values for continuous data.")
 
-        elif choice == "Summary & Boxplot (Advanced)":
+        elif choice == "Summary Statistics & Boxplot":
             try:
                 numeric_data = np.array(list(map(float, data)))
                 display_summary_streamlit(numeric_data)
