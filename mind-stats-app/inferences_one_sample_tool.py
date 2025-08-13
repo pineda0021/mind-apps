@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm, t, chi2, binom
 
-def run_hypothesis_tool():
+def inferences_one_sample_tool.run():
     st.header("Inferences on One Sample")
 
     test_choice = st.selectbox(
