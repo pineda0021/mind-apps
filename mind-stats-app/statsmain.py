@@ -6,7 +6,7 @@ import poisson_tool
 import probability_tool  
 import continuous_dist_tool
 import confidence_intervals_tool
-inferences_one_sample_tool
+import inferences_one_sample_tool
 
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
 st.title("🧠 MIND: Statistics Visualizer Suite")
@@ -28,11 +28,11 @@ elif tool == "Probability":
 elif tool == "Discrete Distributions":
     discrete_dist_tool.run()
 elif tool == "Continuous Distributions":
-     continuous_dist_tool.run()
+    continuous_dist_tool.run()
 elif tool == "Confidence Intervals":   
-     confidence_intervals_tool.run()
+    confidence_intervals_tool.run()
 elif tool == "Inferences on One Sample":
-     inferences_one_sample_tool.run()
+    inferences_one_sample_tool.run()
 
 st.markdown("""
 ---
@@ -43,3 +43,4 @@ Department of Mathematics, Los Angeles City College
 📧 Email: pinedaem@lacitycollege.edu | 📞 Tel: (323) 953-4000 ext. 2827  
 Founder of **MIND** — *Making Inference Digestible*
 """)
+
