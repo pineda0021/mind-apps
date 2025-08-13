@@ -17,7 +17,7 @@ tool = st.sidebar.radio("Choose a tool:", [
 
 if tool == "Descriptive Statistics":
     descriptive_tool.run()
-elif tool == "Probability":      # <-- route to probability_tool
+elif tool == "Probability":     
     probability_tool.run()
 elif tool == "Discrete Distributions":
     discrete_dist_tool.run()
