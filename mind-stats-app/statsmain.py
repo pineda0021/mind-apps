@@ -3,7 +3,7 @@ import streamlit as st
 # Import tool modules (make sure these files exist)
 import descriptive_tool
 # Future modules (placeholders)
-# import probability_tool
+import probability_tool
 # import discrete_dist_tool
 # import continuous_dist_tool
 # import ci_tool
