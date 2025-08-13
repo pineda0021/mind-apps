@@ -13,7 +13,7 @@ def parse_stdev(sd_expr):
         return None
 
 def run():
-    st.header("🛎 Normal Distribution Calculator")
+    st.header("🔔 Normal Distribution Calculator")
 
     mean = st.number_input("Enter the mean (μ)", value=0.0, format="%.4f")
     sd_expr = st.text_input("Enter the standard deviation (σ)", value="1")
