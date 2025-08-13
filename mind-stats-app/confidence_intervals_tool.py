@@ -26,13 +26,16 @@ def run():
     choice = st.selectbox("Choose a category:", categories)
     decimal = st.number_input("Decimal places for output (except Sample Size)", min_value=0, max_value=10, value=4, step=1)
 
-    # 1. Confidence Interval for Proportion
-    if choice == categories[0]:
-        x = st.number_input("Number of successes", min_value=0, step=1)
-        n = st.number_input("Sample size", min_value=1, step=1)
-        confidence_level = st.number_input("Confidence level (e.g., 0.95)", min_value=0.0, max_value=1.0, value=0.95)
+   # 1. Confidence Interval for Proportion
+if choice == categories[0]:
+    n = st.number_input("Sample size", min_value=1, step=1)
+    x = st.number_input("Number of successes", min_value=0, max_value=n, step=1)
+    confidence_level = st.number_input("Confidence level (e.g., 0.95)", min_value=0.0, max_value=1.0, value=0.95)
 
-        if st.button("Calculate"):
+    if st.button("Calculate"):
+        if n <= 0:
+            st.error("Sample size must be greater than 0.")
+        else:
             p_hat = x / n
             se = np.sqrt((p_hat * (1 - p_hat)) / n)
             z = stats.norm.ppf((1 + confidence_level) / 2)
