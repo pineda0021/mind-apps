@@ -1,32 +1,93 @@
 import streamlit as st
 import numpy as np
+import scipy.stats as stats
 import matplotlib.pyplot as plt
-from scipy.stats import norm
+import math
+
+def parse_stdev(sd_expr):
+    try:
+        # Allow sqrt only
+        return eval(sd_expr, {"__builtins__": None}, {"sqrt": math.sqrt})
+    except Exception as e:
+        st.error(f"Invalid standard deviation input: {e}")
+        return None
 
 def run():
-    st.header("Normal Distribution")
+    st.header("📊 Normal Distribution Calculator")
 
-    mu = st.number_input("Mean (μ)", value=0.0)
-    sigma = st.number_input("Standard deviation (σ)", min_value=0.0001, value=1.0)
+    mean = st.number_input("Enter the mean (μ)", value=0.0, format="%.4f")
+    sd_expr = st.text_input("Enter the standard deviation (σ)", value="1")
+    decimal = st.number_input("Decimal places for output", min_value=0, max_value=10, value=4, step=1)
 
-    x = np.linspace(mu - 4 * sigma, mu + 4 * sigma, 500)
-    pdf = norm.pdf(x, mu, sigma)
-    cdf = norm.cdf(x, mu, sigma)
+    sd = parse_stdev(sd_expr)
+    if sd is None:
+        return
 
-    st.subheader("PDF")
-    fig, ax = plt.subplots()
-    ax.plot(x, pdf, label="PDF", color="blue")
-    ax.fill_between(x, 0, pdf, alpha=0.3)
-    ax.set_title(f"Normal Distribution PDF (μ={mu}, σ={sigma})")
-    ax.grid(True)
-    st.pyplot(fig)
+    st.markdown("---")
+    st.write("Choose a probability calculation:")
+    option = st.radio("", [
+        "1. Probability to the left of x (P(X < x))",
+        "2. Probability to the right of x (P(X > x))",
+        "3. Probability between two values (P(a < X < b))"
+    ])
 
-    st.subheader("CDF")
-    fig2, ax2 = plt.subplots()
-    ax2.plot(x, cdf, label="CDF", color="green")
-    ax2.set_title(f"Normal Distribution CDF (μ={mu}, σ={sigma})")
-    ax2.grid(True)
-    st.pyplot(fig2)
+    x_val = None
+    a = None
+    b = None
+    if option == "1. Probability to the left of x (P(X < x))":
+        x_val = st.number_input("Enter the value of x", value=mean)
+    elif option == "2. Probability to the right of x (P(X > x))":
+        x_val = st.number_input("Enter the value of x", value=mean)
+    elif option == "3. Probability between two values (P(a < X < b))":
+        a = st.number_input("Enter the lower bound a", value=mean - sd)
+        b = st.number_input("Enter the upper bound b", value=mean + sd)
+        if b < a:
+            st.error("Upper bound b must be greater than or equal to lower bound a.")
+            return
 
-    st.markdown(f"**Mean:** {mu:.5f}")
-    st.markdown(f"**Variance:** {(sigma**2):.5f}")
+    if st.button("Calculate Probability"):
+        x = np.linspace(mean - 4 * sd, mean + 4 * sd, 1000)
+        y = stats.norm.pdf(x, mean, sd)
+
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(x, y, label="Normal Distribution", color='blue')
+
+        def round_prob(p):
+            return round(p, decimal)
+
+        if option == "1. Probability to the left of x (P(X < x))":
+            prob = stats.norm.cdf(x_val, mean, sd)
+            st.success(f"P(X < {x_val}) = {round_prob(prob)}")
+            ax.fill_between(x, 0, y, where=(x <= x_val), color='lightblue')
+            ax.axvline(x_val, color='red', linestyle='--')
+
+        elif option == "2. Probability to the right of x (P(X > x))":
+            prob = 1 - stats.norm.cdf(x_val, mean, sd)
+            st.success(f"P(X > {x_val}) = {round_prob(prob)}")
+            ax.fill_between(x, 0, y, where=(x >= x_val), color='lightblue')
+            ax.axvline(x_val, color='red', linestyle='--')
+
+        elif option == "3. Probability between two values (P(a < X < b))":
+            prob = stats.norm.cdf(b, mean, sd) - stats.norm.cdf(a, mean, sd)
+            st.success(f"P({a} < X < {b}) = {round_prob(prob)}")
+            ax.fill_between(x, 0, y, where=(x >= a) & (x <= b), color='lightblue')
+            ax.axvline(a, color='red', linestyle='--')
+            ax.axvline(b, color='red', linestyle='--')
+
+        ax.set_xlabel("X")
+        ax.set_ylabel("Density")
+        ax.set_title("Normal Distribution")
+        ax.legend()
+        ax.grid(True)
+
+        st.pyplot(fig)
+
+        st.markdown("""
+        ---
+        **Professor:** Edward Pineda-Castro  
+        Department of Mathematics  
+        Los Angeles City College
+        """)
+
+if __name__ == "__main__":
+    run()
