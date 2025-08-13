@@ -4,7 +4,7 @@ import discrete_dist_tool
 import binomial_tool
 import poisson_tool
 import probability_tool  
-
+import continuous_dist_tool
 
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
 st.title("🧠 MIND: Statistics Visualizer Suite")
@@ -14,6 +14,7 @@ tool = st.sidebar.radio("Choose a tool:", [
     "Descriptive Statistics",
     "Probability",              
     "Discrete Distributions",
+    "Continuous Distributions",
 ])
 
 if tool == "Descriptive Statistics":
@@ -22,7 +23,8 @@ elif tool == "Probability":
     probability_tool.run()
 elif tool == "Discrete Distributions":
     discrete_dist_tool.run()
-
+elif tool == "Continuous Distributions":
+    continuous_dist_tool.run()
 
 st.markdown("""
 ---
