@@ -4,7 +4,7 @@ import streamlit as st
 import descriptive_tool
 # Future modules (placeholders)
 import probability_tool
-# import discrete_dist_tool
+import discrete_dist_tool
 # import continuous_dist_tool
 # import ci_tool
 # import ht_one_sample_tool
@@ -23,7 +23,7 @@ st.sidebar.header("📚 Select a Concept")
 tool = st.sidebar.radio("Choose a tool:", [
     "Descriptive Statistics",
     "Probability",
-    # "Discrete Distributions",
+    "Discrete Distributions",
     # "Continuous Distributions",
     # "Confidence Interval",
     # "Hypothesis Testing (One Sample)",
@@ -37,9 +37,9 @@ tool = st.sidebar.radio("Choose a tool:", [
 if tool == "Descriptive Statistics":
     descriptive_tool.run()
 elif tool == "Probability":
-   probability_tool.run()
-# elif tool == "Discrete Distributions":
-#     discrete_dist_tool.run()
+    probability_tool.run()
+elif tool == "Discrete Distributions":
+    discrete_dist_tool.run()
 # elif tool == "Continuous Distributions":
 #     continuous_dist_tool.run()
 # elif tool == "Confidence Interval":
