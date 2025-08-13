@@ -27,7 +27,7 @@ elif tool == "Discrete Distributions":
     discrete_dist_tool.run()
 elif tool == "Continuous Distributions":
      continuous_dist_tool.run()
- elif tool == "Confidence Intervals":   
+elif tool == "Confidence Intervals":   
      confidence_intervals_tool.run()
 
 st.markdown("""
