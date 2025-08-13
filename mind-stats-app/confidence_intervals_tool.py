@@ -24,18 +24,15 @@ def run():
     ]
 
     choice = st.selectbox("Choose a category:", categories)
-    decimal = st.number_input("Decimal places for output (except Sample Size)", min_value=0, max_value=10, value=4, step=1)
+    decimal = st.number_input("Decimal places for output", min_value=0, max_value=10, value=4)
 
-  # 1. Confidence Interval for Proportion
-  if choice == categories[0]:
-    n = st.number_input("Sample size", min_value=1, step=1)
-    x = st.number_input("Number of successes", min_value=0, max_value=n, step=1)
-    confidence_level = st.number_input("Confidence level (e.g., 0.95)", min_value=0.0, max_value=1.0, value=0.95)
+    # 1. Confidence Interval for Proportion
+    if choice == categories[0]:
+        n = st.number_input("Sample size", min_value=1, step=1)
+        x = st.number_input("Number of successes", min_value=0, max_value=n, step=1)
+        confidence_level = st.number_input("Confidence level (e.g., 0.95)", min_value=0.0, max_value=1.0, value=0.95)
 
-    if st.button("Calculate"):
-        if n <= 0:
-            st.error("Sample size must be greater than 0.")
-        else:
+        if st.button("Calculate"):
             p_hat = x / n
             se = np.sqrt((p_hat * (1 - p_hat)) / n)
             z = stats.norm.ppf((1 + confidence_level) / 2)
@@ -44,21 +41,7 @@ def run():
 
             st.latex(rf"\hat{{p}} = {p_hat:.{decimal}f}")
             st.latex(rf"Critical Value (Z-Score) = {z:.{decimal}f}")
-            st.latex(rf"CI_{{{confidence_level*100:.1f}\%}} = \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
-
-    if st.button("Calculate"):
-        if n <= 0:
-            st.error("Sample size must be greater than 0.")
-        else:
-            p_hat = x / n
-            se = np.sqrt((p_hat * (1 - p_hat)) / n)
-            z = stats.norm.ppf((1 + confidence_level) / 2)
-            moe = z * se
-            lower, upper = p_hat - moe, p_hat + moe
-
-            st.latex(rf"\hat{{p}} = {p_hat:.{decimal}f}")
-            st.latex(rf"Critical Value (Z-Score) = {z:.{decimal}f}")
-            st.latex(rf"CI_{{{confidence_level*100:.1f}\%}} = \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
+            st.latex(rf"{confidence_level*100:.1f}\% \text{{ Confidence Interval: }} \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
 
     # 2. Sample Size for Proportion
     elif choice == categories[1]:
@@ -70,7 +53,6 @@ def run():
             z = stats.norm.ppf((1 + confidence_level) / 2)
             n_req = (z**2 * p_est * (1 - p_est)) / (moe**2)
             st.write("Required sample size:", int(np.ceil(n_req)))
-            st.write(f"Critical Value (Z-Score) = {round_value(z, decimal)}")
 
     # 3. CI for Mean (Known SD)
     elif choice == categories[2]:
@@ -84,8 +66,9 @@ def run():
             se = sd / np.sqrt(n)
             moe = z * se
             lower, upper = mean - moe, mean + moe
+
             st.latex(rf"Critical Value (Z-Score) = {z:.{decimal}f}")
-            st.latex(rf"CI = \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
+            st.latex(rf"{confidence_level*100:.1f}\% \text{{ Confidence Interval: }} \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
 
     # 4. CI for Mean (With Data)
     elif choice == categories[3]:
@@ -114,7 +97,7 @@ def run():
 
             st.latex(rf"\bar{{x}} = {mean:.{decimal}f},\ s = {sd:.{decimal}f}")
             st.latex(rf"Critical Value (t-Score) = {t_crit:.{decimal}f}")
-            st.latex(rf"CI_{{{confidence_level*100:.1f}\%}} = \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
+            st.latex(rf"{confidence_level*100:.1f}\% \text{{ Confidence Interval: }} \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
 
             # Plot with shaded CI
             fig, ax = plt.subplots()
@@ -136,12 +119,10 @@ def run():
             z = stats.norm.ppf((1 + confidence_level) / 2)
             n_req = (z * sigma / moe)**2
             st.write("Required sample size:", int(np.ceil(n_req)))
-            st.write(f"Critical Value (Z-Score) = {round_value(z, decimal)}")
 
-    # 6-9. CI for Variance & Std Dev (with data)
+    # 6-9. CI for Variance & Std Dev (With Data)
     elif choice in [categories[6], categories[8]]:
         st.write("Upload CSV/Excel or enter data manually.")
-
         file = st.file_uploader("Upload file", type=["csv", "xlsx"])
         if file:
             if file.name.endswith(".csv"):
@@ -166,13 +147,13 @@ def run():
                 upper = (df * var) / chi2_lower
                 st.latex(rf"s^2 = {var:.{decimal}f}")
                 st.latex(rf"Critical Values (Chi-Square): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}")
-                st.latex(rf"CI = \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
+                st.latex(rf"{confidence_level*100:.1f}\% \text{{ CI for Variance: }} \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
             else:  # Std Dev
                 lower = np.sqrt((df * var) / chi2_upper)
                 upper = np.sqrt((df * var) / chi2_lower)
                 st.latex(rf"s = {np.sqrt(var):.{decimal}f}")
                 st.latex(rf"Critical Values (Chi-Square): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}")
-                st.latex(rf"CI = \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
+                st.latex(rf"{confidence_level*100:.1f}\% \text{{ CI for Std Dev: }} \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
 
             # Histogram with shaded CI
             fig, ax = plt.subplots()
