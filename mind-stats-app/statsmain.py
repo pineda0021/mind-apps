@@ -16,7 +16,7 @@ tool = st.sidebar.radio("Choose a tool:", [
     "Probability",              
     "Discrete Distributions",
     "Continuous Distributions",
-    "Confidence Intervals" 
+    "Confidence Intervals", 
 ])
 
 if tool == "Descriptive Statistics":
