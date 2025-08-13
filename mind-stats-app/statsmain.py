@@ -6,7 +6,7 @@ import poisson_tool
 import probability_tool  
 import continuous_dist_tool
 import confidence_intervals_tool
-import inferences_one_sample_tool
+import hypothesis_tool
 
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
 st.title("🧠 MIND: Statistics Visualizer Suite")
@@ -32,7 +32,7 @@ elif tool == "Continuous Distributions":
 elif tool == "Confidence Intervals":   
      confidence_intervals_tool.run()
 elif tool == "Inferences on One Sample":
-     inferences_one_sample_tool.run()
+     hypothesis_tool.run()
 
 st.markdown("""
 ---
