@@ -10,28 +10,19 @@ st.title("🧠 MIND: Statistics Visualizer Suite")
 st.sidebar.header("📚 Select a Concept")
 tool = st.sidebar.radio("Choose a tool:", [
     "Descriptive Statistics",
-    "Probability",
     "Discrete Distributions",
+    "Binomial Distribution",
+    "Poisson Distribution",
 ])
 
 if tool == "Descriptive Statistics":
-    try:
-        import descriptive_tool
-        descriptive_tool.run()
-    except Exception as e:
-        st.error(f"Error loading descriptive_tool: {e}")
-elif tool == "Probability":
-    try:
-        import probability_tool
-        probability_tool.run()
-    except Exception as e:
-        st.error(f"Error loading probability_tool: {e}")
+    descriptive_tool.run()
 elif tool == "Discrete Distributions":
-    try:
-        import discrete_dist_tool
-        discrete_dist_tool.run()
-    except Exception as e:
-        st.error(f"Error loading discrete_dist_tool: {e}")
+    discrete_dist_tool.run()
+elif tool == "Binomial Distribution":
+    binomial_tool.run()
+elif tool == "Poisson Distribution":
+    poisson_tool.run()
 
 st.markdown("""
 ---
