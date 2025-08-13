@@ -1,4 +1,4 @@
-import streamlit as st 
+import streamlit as st
 import descriptive_tool
 import discrete_dist_tool
 import binomial_tool
@@ -6,7 +6,7 @@ import poisson_tool
 import probability_tool  
 import continuous_dist_tool
 import confidence_intervals_tool
-import inferences_one_sample_tool
+import inferences_one_sample_tool  # Fixed import
 
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
 st.title("🧠 MIND: Statistics Visualizer Suite")
@@ -32,7 +32,7 @@ elif tool == "Continuous Distributions":
 elif tool == "Confidence Intervals":   
     confidence_intervals_tool.run()
 elif tool == "Inferences on One Sample":
-    inferences_one_sample_tool.run_hypothesis_tool()  # Fixed function call
+    inferences_one_sample_tool.run_hypothesis_tool()  # Call the function
 
 st.markdown("""
 ---
@@ -43,4 +43,3 @@ Department of Mathematics, Los Angeles City College
 📧 Email: pinedaem@lacitycollege.edu | 📞 Tel: (323) 953-4000 ext. 2827  
 Founder of **MIND** — *Making Inference Digestible*
 """)
-
