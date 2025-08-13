@@ -35,7 +35,7 @@ def plot_normal_distribution(mean, sd, result=None, bounds=None):
     st.pyplot(fig)
 
 def run():
-    st.header("📈 Inverse Normal Distribution Calculator")
+    st.header("🔔 Inverse Normal Distribution Calculator")
 
     mean = st.number_input("Enter the mean (μ)", value=0.0, format="%.4f")
     sd_expr = st.text_input("Enter the standard deviation (σ)", value="1")
@@ -60,7 +60,7 @@ def run():
             st.error("Probability must be between 0 and 1.")
             return
 
-        if st.button("Calculate"):
+        if st.button("📊 Calculate"):
             result = round(stats.norm.ppf(p, mean, sd), decimal)
             st.success(f"X for P(X < x) = {p} is {result}")
             plot_normal_distribution(mean, sd, result=result)
