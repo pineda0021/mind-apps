@@ -1,7 +1,7 @@
+from tools import uniform_tool
+from tools import normal_tool
+from tools import inverse_normal_tool
 import streamlit as st
-import uniform_tool
-import normal_tool
-import inverse_normal_tool
 
 def run():
     st.header("📈 Continuous Distributions")
