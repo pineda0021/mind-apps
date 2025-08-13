@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st 
 import descriptive_tool
 import discrete_dist_tool
 import binomial_tool
@@ -32,7 +32,7 @@ elif tool == "Continuous Distributions":
 elif tool == "Confidence Intervals":   
     confidence_intervals_tool.run()
 elif tool == "Inferences on One Sample":
-    inferences_one_sample_tool.run()
+    inferences_one_sample_tool.run_hypothesis_tool()  # Fixed function call
 
 st.markdown("""
 ---
