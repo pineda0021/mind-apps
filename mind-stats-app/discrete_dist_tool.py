@@ -154,13 +154,14 @@ def poisson_distribution_tool():
             ax.grid(axis='y')
             st.pyplot(fig)
 
-# Main routing logic
-choice = st.sidebar.selectbox("Choose Distribution", 
-                              ["Discrete Distribution", "Binomial Distribution", "Poisson Distribution"])
+def run():
+    choice = st.sidebar.selectbox("Choose Distribution", 
+                                  ["Discrete Distribution", "Binomial Distribution", "Poisson Distribution"])
 
-if choice == "Discrete Distribution":
-    discrete_distribution_tool()
-elif choice == "Binomial Distribution":
-    binomial_distribution_tool()
-elif choice == "Poisson Distribution":
-    poisson_distribution_tool()
+    if choice == "Discrete Distribution":
+        discrete_distribution_tool()
+    elif choice == "Binomial Distribution":
+        binomial_distribution_tool()
+    elif choice == "Poisson Distribution":
+        poisson_distribution_tool()
+
