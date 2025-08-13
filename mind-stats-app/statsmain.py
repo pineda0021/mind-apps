@@ -1,6 +1,8 @@
 import streamlit as st
 import descriptive_tool
 import discrete_dist_tool
+import binomial_tool
+import poisson_tool
 import probability_tool  
 
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
