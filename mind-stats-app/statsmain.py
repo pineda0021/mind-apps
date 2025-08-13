@@ -6,7 +6,7 @@ import poisson_tool
 import probability_tool  
 import uniform_tool
 import normal_tool
-import icontinuous_dist_tool
+import continuous_dist_tool
 
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
 st.title("🧠 MIND: Statistics Visualizer Suite")
