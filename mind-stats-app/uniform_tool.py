@@ -69,7 +69,7 @@ def run():
 
     # Interval query
     st.markdown("---")
-    st.subheader("Interval probability query")
+    st.subheader("Probability Between")
 
     lower_query = st.number_input(f"Lower bound of interval (≥ {a})", value=a, min_value=a, max_value=b, key="lower_query")
     upper_query = st.number_input(f"Upper bound of interval (≤ {b})", value=b, min_value=a, max_value=b, key="upper_query")
@@ -103,13 +103,15 @@ def run():
         elif query_type in ["P(X ≤ x)", "P(X < x)"] and a <= x <= b:
             ax.fill_between(xx, 0, pdf, where=(xx <= x), color="lightgreen", alpha=0.5, label=f"{query_type}")
 
-    # Draw rectangles for unit intervals if integer bounds
+    # Draw rectangles for unit intervals if integer bounds with labels inside bars
     if float(a).is_integer() and float(b).is_integer():
         ints = np.arange(int(a), int(b))
         for i in ints:
             rect = plt.Rectangle((i, 0), 1, prob_per_unit, alpha=0.3, color='blue')
             ax.add_patch(rect)
-            ax.text(i + 0.5, prob_per_unit + 0.02, f"1/{int(width)}", ha='center', color='blue')
+            # Place text inside rectangle at 70% height, white color, centered
+            y_text_pos = prob_per_unit * 0.7
+            ax.text(i + 0.5, y_text_pos, f"1/{int(width)}", ha='center', va='center', color='white', fontsize=10, clip_on=False)
 
     ax.set_title(f"Uniform Distribution PDF on [{a}, {b}]")
     ax.set_xlabel("x")
