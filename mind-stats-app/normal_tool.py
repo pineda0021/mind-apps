@@ -13,7 +13,7 @@ def parse_stdev(sd_expr):
         return None
 
 def run():
-    st.header("📊 Normal Distribution Calculator")
+    st.header("🛎️ Normal Distribution Calculator")
 
     mean = st.number_input("Enter the mean (μ)", value=0.0, format="%.4f")
     sd_expr = st.text_input("Enter the standard deviation (σ)", value="1")
@@ -45,7 +45,7 @@ def run():
             st.error("Upper bound b must be greater than or equal to lower bound a.")
             return
 
-    if st.button("Calculate Probability"):
+    if st.button("📊 Calculate Probability"):
         x = np.linspace(mean - 4 * sd, mean + 4 * sd, 1000)
         y = stats.norm.pdf(x, mean, sd)
 
@@ -82,12 +82,6 @@ def run():
 
         st.pyplot(fig)
 
-        st.markdown("""
-        ---
-        **Professor:** Edward Pineda-Castro  
-        Department of Mathematics  
-        Los Angeles City College
-        """)
 
 if __name__ == "__main__":
     run()
