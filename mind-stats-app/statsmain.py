@@ -34,3 +34,5 @@ Department of Mathematics, Los Angeles City College
 📧 Email: pinedaem@lacitycollege.edu | 📞 Tel: (323) 953-4000 ext. 2827  
 Founder of **MIND** — *Making Inference Digestible*
 """)
+
+
