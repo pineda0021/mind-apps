@@ -7,7 +7,6 @@ import probability_tool
 import continuous_dist_tool
 import confidence_intervals_tool
 
-
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
 st.title("🧠 MIND: Statistics Visualizer Suite")
 
@@ -18,7 +17,6 @@ tool = st.sidebar.radio("Choose a tool:", [
     "Discrete Distributions",
     "Continuous Distributions",
     "Confidence Intervals",
-   
 ])
 
 if tool == "Descriptive Statistics":
@@ -31,6 +29,7 @@ elif tool == "Continuous Distributions":
     continuous_dist_tool.run()
 elif tool == "Confidence Intervals":   
     confidence_intervals_tool.run()
+
 st.markdown("""
 ---
 📘 Explore statistics with interactive tools built for conceptual clarity, practice, and fun.
@@ -40,3 +39,4 @@ Department of Mathematics, Los Angeles City College
 📧 Email: pinedaem@lacitycollege.edu | 📞 Tel: (323) 953-4000 ext. 2827  
 Founder of **MIND** — *Making Inference Digestible*
 """)
+
