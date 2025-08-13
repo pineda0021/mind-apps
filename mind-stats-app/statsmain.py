@@ -17,16 +17,7 @@ try:
 except ImportError:
     discrete_dist_tool = None
 
-# Future tools (commented out until implemented)
-# import continuous_dist_tool
-# import ci_tool
-# import ht_one_sample_tool
-# import ht_two_samples_tool
-# import chi_square_tool
-# import anova_tool
-# import regression_tool
-
-# 🔹 Page setup
+# 🔹 Page setup (must be before any other Streamlit calls)
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
 
 # 🔹 App title & description
@@ -71,21 +62,6 @@ elif tool == "Discrete Distributions":
         discrete_dist_tool.run()
     else:
         st.error("❌ Discrete Distributions module not found.")
-
-# elif tool == "Continuous Distributions":
-#     continuous_dist_tool.run()
-# elif tool == "Confidence Interval":
-#     ci_tool.run()
-# elif tool == "Hypothesis Testing (One Sample)":
-#     ht_one_sample_tool.run()
-# elif tool == "Hypothesis Testing (Two Samples)":
-#     ht_two_samples_tool.run()
-# elif tool == "Chi-Square Test":
-#     chi_square_tool.run()
-# elif tool == "ANOVA":
-#     anova_tool.run()
-# elif tool == "Regression Analysis":
-#     regression_tool.run()
 
 # 🔹 Footer
 st.markdown(
