@@ -53,6 +53,7 @@ def run():
             z = stats.norm.ppf((1 + confidence_level) / 2)
             n_req = (z**2 * p_est * (1 - p_est)) / (moe**2)
             st.write("Required sample size:", int(np.ceil(n_req)))
+            st.latex(rf"Critical Value (Z-Score) = {z:.{decimal}f}")
 
     # 3. CI for Mean (Known SD)
     elif choice == categories[2]:
@@ -120,6 +121,7 @@ def run():
             z = stats.norm.ppf((1 + confidence_level) / 2)
             n_req = (z * sigma / moe)**2
             st.write("Required sample size:", int(np.ceil(n_req)))
+            st.latex(rf"Critical Value (Z-Score) = {z:.{decimal}f}")
 
     # 6-9. CI for Variance & Std Dev (With Data)
     elif choice in [categories[6], categories[8]]:
@@ -154,14 +156,4 @@ def run():
                 upper = np.sqrt((df * var) / chi2_lower)
                 st.latex(rf"s = {np.sqrt(var):.{decimal}f}")
                 st.latex(rf"Critical Values (Chi-Square): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}")
-                st.latex(rf"{confidence_level*100:.1f}\% \text{{ CI for Std Dev: }} \left({lower:.{decimal}f}, {upper:.{decimal}f}\right)")
-
-            # Histogram with shaded CI
-            fig, ax = plt.subplots()
-            ax.hist(data, bins=10, color="skyblue", edgecolor="black", alpha=0.7)
-            ax.axvline(lower, color="red", linestyle="--", label="Lower CI")
-            ax.axvline(upper, color="green", linestyle="--", label="Upper CI")
-            ax.axvspan(lower, upper, color="yellow", alpha=0.3)
-            ax.set_title("Histogram with Confidence Interval")
-            ax.legend()
-            st.pyplot(fig)
+               
