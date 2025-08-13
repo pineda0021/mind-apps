@@ -105,7 +105,7 @@ def binomial_distribution_tool():
     if calc_type != "Show table and graph":
         x = st.number_input("Enter x value:", min_value=0, max_value=int(n), step=1)
 
-    if st.button("Calculate Binomial"):
+    if st.button("📊 Calculate Binomial"):
         if calc_type == "P(X = x)":
             prob = binom.pmf(x, n, p)
             st.success(f"P(X = {x}) = {prob:.5f}")
@@ -172,7 +172,7 @@ def poisson_distribution_tool():
     if calc_type != "Show table and graph":
         x = st.number_input("Enter x value:", min_value=0, max_value=int(x_max), step=1)
 
-    if st.button("Calculate Poisson"):
+    if st.button("📊 Calculate Poisson"):
         if calc_type == "P(X = x)":
             prob = poisson.pmf(x, lam)
             st.success(f"P(X = {x}) = {prob:.5f}")
