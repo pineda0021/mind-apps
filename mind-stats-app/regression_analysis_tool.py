@@ -5,19 +5,19 @@ import matplotlib.pyplot as plt
 from scipy import stats
 import statsmodels.api as sm
 
+st.set_option('deprecation.showPyplotGlobalUse', False)
 
+# ===== SIMPLE REGRESSION =====
 def run_simple_regression_tool():
     st.header("👨‍🏫 Simple Linear Regression")
 
-    # Data input
     st.markdown("### Data Input")
-    uploaded_file = st.file_uploader("Upload CSV or Excel file (optional)", type=["csv", "xlsx"])
-    y_input = st.text_area("Or enter dependent variable (y) values, separated by commas:")
-    x_input = st.text_area("Or enter independent variable (x) values, separated by commas:")
+    uploaded_file = st.file_uploader("Upload CSV or Excel file (optional)", type=["csv", "xlsx"], key="simple_file")
+    y_input = st.text_area("Or enter dependent variable (y) values, separated by commas:", key="simple_y")
+    x_input = st.text_area("Or enter independent variable (x) values, separated by commas:", key="simple_x")
 
     if st.button("Run Simple Regression"):
         try:
-            # Read data
             if uploaded_file is not None:
                 if uploaded_file.name.endswith(".csv"):
                     df = pd.read_csv(uploaded_file)
@@ -37,22 +37,27 @@ def run_simple_regression_tool():
                     st.error("x and y must have the same length.")
                     return
 
-            # Regression model
+            # Save to session state for prediction use
+            st.session_state.simple_x = x
+            st.session_state.simple_y = y
+
+            # Regression
             X = sm.add_constant(x)
             model = sm.OLS(y, X).fit()
+            st.session_state.simple_model = model
             y_pred = model.predict(X)
 
-            # Correlation analysis
+            # Correlation
             corr_coef, p_value = stats.pearsonr(x, y)
             st.subheader("📊 Correlation Analysis")
             st.write(f"**Correlation Coefficient:** {round(corr_coef, 4)}")
             st.write(f"**P-value:** {round(p_value, 4)}")
 
-            # Regression summary
+            # Summary
             st.subheader("📄 Regression Summary")
             st.text(model.summary())
 
-            # Scatter plot with regression line
+            # Scatter plot
             st.subheader("📈 Scatter Plot with Regression Line")
             fig1, ax1 = plt.subplots()
             ax1.scatter(x, y, color='blue', label='Observed')
@@ -77,31 +82,33 @@ def run_simple_regression_tool():
             ax2.grid(True)
             st.pyplot(fig2)
 
-            # Prediction & residual calculation
-            st.subheader("🔮 Predict New Value")
-            new_x = st.number_input("Enter a new x value to predict y:", value=0.0, format="%.4f")
-            if st.button("Predict y"):
-                pred_y = model.predict([[1, new_x]])[0]
-                st.success(f"Predicted y for x = {new_x}: **{round(pred_y, 4)}**")
-                actual_y_input = st.text_input("Enter actual y value (optional):")
-                if actual_y_input:
-                    actual_y = float(actual_y_input)
-                    residual = actual_y - pred_y
-                    st.info(f"Residual = {round(residual, 4)}")
-
         except Exception as e:
             st.error(f"Error: {e}")
 
+    # Prediction section (works after regression is run)
+    if "simple_model" in st.session_state:
+        st.subheader("🔮 Predict New Value")
+        new_x = st.number_input("Enter a new x value to predict y:", value=0.0, format="%.4f", key="predict_x")
+        if st.button("Predict y"):
+            model = st.session_state.simple_model
+            pred_y = model.predict(np.array([[1, new_x]]))[0]
+            st.success(f"Predicted y for x = {new_x}: **{round(pred_y, 4)}**")
+            actual_y_input = st.text_input("Enter actual y value (optional):", key="actual_y")
+            if actual_y_input:
+                actual_y = float(actual_y_input)
+                residual = actual_y - pred_y
+                st.info(f"Residual = {round(residual, 4)}")
 
 
+# ===== MULTIPLE REGRESSION =====
 def run_multiple_regression_tool():
     st.header("👨‍🏫 Multiple Regression")
 
     st.markdown("### Data Input")
-    uploaded_file = st.file_uploader("Upload CSV or Excel file (optional)", type=["csv", "xlsx"])
+    uploaded_file = st.file_uploader("Upload CSV or Excel file (optional)", type=["csv", "xlsx"], key="multi_file")
     raw_matrix = st.text_area(
         "Or enter your data as a matrix (rows = observations, columns = independent variables; last column = y):\n"
-        "Example:\n5, 7, 2\n6, 8, 3\n7, 9, 4\n8, 10, 5"
+        "Example:\n5, 7, 2\n6, 8, 3\n7, 9, 4\n8, 10, 5", key="multi_matrix"
     )
 
     if st.button("👨‍💻 Run Multiple Regression"):
@@ -130,10 +137,10 @@ def run_multiple_regression_tool():
 
             X = sm.add_constant(X)
             model = sm.OLS(y, X).fit()
-            
+
             st.subheader("Regression Summary")
             st.text(model.summary())
-            
+
             st.subheader("Residual Plot (Residuals vs Fitted Values)")
             residuals = model.resid
             fitted = model.fittedvalues
@@ -144,7 +151,6 @@ def run_multiple_regression_tool():
             ax.set_ylabel("Residuals")
             ax.set_title("Residual Plot")
             st.pyplot(fig)
-            
+
         except Exception as e:
             st.error(f"Error: {e}")
-
