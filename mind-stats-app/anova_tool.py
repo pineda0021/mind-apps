@@ -51,7 +51,7 @@ def parse_groups(input_text):
         return None
 
 def run_anova_tool():
-    st.header("📊 One-Way ANOVA Tool (TI-84 Friendly)")
+    st.header("📊 One-Way ANOVA")
 
     input_method = st.radio(
         "Choose data input method:",
