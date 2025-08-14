@@ -4,6 +4,23 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm, t, chi2, binom
 
+def load_uploaded_data():
+    uploaded_file = st.file_uploader("📂 Upload CSV or Excel file with a single column of numeric data", type=["csv", "xlsx"])
+    if uploaded_file:
+        try:
+            if uploaded_file.name.endswith(".csv"):
+                df = pd.read_csv(uploaded_file)
+            else:
+                df = pd.read_excel(uploaded_file)
+            # Take the first numeric column
+            for col in df.columns:
+                if pd.api.types.is_numeric_dtype(df[col]):
+                    return df[col].dropna().to_numpy()
+            st.error("No numeric column found in file.")
+        except Exception as e:
+            st.error(f"Error reading file: {e}")
+    return None
+
 def run_hypothesis_tool():
     st.header("🔎 Inferences on One Sample")
 
@@ -24,6 +41,7 @@ def run_hypothesis_tool():
     decimal_places = st.number_input("Decimal places for rounding", min_value=1, max_value=10, value=4, step=1)
 
     if test_choice == "Proportion test (large sample)":
+        # ... unchanged ...
         x = st.number_input("Number of successes", min_value=0, step=1)
         n = st.number_input("Sample size", min_value=1, step=1)
         p_null = st.number_input("Null proportion (p0)", min_value=0.0, max_value=1.0, format="%.10f")
@@ -58,6 +76,7 @@ def run_hypothesis_tool():
             st.write(f"Conclusion: {'Reject' if reject else 'Do not reject'} the null hypothesis")
 
     elif test_choice == "Proportion test (small sample, binomial)":
+        # ... unchanged ...
         x = st.number_input("Number of successes", min_value=0, step=1)
         n = st.number_input("Sample size", min_value=1, step=1)
         p_null = st.number_input("Null proportion (p0)", min_value=0.0, max_value=1.0, format="%.10f")
@@ -77,6 +96,7 @@ def run_hypothesis_tool():
             st.write(f"Conclusion: {'Reject' if reject else 'Do not reject'} the null hypothesis")
 
     elif test_choice == "t-test for population mean (summary stats)":
+        # ... unchanged ...
         sample_mean = st.number_input("Sample mean", format="%.10f")
         sample_std = st.number_input("Sample standard deviation", format="%.10f")
         sample_size = st.number_input("Sample size", min_value=2, step=1)
@@ -112,10 +132,18 @@ def run_hypothesis_tool():
 
     elif test_choice == "t-test for population mean (raw data)":
         raw = st.text_area("Enter comma-separated values:")
+        uploaded_data = load_uploaded_data()
         population_mean = st.number_input("Null hypothesis mean", format="%.10f")
 
-        if st.button("👨‍💻 Calculate t-test (Raw Data)") and raw:
-            data = np.array(list(map(float, raw.split(","))))
+        if st.button("👨‍💻 Calculate t-test (Raw Data)"):
+            if uploaded_data is not None:
+                data = uploaded_data
+            elif raw:
+                data = np.array(list(map(float, raw.split(","))))
+            else:
+                st.error("Please provide raw data via text input or file upload.")
+                return
+
             sample_mean = np.mean(data)
             sample_std = np.std(data, ddof=1)
             sample_size = len(data)
@@ -146,11 +174,15 @@ def run_hypothesis_tool():
             st.write(f"P-value: {p_val:.{decimal_places}f}")
             st.write(f"Conclusion: {'Reject' if reject else 'Do not reject'} the null hypothesis")
 
-    # Chi-squared tests
     elif test_choice in ["Chi-squared test for std dev (summary stats)", "Chi-squared test for std dev (raw data)"]:
         if test_choice == "Chi-squared test for std dev (raw data)":
             raw = st.text_area("Enter comma-separated values:")
-            if raw:
+            uploaded_data = load_uploaded_data()
+            if uploaded_data is not None:
+                data = uploaded_data
+                sample_std = np.std(data, ddof=1)
+                sample_size = len(data)
+            elif raw:
                 data = np.array(list(map(float, raw.split(","))))
                 sample_std = np.std(data, ddof=1)
                 sample_size = len(data)
