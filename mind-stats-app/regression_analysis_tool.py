@@ -1,88 +1,86 @@
-# regression_analysis_tool.py
 import streamlit as st
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from scipy import stats
 import statsmodels.api as sm
+import matplotlib.pyplot as plt
 
-def run_regression_tool():
-    st.header("📊 Regression Analysis Tool")
-
-    st.write("### Step 1: Enter Data")
-    upload_file = st.file_uploader("Upload CSV file (first column = dependent, others = independent)", type=["csv","xlsx"])
+def run_simple_regression_tool():
+    st.header("Simple Linear Regression Tool")
     
-    if upload_file:
-        if upload_file.name.endswith(".csv"):
-            data = pd.read_csv(upload_file)
-        else:
-            data = pd.read_excel(upload_file)
-        st.write("Data Preview:")
-        st.dataframe(data)
-    else:
-        y_input = st.text_area("Enter dependent variable (y), comma-separated")
-        x_input = st.text_area("Enter independent variable(s) (x), comma-separated columns separated by semicolons")
-        data = None
-        if y_input and x_input:
-            try:
-                y = np.array(list(map(float, y_input.split(","))))
-                X = [list(map(float, col.split(","))) for col in x_input.split(";")]
-                data = pd.DataFrame({f"X{i+1}": X[i] for i in range(len(X))})
-                data.insert(0, "Y", y)
-                st.write("Data Preview:")
-                st.dataframe(data)
-            except Exception as e:
-                st.error(f"Error parsing input: {e}")
-
-    if data is not None:
-        y = data.iloc[:,0]
-        X = data.iloc[:,1:]
-
-        # Step 2: Scatter Plot (only for single X)
-        if X.shape[1] == 1:
+    y_input = st.text_area("Enter dependent variable (y) values, separated by commas:")
+    x_input = st.text_area("Enter independent variable (x) values, separated by commas:")
+    
+    if st.button("Run Simple Regression"):
+        try:
+            y = np.array(list(map(float, y_input.replace(',', ' ').split())))
+            x = np.array(list(map(float, x_input.replace(',', ' ').split())))
+            if len(y) != len(x):
+                st.error("x and y must have the same length.")
+                return
+            
+            X = sm.add_constant(x)
+            model = sm.OLS(y, X).fit()
+            
+            st.subheader("Regression Summary")
+            st.text(model.summary())
+            
             fig, ax = plt.subplots()
-            ax.scatter(X.iloc[:,0], y, color='blue')
-            ax.set_xlabel("X")
-            ax.set_ylabel("Y")
-            ax.set_title("Scatter Plot")
+            ax.scatter(x, y, color='blue', label='Observed')
+            ax.plot(x, model.predict(X), color='red', label='Fitted Line')
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
+            ax.set_title("Scatter Plot with Regression Line")
+            ax.legend()
             st.pyplot(fig)
+            
+        except Exception as e:
+            st.error(f"Error: {e}")
 
-        # Step 3: Correlation (only if single X)
-        if X.shape[1] == 1:
-            corr_coef, p_val = stats.pearsonr(X.iloc[:,0], y)
-            st.write(f"**Correlation Coefficient:** {round(corr_coef,4)}")
-            st.write(f"**P-value:** {round(p_val,4)}")
-
-        # Step 4: Regression Summary
-        X_with_const = sm.add_constant(X)
-        model = sm.OLS(y, X_with_const).fit()
-        st.write("### Linear Regression Summary")
-        st.text(model.summary())
-
-        # Step 5: Predict & Residual
-        st.write("### Predict a Value")
-        if X.shape[1] == 1:
-            pred_x = st.number_input("Enter X value to predict Y", value=float(X.iloc[0,0]))
-            pred_y = model.predict([1, pred_x])[0]
-            st.write(f"Predicted Y = {round(pred_y,4)}")
-            actual_y = st.text_input("Optional: Enter actual Y to compute residual")
-            if actual_y:
-                residual = float(actual_y) - pred_y
-                st.write(f"Residual = Actual Y - Predicted Y = {round(residual,4)}")
-        else:
-            st.write("Residual prediction for multiple regression requires vector input; skip or extend as needed.")
-
-        # Step 6: Residual Plot
-        residuals = model.resid
-        fig, ax = plt.subplots()
-        if X.shape[1] == 1:
-            ax.scatter(X.iloc[:,0], residuals, color='purple')
-            ax.set_xlabel("X")
-        else:
-            ax.scatter(range(len(residuals)), residuals, color='purple')
-            ax.set_xlabel("Observation")
-        ax.axhline(y=0, color='gray', linestyle='--')
-        ax.set_ylabel("Residuals")
-        ax.set_title("Residual Plot")
-        st.pyplot(fig)
-
+def run_multiple_regression_tool():
+    st.header("Multiple Regression Tool (TI-84 Style Input)")
+    
+    st.markdown("""
+    Enter your data as a matrix (rows = observations, columns = independent variables; last column can be y if you like):
+    
+    Example for 4 observations and 3 independent variables:
+    ```
+    5, 7, 2
+    6, 8, 3
+    7, 9, 4
+    8, 10, 5
+    ```
+    """)
+    
+    raw_matrix = st.text_area("Enter data matrix (comma-separated, new line = new observation):")
+    
+    if st.button("Run Multiple Regression"):
+        try:
+            rows = raw_matrix.strip().split('\n')
+            data = [list(map(float, row.strip().split(','))) for row in rows]
+            data = np.array(data)
+            
+            if data.shape[1] < 2:
+                st.error("Need at least 1 independent variable and 1 dependent variable.")
+                return
+            
+            X = data[:, :-1]  # all columns except last
+            y = data[:, -1]   # last column = dependent variable
+            
+            X = sm.add_constant(X)
+            model = sm.OLS(y, X).fit()
+            
+            st.subheader("Regression Summary")
+            st.text(model.summary())
+            
+            st.subheader("Residual Plot (Residuals vs Fitted Values)")
+            residuals = model.resid
+            fitted = model.fittedvalues
+            fig, ax = plt.subplots()
+            ax.scatter(fitted, residuals, color='purple')
+            ax.axhline(y=0, color='gray', linestyle='--')
+            ax.set_xlabel("Fitted Values")
+            ax.set_ylabel("Residuals")
+            ax.set_title("Residual Plot")
+            st.pyplot(fig)
+            
+        except Exception as e:
+            st.error(f"Error: {e}")
