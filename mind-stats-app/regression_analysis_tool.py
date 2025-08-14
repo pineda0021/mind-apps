@@ -1,21 +1,37 @@
 import streamlit as st
 import numpy as np
+import pandas as pd
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 
 def run_simple_regression_tool():
-    st.header("Simple Linear Regression Tool")
+    st.header("👨‍🏫 Simple Linear Regression")
     
-    y_input = st.text_area("Enter dependent variable (y) values, separated by commas:")
-    x_input = st.text_area("Enter independent variable (x) values, separated by commas:")
+    st.markdown("### Data Input")
+    uploaded_file = st.file_uploader("Upload CSV or Excel file (optional)", type=["csv", "xlsx"])
+    y_input = st.text_area("Or enter dependent variable (y) values, separated by commas:")
+    x_input = st.text_area("Or enter independent variable (x) values, separated by commas:")
     
     if st.button("Run Simple Regression"):
         try:
-            y = np.array(list(map(float, y_input.replace(',', ' ').split())))
-            x = np.array(list(map(float, x_input.replace(',', ' ').split())))
-            if len(y) != len(x):
-                st.error("x and y must have the same length.")
-                return
+            if uploaded_file is not None:
+                if uploaded_file.name.endswith(".csv"):
+                    df = pd.read_csv(uploaded_file)
+                else:
+                    df = pd.read_excel(uploaded_file)
+                st.write("Data Preview:")
+                st.dataframe(df.head())
+                if df.shape[1] < 2:
+                    st.error("The file must contain at least 2 columns: x and y.")
+                    return
+                x = df.iloc[:, 0].values
+                y = df.iloc[:, 1].values
+            else:
+                y = np.array(list(map(float, y_input.replace(',', ' ').split())))
+                x = np.array(list(map(float, x_input.replace(',', ' ').split())))
+                if len(y) != len(x):
+                    st.error("x and y must have the same length.")
+                    return
             
             X = sm.add_constant(x)
             model = sm.OLS(y, X).fit()
@@ -35,36 +51,41 @@ def run_simple_regression_tool():
         except Exception as e:
             st.error(f"Error: {e}")
 
+
 def run_multiple_regression_tool():
-    st.header("Multiple Regression Tool (TI-84 Style Input)")
-    
-    st.markdown("""
-    Enter your data as a matrix (rows = observations, columns = independent variables; last column can be y if you like):
-    
-    Example for 4 observations and 3 independent variables:
-    ```
-    5, 7, 2
-    6, 8, 3
-    7, 9, 4
-    8, 10, 5
-    ```
-    """)
-    
-    raw_matrix = st.text_area("Enter data matrix (comma-separated, new line = new observation):")
-    
+    st.header("👨‍🏫 Multiple Regression")
+
+    st.markdown("### Data Input")
+    uploaded_file = st.file_uploader("Upload CSV or Excel file (optional)", type=["csv", "xlsx"])
+    raw_matrix = st.text_area(
+        "Or enter your data as a matrix (rows = observations, columns = independent variables; last column = y):\n"
+        "Example:\n5, 7, 2\n6, 8, 3\n7, 9, 4\n8, 10, 5"
+    )
+
     if st.button("Run Multiple Regression"):
         try:
-            rows = raw_matrix.strip().split('\n')
-            data = [list(map(float, row.strip().split(','))) for row in rows]
-            data = np.array(data)
-            
-            if data.shape[1] < 2:
-                st.error("Need at least 1 independent variable and 1 dependent variable.")
-                return
-            
-            X = data[:, :-1]  # all columns except last
-            y = data[:, -1]   # last column = dependent variable
-            
+            if uploaded_file is not None:
+                if uploaded_file.name.endswith(".csv"):
+                    df = pd.read_csv(uploaded_file)
+                else:
+                    df = pd.read_excel(uploaded_file)
+                st.write("Data Preview:")
+                st.dataframe(df.head())
+                if df.shape[1] < 2:
+                    st.error("File must contain at least 2 columns: independent variables and dependent variable.")
+                    return
+                X = df.iloc[:, :-1].values
+                y = df.iloc[:, -1].values
+            else:
+                rows = raw_matrix.strip().split('\n')
+                data = [list(map(float, row.strip().split(','))) for row in rows]
+                data = np.array(data)
+                if data.shape[1] < 2:
+                    st.error("Need at least 1 independent variable and 1 dependent variable.")
+                    return
+                X = data[:, :-1]
+                y = data[:, -1]
+
             X = sm.add_constant(X)
             model = sm.OLS(y, X).fit()
             
@@ -84,3 +105,4 @@ def run_multiple_regression_tool():
             
         except Exception as e:
             st.error(f"Error: {e}")
+
