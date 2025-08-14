@@ -7,3 +7,4 @@ pandas
 xlsxwriter
 openpyxl
 scipy
+statsmodels
