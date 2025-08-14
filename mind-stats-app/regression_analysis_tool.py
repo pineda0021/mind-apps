@@ -1,117 +1,88 @@
 # regression_analysis_tool.py
+import streamlit as st
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import stats
 import statsmodels.api as sm
 
-def get_user_data():
-    y_input = input("Enter your dependent variable (y) values, separated by commas: ").replace(',', ' ')
-    x_input = input("Enter your independent variable (x) values, separated by commas: ").replace(',', ' ')
-    y = np.array(list(map(float, y_input.strip().split())))
-    x = np.array(list(map(float, x_input.strip().split())))
-    if len(y) != len(x):
-        raise ValueError("x and y must have the same number of values.")
-    return x, y
-
-def scatter_plot(x, y):
-    plt.scatter(x, y, c='blue', marker='o')
-    for i in range(len(x)):
-        plt.text(x[i], y[i], f"({x[i]}, {y[i]})", fontsize=9, ha='right')
-    plt.title("Scatter Plot: X vs Y")
-    plt.xlabel("Independent Variable (x)")
-    plt.ylabel("Dependent Variable (y)")
-    plt.grid(True)
-    plt.show()
-
-def correlation_analysis(x, y):
-    corr_coef, p_value = stats.pearsonr(x, y)
-    print("\nCorrelation Analysis")
-    print("--------------------")
-    print(f"Correlation Coefficient: {round(corr_coef, 4)}")
-    print(f"P-value: {round(p_value, 4)}")
-
-def linear_regression_summary(x, y):
-    x_with_const = sm.add_constant(x)
-    model = sm.OLS(y, x_with_const).fit()
-    print("\nLinear Regression Summary")
-    print("--------------------------")
-    print(model.summary())
-
-def predict_value_and_residual(x, y):
-    x_with_const = sm.add_constant(x)
-    model = sm.OLS(y, x_with_const).fit()
-    
-    try:
-        new_x = float(input("Enter a value of x to predict y: "))
-        pred_y = model.predict([1, new_x])[0]
-        print(f"Predicted y for x = {new_x}: {round(pred_y, 4)}")
-
-        actual_y_input = input("If you have the actual y value, enter it to compute residual (or press Enter to skip): ")
-        if actual_y_input.strip():
-            actual_y = float(actual_y_input)
-            residual = actual_y - pred_y
-            print(f"Residual = Actual y - Predicted y = {round(residual, 4)}")
-    except Exception as e:
-        print(f"Error: {e}")
-
-def residual_plot(x, y):
-    x_with_const = sm.add_constant(x)
-    model = sm.OLS(y, x_with_const).fit()
-    residuals = model.resid
-    plt.scatter(x, residuals, color='purple')
-    plt.axhline(y=0, color='gray', linestyle='--')
-    plt.title("Residual Plot")
-    plt.xlabel("Independent Variable (x)")
-    plt.ylabel("Residuals")
-    plt.grid(True)
-    plt.show()
-
 def run_regression_tool():
-    print("Welcome to the Simple Linear Regression Tool\n")
-    x = y = None
+    st.header("📊 Regression Analysis Tool")
 
-    while True:
-        print("\nMenu:")
-        print("1. Enter Data (Required First)")
-        print("2. Scatter Plot")
-        print("3. Correlation Analysis")
-        print("4. Linear Regression Summary")
-        print("5. Predict Value & Compute Residual")
-        print("6. Residual Plot")
-        print("7. Exit")
-
-        choice = input("Enter your choice (1-7): ")
-
-        if choice == "1":
-            try:
-                x, y = get_user_data()
-                print("Data successfully entered.")
-            except Exception as e:
-                print(f"Error: {e}")
-                x = y = None
-
-        elif choice in ["2", "3", "4", "5", "6"]:
-            if x is None or y is None:
-                print("Please enter data first using Option 1.")
-            else:
-                if choice == "2":
-                    scatter_plot(x, y)
-                elif choice == "3":
-                    correlation_analysis(x, y)
-                elif choice == "4":
-                    linear_regression_summary(x, y)
-                elif choice == "5":
-                    predict_value_and_residual(x, y)
-                elif choice == "6":
-                    residual_plot(x, y)
-
-        elif choice == "7":
-            print("Exiting program.")
-            break
-
+    st.write("### Step 1: Enter Data")
+    upload_file = st.file_uploader("Upload CSV file (first column = dependent, others = independent)", type=["csv","xlsx"])
+    
+    if upload_file:
+        if upload_file.name.endswith(".csv"):
+            data = pd.read_csv(upload_file)
         else:
-            print("Invalid choice. Please enter a number between 1 and 7.")
+            data = pd.read_excel(upload_file)
+        st.write("Data Preview:")
+        st.dataframe(data)
+    else:
+        y_input = st.text_area("Enter dependent variable (y), comma-separated")
+        x_input = st.text_area("Enter independent variable(s) (x), comma-separated columns separated by semicolons")
+        data = None
+        if y_input and x_input:
+            try:
+                y = np.array(list(map(float, y_input.split(","))))
+                X = [list(map(float, col.split(","))) for col in x_input.split(";")]
+                data = pd.DataFrame({f"X{i+1}": X[i] for i in range(len(X))})
+                data.insert(0, "Y", y)
+                st.write("Data Preview:")
+                st.dataframe(data)
+            except Exception as e:
+                st.error(f"Error parsing input: {e}")
 
-# For standalone run
-if __name__ == "__main__":
-    run_regression_tool()
+    if data is not None:
+        y = data.iloc[:,0]
+        X = data.iloc[:,1:]
+
+        # Step 2: Scatter Plot (only for single X)
+        if X.shape[1] == 1:
+            fig, ax = plt.subplots()
+            ax.scatter(X.iloc[:,0], y, color='blue')
+            ax.set_xlabel("X")
+            ax.set_ylabel("Y")
+            ax.set_title("Scatter Plot")
+            st.pyplot(fig)
+
+        # Step 3: Correlation (only if single X)
+        if X.shape[1] == 1:
+            corr_coef, p_val = stats.pearsonr(X.iloc[:,0], y)
+            st.write(f"**Correlation Coefficient:** {round(corr_coef,4)}")
+            st.write(f"**P-value:** {round(p_val,4)}")
+
+        # Step 4: Regression Summary
+        X_with_const = sm.add_constant(X)
+        model = sm.OLS(y, X_with_const).fit()
+        st.write("### Linear Regression Summary")
+        st.text(model.summary())
+
+        # Step 5: Predict & Residual
+        st.write("### Predict a Value")
+        if X.shape[1] == 1:
+            pred_x = st.number_input("Enter X value to predict Y", value=float(X.iloc[0,0]))
+            pred_y = model.predict([1, pred_x])[0]
+            st.write(f"Predicted Y = {round(pred_y,4)}")
+            actual_y = st.text_input("Optional: Enter actual Y to compute residual")
+            if actual_y:
+                residual = float(actual_y) - pred_y
+                st.write(f"Residual = Actual Y - Predicted Y = {round(residual,4)}")
+        else:
+            st.write("Residual prediction for multiple regression requires vector input; skip or extend as needed.")
+
+        # Step 6: Residual Plot
+        residuals = model.resid
+        fig, ax = plt.subplots()
+        if X.shape[1] == 1:
+            ax.scatter(X.iloc[:,0], residuals, color='purple')
+            ax.set_xlabel("X")
+        else:
+            ax.scatter(range(len(residuals)), residuals, color='purple')
+            ax.set_xlabel("Observation")
+        ax.axhline(y=0, color='gray', linestyle='--')
+        ax.set_ylabel("Residuals")
+        ax.set_title("Residual Plot")
+        st.pyplot(fig)
+
