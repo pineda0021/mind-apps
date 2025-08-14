@@ -50,7 +50,7 @@ def run_two_sample_tool():
             st.latex(r"\hat{p} = " + f"{p_pool:.3f}")
             st.latex(r"SE = " + f"{se:.3f}")
             st.latex(r"Z = " + f"{z_stat:.3f}")
-            st.latex(r"Z_{{\alpha/2}} = {z_crit:.3f}")
+            st.latex(f"Z_{{\\alpha/2}} = {z_crit:.3f}")
             st.write(f"P-Value = {p_val:.4f}")
             st.write("Decision:", "Reject H₀" if abs(z_stat) > z_crit else "Fail to reject H₀")
 
@@ -84,7 +84,7 @@ def run_two_sample_tool():
                 st.latex(r"s_d = " + f"{sd_diff:.3f}")
                 st.latex(r"SE = " + f"{se:.3f}")
                 st.latex(r"t = " + f"{t_stat:.3f}")
-                st.latex(r"t_{{\alpha/2,n-1}} = {t_crit:.3f}")
+                st.latex(f"t_{{\\alpha/2,n-1}} = {t_crit:.3f}")
                 st.write(f"P-Value = {p_val:.4f}")
                 st.write("Decision:", "Reject H₀" if abs(t_stat) > t_crit else "Fail to reject H₀")
 
@@ -110,7 +110,7 @@ def run_two_sample_tool():
             st.subheader("Step-by-Step Calculation")
             st.latex(r"SE = " + f"{se:.3f}")
             st.latex(r"t = " + f"{t_stat:.3f}")
-            st.latex(r"t_{{\alpha/2,n-1}} = {t_crit:.3f}")
+            st.latex(f"t_{{\\alpha/2,n-1}} = {t_crit:.3f}")
             st.write(f"P-Value = {p_val:.4f}")
             st.write("Decision:", "Reject H₀" if abs(t_stat) > t_crit else "Fail to reject H₀")
 
@@ -148,7 +148,7 @@ def run_two_sample_tool():
                 st.latex(r"s_2 = " + f"{s2:.3f}")
                 st.latex(r"SE = " + f"{se:.3f}")
                 st.latex(r"t = " + f"{t_stat:.3f}")
-                st.latex(r"t_{{\alpha/2,df}} = {t_crit:.3f}")
+                st.latex(f"t_{{\\alpha/2,df}} = {t_crit:.3f}")
                 st.write(f"P-Value = {p_val:.4f}")
                 st.write("Decision:", "Reject H₀" if abs(t_stat) > t_crit else "Fail to reject H₀")
 
@@ -178,7 +178,7 @@ def run_two_sample_tool():
             st.subheader("Step-by-Step Calculation")
             st.latex(r"SE = " + f"{se:.3f}")
             st.latex(r"t = " + f"{t_stat:.3f}")
-            st.latex(r"t_{{\alpha/2,df}} = {t_crit:.3f}")
+            st.latex(f"t_{{\\alpha/2,df}} = {t_crit:.3f}")
             st.write(f"P-Value = {p_val:.4f}")
             st.write("Decision:", "Reject H₀" if abs(t_stat) > t_crit else "Fail to reject H₀")
 
@@ -213,9 +213,9 @@ def run_two_sample_tool():
             p_val = 2*min(stats.f.cdf(F, df1, df2), 1 - stats.f.cdf(F, df1, df2))
 
             st.subheader("Step-by-Step Calculation")
-            st.latex(r"F = s_1^2 / s_2^2 = " + f"{F:.3f}")
-            st.latex(r"df_1 = {df1}, df_2 = {df2}")
-            st.latex(r"F_{{\alpha/2,df_1,df_2}} = {F_crit_low:.3f}, F_{{1-\alpha/2,df_1,df_2}} = {F_crit_high:.3f}")
+            st.latex(f"F = s_1^2 / s_2^2 = {F:.3f}")
+            st.latex(f"df_1 = {df1}, df_2 = {df2}")
+            st.latex(f"F_{{\\alpha/2,df_1,df_2}} = {F_crit_low:.3f}, F_{{1-\\alpha/2,df_1,df_2}} = {F_crit_high:.3f}")
             st.write(f"P-Value = {p_val:.4f}")
             st.write("Decision:", "Reject H₀" if F < F_crit_low or F > F_crit_high else "Fail to reject H₀")
 
