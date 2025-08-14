@@ -10,7 +10,7 @@ import inferences_one_sample_tool
 import inferences_two_sample_tool  
 import chi_square_tests_tool
 import anova_tool
-import regression_analysis_tool  # Handles both simple & multiple regression
+import regression_analysis_tool 
 
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
 st.title("🧠 MIND: Statistics Visualizer Suite")
@@ -26,10 +26,11 @@ tool = st.sidebar.radio("Choose a tool:", [
     "Inferences on Two Samples",
     "Chi-Square Tests",
     "One-Way ANOVA",
-    "Regression Analysis (Simple)",
-    "Regression Analysis (Multiple)"
+    "Simple Regression",
+    "Multiple Regression"
 ])
 
+# Routing each tool
 if tool == "Descriptive Statistics":
     descriptive_tool.run()
 elif tool == "Probability":     
@@ -48,9 +49,9 @@ elif tool == "Chi-Square Tests":
     chi_square_tests_tool.run_chi_square_tool()  
 elif tool == "One-Way ANOVA":  
     anova_tool.run_anova_tool()  
-elif tool == "Regression Analysis (Simple)":
+elif tool == "Simple Regression":
     regression_analysis_tool.run_simple_regression_tool()
-elif tool == "Regression Analysis (Multiple)":
+elif tool == "Multiple Regression":
     regression_analysis_tool.run_multiple_regression_tool()
 
 st.markdown("""
