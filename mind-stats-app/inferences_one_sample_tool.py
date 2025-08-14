@@ -28,7 +28,7 @@ def run_hypothesis_tool():
         n = st.number_input("Sample size", min_value=1, step=1)
         p_null = st.number_input("Null proportion (p0)", min_value=0.0, max_value=1.0, format="%.10f")
 
-        if st.button("Calculate Proportion (Large Sample)"):
+        if st.button("👨‍💻 Calculate Proportion (Large Sample)"):
             p_hat = x / n
             se = math.sqrt(p_null * (1 - p_null) / n)
             z_stat = (p_hat - p_null) / se
@@ -62,7 +62,7 @@ def run_hypothesis_tool():
         n = st.number_input("Sample size", min_value=1, step=1)
         p_null = st.number_input("Null proportion (p0)", min_value=0.0, max_value=1.0, format="%.10f")
 
-        if st.button("Calculate Proportion (Small Sample)"):
+        if st.button("👨‍💻 Calculate Proportion (Small Sample)"):
             if tails == "left":
                 p_val = binom.cdf(x, n, p_null)
                 reject = p_val < alpha
@@ -72,8 +72,7 @@ def run_hypothesis_tool():
             else:
                 p_val = 2 * min(binom.cdf(x, n, p_null), 1 - binom.cdf(x - 1, n, p_null))
                 reject = p_val < alpha
-
-            st.latex(r"H_0: p = p_0 \quad H_a: p \neq p_0")
+                
             st.write(f"P-value: {p_val:.{decimal_places}f}")
             st.write(f"Conclusion: {'Reject' if reject else 'Do not reject'} the null hypothesis")
 
@@ -83,7 +82,7 @@ def run_hypothesis_tool():
         sample_size = st.number_input("Sample size", min_value=2, step=1)
         population_mean = st.number_input("Null hypothesis mean", format="%.10f")
 
-        if st.button("Calculate t-test (Summary Stats)"):
+        if st.button("👨‍💻 Calculate t-test (Summary Stats)"):
             df = sample_size - 1
             se = sample_std / math.sqrt(sample_size)
             t_stat = (sample_mean - population_mean) / se
@@ -115,7 +114,7 @@ def run_hypothesis_tool():
         raw = st.text_area("Enter comma-separated values:")
         population_mean = st.number_input("Null hypothesis mean", format="%.10f")
 
-        if st.button("Calculate t-test (Raw Data)") and raw:
+        if st.button("👨‍💻 Calculate t-test (Raw Data)") and raw:
             data = np.array(list(map(float, raw.split(","))))
             sample_mean = np.mean(data)
             sample_std = np.std(data, ddof=1)
@@ -164,7 +163,7 @@ def run_hypothesis_tool():
 
         population_std = st.number_input("Population std dev (null hypothesis)", format="%.10f")
 
-        if st.button("Calculate Chi-squared") and sample_std is not None:
+        if st.button("👨‍💻 Calculate Chi-squared") and sample_std is not None:
             df = sample_size - 1
             chi2_stat = (df * sample_std**2) / population_std**2
 
