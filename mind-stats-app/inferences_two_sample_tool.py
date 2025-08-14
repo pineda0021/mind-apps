@@ -35,7 +35,7 @@ def run_two_sample_tool():
         x2 = st.number_input("Number of successes in Sample 2", min_value=0, step=1)
         n2 = st.number_input("Sample size 2", min_value=1, step=1)
 
-        if st.button("Calculate"):
+        if st.button("👨‍💻 Calculate"):
             p1 = x1 / n1
             p2 = x2 / n2
             p_pool = (x1 + x2) / (n1 + n2)
@@ -74,7 +74,7 @@ P-value = {p_val:.4f}
         sample1_input = st.text_area("Sample1", placeholder="1.2, 2.3, 3.1, 4.5")
         sample2_input = st.text_area("Sample2", placeholder="0.9, 2.1, 3.0, 4.2")
 
-        if st.button("Calculate"):
+        if st.button("👨‍💻 Calculate"):
             if uploaded_file is not None:
                 df = pd.read_csv(uploaded_file)
                 if "Sample1" not in df.columns or "Sample2" not in df.columns:
@@ -126,7 +126,7 @@ P-value = {p_val:.4f}
         sd_diff = st.number_input("Std Dev of differences", value=1.0)
         n = st.number_input("Sample size", min_value=2, step=1)
 
-        if st.button("Calculate"):
+        if st.button("👨‍💻 Calculate"):
             se = sd_diff / np.sqrt(n)
             t_stat = mean_diff / se
             t_crit = stats.t.ppf(1 - alpha/2, df=n-1)
@@ -162,7 +162,7 @@ P-value = {p_val:.4f}
         sample1_input = st.text_area("Sample1", placeholder="1.2, 2.3, 3.1, 4.5", key="indep1")
         sample2_input = st.text_area("Sample2", placeholder="0.9, 2.1, 3.0, 4.2", key="indep2")
 
-        if st.button("Calculate", key="indep_calc"):
+        if st.button("👨‍💻 Calculate", key="indep_calc"):
             if uploaded_file is not None:
                 df = pd.read_csv(uploaded_file)
                 if "Sample1" not in df.columns or "Sample2" not in df.columns:
@@ -219,7 +219,7 @@ P-value = {p_val:.4f}
         s2 = st.number_input("Std Dev of Sample 2", value=1.0)
         n2 = st.number_input("Sample size 2", min_value=2, step=1)
 
-        if st.button("Calculate", key="indep_sum"):
+        if st.button("👨‍💻 Calculate", key="indep_sum"):
             se = np.sqrt(s1**2/n1 + s2**2/n2)
             t_stat = (mean1 - mean2)/se
             df_deg = ((s1**2/n1 + s2**2/n2)**2) / ((s1**2/n1)**2/(n1-1) + (s2**2/n2)**2/(n2-1))
@@ -266,7 +266,7 @@ P-value = {p_val:.4f}
             n2 = st.number_input("Sample size 2", min_value=2, step=1)
             s2 = st.number_input("Std Dev of Sample 2", value=1.0)
 
-        if st.button("Calculate", key="f_calc"):
+        if st.button("👨‍💻 Calculate", key="f_calc"):
             if use_data:
                 if uploaded_file is not None:
                     df = pd.read_csv(uploaded_file)
