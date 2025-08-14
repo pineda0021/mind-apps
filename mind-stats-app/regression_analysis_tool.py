@@ -12,7 +12,7 @@ def run_simple_regression_tool():
     y_input = st.text_area("Or enter dependent variable (y) values, separated by commas:")
     x_input = st.text_area("Or enter independent variable (x) values, separated by commas:")
     
-    if st.button("Run Simple Regression"):
+    if st.button("👨‍💻 Run Simple Regression"):
         try:
             if uploaded_file is not None:
                 if uploaded_file.name.endswith(".csv"):
@@ -62,7 +62,7 @@ def run_multiple_regression_tool():
         "Example:\n5, 7, 2\n6, 8, 3\n7, 9, 4\n8, 10, 5"
     )
 
-    if st.button("Run Multiple Regression"):
+    if st.button("👨‍💻 Run Multiple Regression"):
         try:
             if uploaded_file is not None:
                 if uploaded_file.name.endswith(".csv"):
