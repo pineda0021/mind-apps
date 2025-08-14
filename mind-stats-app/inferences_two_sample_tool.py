@@ -4,11 +4,11 @@ import pandas as pd
 from scipy import stats
 
 def run_two_sample_tool():
-    # Sidebar header
-    st.sidebar.header("👨🏻‍🔬 Two-Sample Inference")
+
+    st.header("👨🏻‍🔬 Two-Sample Inference")
     
     # Dropdown for test selection
-    test_choice = st.sidebar.selectbox(
+    test_choice = st.selectbox(
         "Select a Test",
         [
             "Two-Proportion Z-Test",
