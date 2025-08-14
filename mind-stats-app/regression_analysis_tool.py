@@ -1,19 +1,23 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import statsmodels.api as sm
 import matplotlib.pyplot as plt
+from scipy import stats
+import statsmodels.api as sm
+
 
 def run_simple_regression_tool():
     st.header("👨‍🏫 Simple Linear Regression")
-    
+
+    # Data input
     st.markdown("### Data Input")
     uploaded_file = st.file_uploader("Upload CSV or Excel file (optional)", type=["csv", "xlsx"])
     y_input = st.text_area("Or enter dependent variable (y) values, separated by commas:")
     x_input = st.text_area("Or enter independent variable (x) values, separated by commas:")
-    
-    if st.button("👨‍💻 Run Simple Regression"):
+
+    if st.button("Run Simple Regression"):
         try:
+            # Read data
             if uploaded_file is not None:
                 if uploaded_file.name.endswith(".csv"):
                     df = pd.read_csv(uploaded_file)
@@ -32,24 +36,62 @@ def run_simple_regression_tool():
                 if len(y) != len(x):
                     st.error("x and y must have the same length.")
                     return
-            
+
+            # Regression model
             X = sm.add_constant(x)
             model = sm.OLS(y, X).fit()
-            
-            st.subheader("Regression Summary")
+            y_pred = model.predict(X)
+
+            # Correlation analysis
+            corr_coef, p_value = stats.pearsonr(x, y)
+            st.subheader("📊 Correlation Analysis")
+            st.write(f"**Correlation Coefficient:** {round(corr_coef, 4)}")
+            st.write(f"**P-value:** {round(p_value, 4)}")
+
+            # Regression summary
+            st.subheader("📄 Regression Summary")
             st.text(model.summary())
-            
-            fig, ax = plt.subplots()
-            ax.scatter(x, y, color='blue', label='Observed')
-            ax.plot(x, model.predict(X), color='red', label='Fitted Line')
-            ax.set_xlabel("x")
-            ax.set_ylabel("y")
-            ax.set_title("Scatter Plot with Regression Line")
-            ax.legend()
-            st.pyplot(fig)
-            
+
+            # Scatter plot with regression line
+            st.subheader("📈 Scatter Plot with Regression Line")
+            fig1, ax1 = plt.subplots()
+            ax1.scatter(x, y, color='blue', label='Observed')
+            ax1.plot(x, y_pred, color='red', label='Regression Line')
+            for i in range(len(x)):
+                ax1.text(x[i], y[i], f"({x[i]}, {y[i]})", fontsize=8, ha='right')
+            ax1.set_xlabel("x")
+            ax1.set_ylabel("y")
+            ax1.legend()
+            ax1.grid(True)
+            st.pyplot(fig1)
+
+            # Residual plot
+            st.subheader("📉 Residual Plot (Residuals vs Fitted Values)")
+            residuals = model.resid
+            fitted = model.fittedvalues
+            fig2, ax2 = plt.subplots()
+            ax2.scatter(fitted, residuals, color='purple')
+            ax2.axhline(y=0, color='gray', linestyle='--')
+            ax2.set_xlabel("Fitted Values")
+            ax2.set_ylabel("Residuals")
+            ax2.grid(True)
+            st.pyplot(fig2)
+
+            # Prediction & residual calculation
+            st.subheader("🔮 Predict New Value")
+            new_x = st.number_input("Enter a new x value to predict y:", value=0.0, format="%.4f")
+            if st.button("Predict y"):
+                pred_y = model.predict([[1, new_x]])[0]
+                st.success(f"Predicted y for x = {new_x}: **{round(pred_y, 4)}**")
+                actual_y_input = st.text_input("Enter actual y value (optional):")
+                if actual_y_input:
+                    actual_y = float(actual_y_input)
+                    residual = actual_y - pred_y
+                    st.info(f"Residual = {round(residual, 4)}")
+
         except Exception as e:
             st.error(f"Error: {e}")
+
 
 
 def run_multiple_regression_tool():
