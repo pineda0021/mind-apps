@@ -10,8 +10,7 @@ import inferences_one_sample_tool
 import inferences_two_sample_tool  
 import chi_square_tests_tool
 import anova_tool
-import regression_analysis_tool
-import multiple_regression_tool
+import regression_analysis_tool  # Handles both simple & multiple regression
 
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
 st.title("🧠 MIND: Statistics Visualizer Suite")
@@ -27,8 +26,8 @@ tool = st.sidebar.radio("Choose a tool:", [
     "Inferences on Two Samples",
     "Chi-Square Tests",
     "One-Way ANOVA",
-    "Regression Analysis",
-    "Multiple Regression"
+    "Regression Analysis (Simple)",
+    "Regression Analysis (Multiple)"
 ])
 
 if tool == "Descriptive Statistics":
@@ -49,10 +48,10 @@ elif tool == "Chi-Square Tests":
     chi_square_tests_tool.run_chi_square_tool()  
 elif tool == "One-Way ANOVA":  
     anova_tool.run_anova_tool()  
-elif tool == "Regression Analysis":
-    regression_analysis_tool.run_regression_tool()  
-elif tool == "Multiple Regression":
-    multiple_regression_tool.run_multiple_regression_tool()  
+elif tool == "Regression Analysis (Simple)":
+    regression_analysis_tool.run_simple_regression_tool()
+elif tool == "Regression Analysis (Multiple)":
+    regression_analysis_tool.run_multiple_regression_tool()
 
 st.markdown("""
 ---
@@ -63,7 +62,3 @@ Department of Mathematics, Los Angeles City College
 📧 Email: pinedaem@lacitycollege.edu | 📞 Tel: (323) 953-4000 ext. 2827  
 Founder of **MIND** — *Making Inference Digestible*
 """)
-
-
-
-
