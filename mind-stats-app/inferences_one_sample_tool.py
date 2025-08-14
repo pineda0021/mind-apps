@@ -5,7 +5,7 @@ import pandas as pd
 from scipy.stats import norm, t, chi2, binom
 
 def run_hypothesis_tool():
-    st.header("🧪 Inferences on One Sample")
+    st.header("🔎 Inferences on One Sample")
 
     test_choice = st.selectbox(
         "Choose a hypothesis test:",
