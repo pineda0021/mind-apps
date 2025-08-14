@@ -6,7 +6,8 @@ import poisson_tool
 import probability_tool  
 import continuous_dist_tool
 import confidence_intervals_tool
-import inferences_one_sample_tool  # Fixed import
+import inferences_one_sample_tool  
+import inferences_two_sample_tool  
 
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
 st.title("🧠 MIND: Statistics Visualizer Suite")
@@ -19,6 +20,7 @@ tool = st.sidebar.radio("Choose a tool:", [
     "Continuous Distributions",
     "Confidence Intervals",
     "Inferences on One Sample",
+    "Inferences on Two Samples",   
 ])
 
 if tool == "Descriptive Statistics":
@@ -32,7 +34,9 @@ elif tool == "Continuous Distributions":
 elif tool == "Confidence Intervals":   
     confidence_intervals_tool.run()
 elif tool == "Inferences on One Sample":
-    inferences_one_sample_tool.run_hypothesis_tool()  # Call the function
+    inferences_one_sample_tool.run_hypothesis_tool() 
+elif tool == "Inferences on Two Samples":   
+    inferences_two_sample_tool.run_two_sample_tool()  
 
 st.markdown("""
 ---
@@ -43,3 +47,4 @@ Department of Mathematics, Los Angeles City College
 📧 Email: pinedaem@lacitycollege.edu | 📞 Tel: (323) 953-4000 ext. 2827  
 Founder of **MIND** — *Making Inference Digestible*
 """)
+
