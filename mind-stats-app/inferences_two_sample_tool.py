@@ -3,12 +3,9 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-st.set_page_config(page_title="MIND: Two-Sample Inference", layout="wide")
-st.title("🧠 MIND: Two-Sample Inference Tool")
-
 def run_two_sample_tool():
     # Sidebar header
-    st.sidebar.header("📊 Two-Sample Inference")
+    st.sidebar.header("👨🏻‍🔬 Two-Sample Inference")
     
     # Dropdown for test selection
     test_choice = st.sidebar.selectbox(
