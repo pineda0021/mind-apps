@@ -56,7 +56,7 @@ def parse_matrix(input_text):
     return matrix
 
 def run_chi_square_tool():
-    st.header("🔢 Chi-Squared Tests Tool (TI-84 Friendly)")
+    st.header("👨‍💻 Chi-Squared Tests")
 
     test_choice = st.selectbox(
         "Select a Chi-Squared Test:",
