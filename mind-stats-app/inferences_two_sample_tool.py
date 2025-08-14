@@ -5,7 +5,7 @@ from scipy import stats
 
 def run_two_sample_tool():
     st.header("👨🏻‍🔬 Two-Sample Inference")
-    
+
     # Dropdown for test selection
     test_choice = st.selectbox(
         "Select a Test",
@@ -64,26 +64,43 @@ P-value = {p_val:.4f}
                 ci_upper = (p1 - p2) + z_crit * np.sqrt(p1*(1-p1)/n1 + p2*(1-p2)/n2)
                 st.text(f"Confidence Interval = ({ci_lower:.4f}, {ci_upper:.4f})")
 
-    # ------------------- PAIRED T-TESTS -------------------
+    # ------------------- PAIRED T-TESTS USING DATA -------------------
     elif test_choice in ["Paired t-Test using Data", "Paired Confidence Interval using Data"]:
-        st.subheader("Upload Paired Data (CSV)")
-        uploaded_file = st.file_uploader("CSV with two columns: Sample1, Sample2", type="csv")
-        if uploaded_file is not None:
-            df = pd.read_csv(uploaded_file)
-            if "Sample1" not in df.columns or "Sample2" not in df.columns:
-                st.error("CSV must have columns 'Sample1' and 'Sample2'")
-            else:
-                diff = df["Sample1"] - df["Sample2"]
-                mean_diff = np.mean(diff)
-                sd_diff = np.std(diff, ddof=1)
-                n = len(diff)
-                se = sd_diff / np.sqrt(n)
-                t_stat = mean_diff / se
-                t_crit = stats.t.ppf(1 - alpha/2, df=n-1)
-                p_val = 2*(1 - stats.t.cdf(abs(t_stat), df=n-1))
-                decision = "Reject the null hypothesis." if abs(t_stat) > t_crit else "Fail to reject the null hypothesis."
+        st.subheader("Enter Paired Data")
+        st.write("Option 1: Upload CSV with two columns: Sample1, Sample2")
+        uploaded_file = st.file_uploader("CSV", type="csv")
 
-                report = f"""
+        st.write("Option 2: Enter data manually (comma-separated)")
+        sample1_input = st.text_area("Sample1", placeholder="1.2, 2.3, 3.1, 4.5")
+        sample2_input = st.text_area("Sample2", placeholder="0.9, 2.1, 3.0, 4.2")
+
+        if st.button("Calculate"):
+            if uploaded_file is not None:
+                df = pd.read_csv(uploaded_file)
+                if "Sample1" not in df.columns or "Sample2" not in df.columns:
+                    st.error("CSV must have columns 'Sample1' and 'Sample2'")
+                    return
+                x1 = df["Sample1"].values
+                x2 = df["Sample2"].values
+            else:
+                try:
+                    x1 = np.array([float(i.strip()) for i in sample1_input.split(",")])
+                    x2 = np.array([float(i.strip()) for i in sample2_input.split(",")])
+                except:
+                    st.error("Invalid manual data. Make sure values are numeric and comma-separated.")
+                    return
+
+            diff = x1 - x2
+            mean_diff = np.mean(diff)
+            sd_diff = np.std(diff, ddof=1)
+            n = len(diff)
+            se = sd_diff / np.sqrt(n)
+            t_stat = mean_diff / se
+            t_crit = stats.t.ppf(1 - alpha/2, df=n-1)
+            p_val = 2*(1 - stats.t.cdf(abs(t_stat), df=n-1))
+            decision = "Reject the null hypothesis." if abs(t_stat) > t_crit else "Fail to reject the null hypothesis."
+
+            report = f"""
 =====================
 {test_choice}
 =====================
@@ -95,12 +112,12 @@ Critical Value = ±{t_crit:.4f}
 P-value = {p_val:.4f}
 {decision}
 """
-                st.text(report)
+            st.text(report)
 
-                if test_choice == "Paired Confidence Interval using Data":
-                    ci_lower = mean_diff - t_crit*se
-                    ci_upper = mean_diff + t_crit*se
-                    st.text(f"Confidence Interval = ({ci_lower:.4f}, {ci_upper:.4f})")
+            if test_choice == "Paired Confidence Interval using Data":
+                ci_lower = mean_diff - t_crit*se
+                ci_upper = mean_diff + t_crit*se
+                st.text(f"Confidence Interval = ({ci_lower:.4f}, {ci_upper:.4f})")
 
     # ------------------- PAIRED SUMMARY STATISTICS -------------------
     elif test_choice in ["Paired t-Test using Summary Statistics", "Paired Confidence Interval using Summary Statistics"]:
@@ -137,26 +154,41 @@ P-value = {p_val:.4f}
 
     # ------------------- INDEPENDENT T-TESTS USING DATA -------------------
     elif test_choice in ["Independent t-Test using Data", "Independent Confidence Interval using Data"]:
-        st.subheader("Upload Independent Samples Data (CSV)")
-        uploaded_file = st.file_uploader("CSV with two columns: Sample1, Sample2", type="csv")
-        if uploaded_file is not None:
-            df = pd.read_csv(uploaded_file)
-            if "Sample1" not in df.columns or "Sample2" not in df.columns:
-                st.error("CSV must have columns 'Sample1' and 'Sample2'")
-            else:
-                x1 = df["Sample1"]
-                x2 = df["Sample2"]
-                n1, n2 = len(x1), len(x2)
-                mean1, mean2 = np.mean(x1), np.mean(x2)
-                s1, s2 = np.std(x1, ddof=1), np.std(x2, ddof=1)
-                se = np.sqrt(s1**2/n1 + s2**2/n2)
-                t_stat = (mean1 - mean2)/se
-                df_deg = ((s1**2/n1 + s2**2/n2)**2) / ((s1**2/n1)**2/(n1-1) + (s2**2/n2)**2/(n2-1))
-                t_crit = stats.t.ppf(1-alpha/2, df=df_deg)
-                p_val = 2*(1 - stats.t.cdf(abs(t_stat), df=df_deg))
-                decision = "Reject the null hypothesis." if abs(t_stat) > t_crit else "Fail to reject the null hypothesis."
+        st.subheader("Enter Independent Samples Data")
+        st.write("Option 1: Upload CSV with two columns: Sample1, Sample2")
+        uploaded_file = st.file_uploader("CSV", type="csv", key="indep_csv")
 
-                report = f"""
+        st.write("Option 2: Enter data manually (comma-separated)")
+        sample1_input = st.text_area("Sample1", placeholder="1.2, 2.3, 3.1, 4.5", key="indep1")
+        sample2_input = st.text_area("Sample2", placeholder="0.9, 2.1, 3.0, 4.2", key="indep2")
+
+        if st.button("Calculate", key="indep_calc"):
+            if uploaded_file is not None:
+                df = pd.read_csv(uploaded_file)
+                if "Sample1" not in df.columns or "Sample2" not in df.columns:
+                    st.error("CSV must have columns 'Sample1' and 'Sample2'")
+                    return
+                x1 = df["Sample1"].values
+                x2 = df["Sample2"].values
+            else:
+                try:
+                    x1 = np.array([float(i.strip()) for i in sample1_input.split(",")])
+                    x2 = np.array([float(i.strip()) for i in sample2_input.split(",")])
+                except:
+                    st.error("Invalid manual data. Make sure values are numeric and comma-separated.")
+                    return
+
+            n1, n2 = len(x1), len(x2)
+            mean1, mean2 = np.mean(x1), np.mean(x2)
+            s1, s2 = np.std(x1, ddof=1), np.std(x2, ddof=1)
+            se = np.sqrt(s1**2/n1 + s2**2/n2)
+            t_stat = (mean1 - mean2)/se
+            df_deg = ((s1**2/n1 + s2**2/n2)**2) / ((s1**2/n1)**2/(n1-1) + (s2**2/n2)**2/(n2-1))
+            t_crit = stats.t.ppf(1-alpha/2, df=df_deg)
+            p_val = 2*(1 - stats.t.cdf(abs(t_stat), df=df_deg))
+            decision = "Reject the null hypothesis." if abs(t_stat) > t_crit else "Fail to reject the null hypothesis."
+
+            report = f"""
 =====================
 {test_choice}
 =====================
@@ -170,12 +202,12 @@ Critical Value = ±{t_crit:.4f}
 P-value = {p_val:.4f}
 {decision}
 """
-                st.text(report)
+            st.text(report)
 
-                if test_choice == "Independent Confidence Interval using Data":
-                    ci_lower = (mean1 - mean2) - t_crit*se
-                    ci_upper = (mean1 - mean2) + t_crit*se
-                    st.text(f"Confidence Interval = ({ci_lower:.4f}, {ci_upper:.4f})")
+            if "Confidence Interval" in test_choice:
+                ci_lower = (mean1 - mean2) - t_crit*se
+                ci_upper = (mean1 - mean2) + t_crit*se
+                st.text(f"Confidence Interval = ({ci_lower:.4f}, {ci_upper:.4f})")
 
     # ------------------- INDEPENDENT SUMMARY STATISTICS -------------------
     elif test_choice in ["Independent t-Test using Summary Statistics", "Independent Confidence Interval using Summary Statistics"]:
@@ -187,7 +219,7 @@ P-value = {p_val:.4f}
         s2 = st.number_input("Std Dev of Sample 2", value=1.0)
         n2 = st.number_input("Sample size 2", min_value=2, step=1)
 
-        if st.button("Calculate"):
+        if st.button("Calculate", key="indep_sum"):
             se = np.sqrt(s1**2/n1 + s2**2/n2)
             t_stat = (mean1 - mean2)/se
             df_deg = ((s1**2/n1 + s2**2/n2)**2) / ((s1**2/n1)**2/(n1-1) + (s2**2/n2)**2/(n2-1))
@@ -218,20 +250,35 @@ P-value = {p_val:.4f}
 
     # ------------------- F-TESTS -------------------
     elif test_choice in ["F-Test for Standard Deviation using Data", "F-Test for Standard Deviation using Summary Statistics"]:
-        st.subheader("Enter Data or Summary Statistics")
+        st.subheader("F-Test Input")
         use_data = test_choice.endswith("Data")
         if use_data:
-            uploaded_file = st.file_uploader("CSV with two columns: Sample1, Sample2", type="csv")
+            st.write("Option 1: Upload CSV with two columns: Sample1, Sample2")
+            uploaded_file = st.file_uploader("CSV", type="csv", key="f_csv")
+
+            st.write("Option 2: Enter data manually (comma-separated)")
+            sample1_input = st.text_area("Sample1", placeholder="1.2, 2.3, 3.1, 4.5", key="f1")
+            sample2_input = st.text_area("Sample2", placeholder="0.9, 2.1, 3.0, 4.2", key="f2")
+
         else:
             n1 = st.number_input("Sample size 1", min_value=2, step=1)
             s1 = st.number_input("Std Dev of Sample 1", value=1.0)
             n2 = st.number_input("Sample size 2", min_value=2, step=1)
             s2 = st.number_input("Std Dev of Sample 2", value=1.0)
 
-        if st.button("Calculate"):
-            if use_data and uploaded_file is not None:
-                df = pd.read_csv(uploaded_file)
-                x1, x2 = df["Sample1"], df["Sample2"]
+        if st.button("Calculate", key="f_calc"):
+            if use_data:
+                if uploaded_file is not None:
+                    df = pd.read_csv(uploaded_file)
+                    x1 = df["Sample1"].values
+                    x2 = df["Sample2"].values
+                else:
+                    try:
+                        x1 = np.array([float(i.strip()) for i in sample1_input.split(",")])
+                        x2 = np.array([float(i.strip()) for i in sample2_input.split(",")])
+                    except:
+                        st.error("Invalid manual data. Make sure values are numeric and comma-separated.")
+                        return
                 n1, n2 = len(x1), len(x2)
                 s1, s2 = np.std(x1, ddof=1), np.std(x2, ddof=1)
 
@@ -254,6 +301,6 @@ P-value = {p_val:.4f}
 """
             st.text(report)
 
+
 if __name__ == "__main__":
     run_two_sample_tool()
-
