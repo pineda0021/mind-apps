@@ -28,14 +28,14 @@ def run_two_sample_tool():
 
     # ------------------- TWO-PROPORTION TESTS -------------------
     if test_choice in ["Two-Proportion Z-Test", "Confidence Interval for Proportion Difference"]:
-        st.sidebar.subheader("Enter Sample Data")
-        x1 = st.sidebar.number_input("Number of successes in Sample 1", min_value=0, step=1)
-        n1 = st.sidebar.number_input("Sample size 1", min_value=1, step=1)
-        x2 = st.sidebar.number_input("Number of successes in Sample 2", min_value=0, step=1)
-        n2 = st.sidebar.number_input("Sample size 2", min_value=1, step=1)
-        alpha = st.sidebar.number_input("Significance level α", value=0.05, min_value=0.001, max_value=0.5, step=0.01)
+        st.subheader("Enter Sample Data")
+        x1 = st.number_input("Number of successes in Sample 1", min_value=0, step=1)
+        n1 = st.number_input("Sample size 1", min_value=1, step=1)
+        x2 = st.number_input("Number of successes in Sample 2", min_value=0, step=1)
+        n2 = st.number_input("Sample size 2", min_value=1, step=1)
+        alpha = st.number_input("Significance level α", value=0.05, min_value=0.001, max_value=0.5, step=0.01)
         
-        if st.sidebar.button("Calculate"):
+        if st.button("Calculate"):
             p1 = x1 / n1
             p2 = x2 / n2
             p_pool = (x1 + x2) / (n1 + n2)
@@ -62,9 +62,9 @@ def run_two_sample_tool():
 
     # ------------------- PAIRED T-TESTS -------------------
     elif test_choice in ["Paired t-Test using Data", "Paired Confidence Interval using Data"]:
-        st.sidebar.subheader("Upload Paired Data (CSV)")
-        uploaded_file = st.sidebar.file_uploader("CSV with two columns: Sample1, Sample2", type="csv")
-        alpha = st.sidebar.number_input("Significance level α", value=0.05, min_value=0.001, max_value=0.5, step=0.01)
+        st.subheader("Upload Paired Data (CSV)")
+        uploaded_file = st.file_uploader("CSV with two columns: Sample1, Sample2", type="csv")
+        alpha = st.number_input("Significance level α", value=0.05, min_value=0.001, max_value=0.5, step=0.01)
         if uploaded_file is not None:
             df = pd.read_csv(uploaded_file)
             if "Sample1" not in df.columns or "Sample2" not in df.columns:
@@ -96,12 +96,12 @@ def run_two_sample_tool():
 
     # ------------------- PAIRED SUMMARY STATISTICS -------------------
     elif test_choice in ["Paired t-Test using Summary Statistics", "Paired Confidence Interval using Summary Statistics"]:
-        st.sidebar.subheader("Enter Summary Statistics")
-        mean_diff = st.sidebar.number_input("Mean of differences", value=0.0)
-        sd_diff = st.sidebar.number_input("Std Dev of differences", value=1.0)
-        n = st.sidebar.number_input("Sample size", min_value=2, step=1)
-        alpha = st.sidebar.number_input("Significance level α", value=0.05, min_value=0.001, max_value=0.5, step=0.01)
-        if st.sidebar.button("Calculate"):
+        st.subheader("Enter Summary Statistics")
+        mean_diff = st.number_input("Mean of differences", value=0.0)
+        sd_diff = st.number_input("Std Dev of differences", value=1.0)
+        n = st.number_input("Sample size", min_value=2, step=1)
+        alpha = st.number_input("Significance level α", value=0.05, min_value=0.001, max_value=0.5, step=0.01)
+        if st.button("Calculate"):
             se = sd_diff / np.sqrt(n)
             t_stat = mean_diff / se
             t_crit = stats.t.ppf(1 - alpha/2, df=n-1)
@@ -122,9 +122,9 @@ def run_two_sample_tool():
 
     # ------------------- INDEPENDENT T-TESTS USING DATA -------------------
     elif test_choice in ["Independent t-Test using Data", "Independent Confidence Interval using Data"]:
-        st.sidebar.subheader("Upload Independent Samples Data (CSV)")
-        uploaded_file = st.sidebar.file_uploader("CSV with two columns: Sample1, Sample2", type="csv")
-        alpha = st.sidebar.number_input("Significance level α", value=0.05, min_value=0.001, max_value=0.5, step=0.01)
+        st.subheader("Upload Independent Samples Data (CSV)")
+        uploaded_file = st.file_uploader("CSV with two columns: Sample1, Sample2", type="csv")
+        alpha = st.number_input("Significance level α", value=0.05, min_value=0.001, max_value=0.5, step=0.01)
         if uploaded_file is not None:
             df = pd.read_csv(uploaded_file)
             if "Sample1" not in df.columns or "Sample2" not in df.columns:
@@ -160,15 +160,15 @@ def run_two_sample_tool():
 
     # ------------------- INDEPENDENT T-TESTS SUMMARY -------------------
     elif test_choice in ["Independent t-Test using Summary Statistics", "Independent Confidence Interval using Summary Statistics"]:
-        st.sidebar.subheader("Enter Summary Statistics")
-        mean1 = st.sidebar.number_input("Mean of Sample 1", value=0.0)
-        s1 = st.sidebar.number_input("Std Dev of Sample 1", value=1.0)
-        n1 = st.sidebar.number_input("Sample size 1", min_value=2, step=1)
-        mean2 = st.sidebar.number_input("Mean of Sample 2", value=0.0)
-        s2 = st.sidebar.number_input("Std Dev of Sample 2", value=1.0)
-        n2 = st.sidebar.number_input("Sample size 2", min_value=2, step=1)
-        alpha = st.sidebar.number_input("Significance level α", value=0.05, min_value=0.001, max_value=0.5, step=0.01)
-        if st.sidebar.button("Calculate"):
+        st.subheader("Enter Summary Statistics")
+        mean1 = st.number_input("Mean of Sample 1", value=0.0)
+        s1 = st.number_input("Std Dev of Sample 1", value=1.0)
+        n1 = st.number_input("Sample size 1", min_value=2, step=1)
+        mean2 = st.number_input("Mean of Sample 2", value=0.0)
+        s2 = st.number_input("Std Dev of Sample 2", value=1.0)
+        n2 = st.number_input("Sample size 2", min_value=2, step=1)
+        alpha = st.number_input("Significance level α", value=0.05, min_value=0.001, max_value=0.5, step=0.01)
+        if st.button("Calculate"):
             se = np.sqrt(s1**2/n1 + s2**2/n2)
             t_stat = (mean1 - mean2)/se
             df_deg = ((s1**2/n1 + s2**2/n2)**2) / ((s1**2/n1)**2/(n1-1) + (s2**2/n2)**2/(n2-1))
@@ -190,17 +190,17 @@ def run_two_sample_tool():
 
     # ------------------- F-TESTS -------------------
     elif test_choice in ["F-Test for Standard Deviation using Data", "F-Test for Standard Deviation using Summary Statistics"]:
-        st.sidebar.subheader("Enter Data or Summary Statistics")
+        st.subheader("Enter Data or Summary Statistics")
         use_data = test_choice.endswith("Data")
         if use_data:
-            uploaded_file = st.sidebar.file_uploader("CSV with two columns: Sample1, Sample2", type="csv")
+            uploaded_file = st.file_uploader("CSV with two columns: Sample1, Sample2", type="csv")
         else:
-            n1 = st.sidebar.number_input("Sample size 1", min_value=2, step=1)
-            s1 = st.sidebar.number_input("Std Dev of Sample 1", value=1.0)
-            n2 = st.sidebar.number_input("Sample size 2", min_value=2, step=1)
-            s2 = st.sidebar.number_input("Std Dev of Sample 2", value=1.0)
-        alpha = st.sidebar.number_input("Significance level α", value=0.05, min_value=0.001, max_value=0.5, step=0.01)
-        if st.sidebar.button("Calculate"):
+            n1 = st.number_input("Sample size 1", min_value=2, step=1)
+            s1 = st.number_input("Std Dev of Sample 1", value=1.0)
+            n2 = st.number_input("Sample size 2", min_value=2, step=1)
+            s2 = st.number_input("Std Dev of Sample 2", value=1.0)
+        alpha = st.number_input("Significance level α", value=0.05, min_value=0.001, max_value=0.5, step=0.01)
+        if st.button("Calculate"):
             if use_data and uploaded_file is not None:
                 df = pd.read_csv(uploaded_file)
                 x1, x2 = df["Sample1"], df["Sample2"]
