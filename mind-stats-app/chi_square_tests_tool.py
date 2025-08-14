@@ -1,135 +1,108 @@
 import streamlit as st
-import pandas as pd
 import numpy as np
-from scipy.stats import chi2, chisquare, chi2_contingency
+from scipy.stats import chi2
 
-def load_uploaded_data():
-    uploaded_file = st.file_uploader(
-        "📂 Upload CSV or Excel file",
-        type=["csv", "xlsx"]
-    )
-    if uploaded_file:
-        try:
-            if uploaded_file.name.endswith(".csv"):
-                df = pd.read_csv(uploaded_file)
-            else:
-                df = pd.read_excel(uploaded_file)
-            return df
-        except Exception as e:
-            st.error(f"Error reading file: {e}")
-    return None
+def print_report(title, chi2_stat, p_value, critical_value, df, expected_matrix, decimal_places):
+    st.markdown(f"### {title}")
+    st.markdown("---")
+    st.write(f"**Chi-Squared Statistic:** {round(chi2_stat, decimal_places)}")
+    st.write(f"**P-value:** {round(p_value, decimal_places)}")
+    st.write(f"**Critical Value:** {round(critical_value, decimal_places)}")
+    st.write(f"**Degrees of Freedom:** {df}")
+    st.write("**Expected Frequencies:**")
+    st.write(np.round(expected_matrix, decimal_places))
+    reject = p_value <= st.session_state.alpha
+    st.write(f"**Conclusion:** {'Reject' if reject else 'Do Not Reject'} the null hypothesis")
+
+def chi_squared_gof(observed, expected_perc, alpha, decimal_places):
+    total = sum(observed)
+    expected = np.array(expected_perc) * total
+    chi2_stat = np.sum((np.array(observed) - expected)**2 / expected)
+    df = len(observed) - 1
+    p_value = 1 - chi2.cdf(chi2_stat, df)
+    critical_value = chi2.ppf(1 - alpha, df)
+    print_report("Chi-Squared Goodness-of-Fit Test (Non-Uniform)", chi2_stat, p_value, critical_value, df, expected, decimal_places)
+
+def chi_squared_uniform(observed, alpha, decimal_places):
+    k = len(observed)
+    total = sum(observed)
+    expected = np.full(k, total / k)
+    chi2_stat = np.sum((np.array(observed) - expected)**2 / expected)
+    df = k - 1
+    p_value = 1 - chi2.cdf(chi2_stat, df)
+    critical_value = chi2.ppf(1 - alpha, df)
+    print_report("Chi-Squared Goodness-of-Fit Test (Uniform)", chi2_stat, p_value, critical_value, df, expected, decimal_places)
+
+def chi_squared_independence(matrix, alpha, decimal_places):
+    observed = np.array(matrix)
+    row_totals = observed.sum(axis=1)
+    col_totals = observed.sum(axis=0)
+    total = observed.sum()
+    expected = np.outer(row_totals, col_totals) / total
+    chi2_stat = np.sum((observed - expected)**2 / expected)
+    df = (observed.shape[0]-1)*(observed.shape[1]-1)
+    p_value = 1 - chi2.cdf(chi2_stat, df)
+    critical_value = chi2.ppf(1 - alpha, df)
+    print_report("Chi-Squared Test of Independence / Homogeneity", chi2_stat, p_value, critical_value, df, expected, decimal_places)
+
+def parse_matrix(input_text):
+    # Split by lines
+    lines = input_text.strip().split("\n")
+    matrix = []
+    for line in lines:
+        # Split by spaces or commas
+        row = [float(x) for x in line.replace(",", " ").split()]
+        matrix.append(row)
+    return matrix
 
 def run_chi_square_tool():
-    st.header("📊 Chi-Squared Hypothesis Tests")
+    st.header("🔢 Chi-Squared Tests Tool (TI-84 Friendly)")
 
     test_choice = st.selectbox(
-        "Choose a Chi-Squared Test:",
+        "Select a Chi-Squared Test:",
         [
-            "Goodness-of-Fit Test (expected percentages)",
+            "Goodness-of-Fit Test (with expected percentages)",
             "Goodness-of-Fit Test (uniform distribution)",
             "Chi-Square Test of Independence / Homogeneity"
         ]
     )
 
-    alpha = st.number_input("Significance level (e.g., 0.05)", value=0.05, min_value=0.0001, max_value=0.5, step=0.01)
-    decimal = st.number_input("Decimal places for output", min_value=1, max_value=10, value=4)
+    st.session_state.alpha = st.number_input("Significance level α", min_value=0.001, max_value=0.5, value=0.05)
+    decimal_places = st.number_input("Decimal places for rounding", min_value=1, max_value=10, value=4, step=1)
 
-    # ------------------- 1. Goodness-of-Fit (expected percentages) -------------------
-    if test_choice == "Goodness-of-Fit Test (expected percentages)":
-        st.write("Provide observed counts and expected percentages (must sum to 100).")
-        raw_obs = st.text_area("Observed counts (comma-separated)")
-        raw_exp_pct = st.text_area("Expected percentages (comma-separated)")
+    if test_choice == "Goodness-of-Fit Test (with expected percentages)":
+        observed_input = st.text_area("Enter observed frequencies (space-separated, e.g., 50 30 20)")
+        expected_input = st.text_area("Enter expected percentages (sum=1, e.g., 0.5 0.3 0.2)")
 
-        if st.button("👨‍💻 Calculate"):
+        if st.button("👨‍💻 Calculate GOF (Non-Uniform)"):
             try:
-                obs = np.array([float(x.strip()) for x in raw_obs.split(",")])
-                exp_pct = np.array([float(x.strip()) for x in raw_exp_pct.split(",")])
-                if len(obs) != len(exp_pct):
-                    st.error("Observed and expected arrays must be the same length")
-                    return
-                exp = np.sum(obs) * exp_pct / 100
-                chi2_stat = np.sum((obs - exp)**2 / exp)
-                df = len(obs) - 1
-                p_val = 1 - chi2.cdf(chi2_stat, df)
-                reject = p_val < alpha
+                observed = list(map(float, observed_input.replace(",", " ").split()))
+                expected_perc = list(map(float, expected_input.replace(",", " ").split()))
+                chi_squared_gof(observed, expected_perc, st.session_state.alpha, decimal_places)
+            except Exception as e:
+                st.error(f"Error: {e}")
 
-                st.text(f"""
-=====================
-Goodness-of-Fit Test (Expected Percentages)
-=====================
-Observed counts = {obs}
-Expected counts = {np.round(exp, decimal)}
-Chi-squared statistic = {chi2_stat:.{decimal}f}
-Degrees of freedom = {df}
-P-value = {p_val:.{decimal}f}
-Conclusion: {'Reject' if reject else 'Do not reject'} the null hypothesis
-""")
-            except:
-                st.error("Invalid input")
-
-    # ------------------- 2. Goodness-of-Fit (uniform distribution) -------------------
     elif test_choice == "Goodness-of-Fit Test (uniform distribution)":
-        st.write("Enter observed counts for each category.")
-        raw_obs = st.text_area("Observed counts (comma-separated)")
+        observed_input = st.text_area("Enter observed frequencies (space-separated, e.g., 10 15 20 5)")
 
-        if st.button("👨‍💻 Calculate"):
+        if st.button("👨‍💻 Calculate GOF (Uniform)"):
             try:
-                obs = np.array([float(x.strip()) for x in raw_obs.split(",")])
-                k = len(obs)
-                exp = np.full(k, np.mean(obs))  # uniform expected counts
-                chi2_stat = np.sum((obs - exp)**2 / exp)
-                df = k - 1
-                p_val = 1 - chi2.cdf(chi2_stat, df)
-                reject = p_val < alpha
+                observed = list(map(float, observed_input.replace(",", " ").split()))
+                chi_squared_uniform(observed, st.session_state.alpha, decimal_places)
+            except Exception as e:
+                st.error(f"Error: {e}")
 
-                st.text(f"""
-=====================
-Goodness-of-Fit Test (Uniform)
-=====================
-Observed counts = {obs}
-Expected counts = {np.round(exp, decimal)}
-Chi-squared statistic = {chi2_stat:.{decimal}f}
-Degrees of freedom = {df}
-P-value = {p_val:.{decimal}f}
-Conclusion: {'Reject' if reject else 'Do not reject'} the null hypothesis
-""")
-            except:
-                st.error("Invalid input")
-
-    # ------------------- 3. Chi-Square Test of Independence / Homogeneity -------------------
     elif test_choice == "Chi-Square Test of Independence / Homogeneity":
-        st.write("Provide a contingency table as CSV/Excel or manual entry.")
-        file = load_uploaded_data()
-        raw_data = st.text_area("Or enter data as rows of comma-separated values, one row per line")
+        st.markdown("Enter observed frequency matrix (rows separated by newline, values by space or comma):")
+        matrix_input = st.text_area("Example:\n10 20 30\n15 25 35")
 
-        if file is not None:
-            data = file.to_numpy()
-        elif raw_data:
+        if st.button("👨‍💻 Calculate Independence Test"):
             try:
-                data = np.array([[float(x) for x in row.split(",")] for row in raw_data.split("\n") if row.strip() != ""])
-            except:
-                st.error("Invalid data input")
-                data = None
-        else:
-            data = None
-
-        if st.button("👨‍💻 Calculate") and data is not None:
-            chi2_stat, p_val, df, expected = chi2_contingency(data)
-            reject = p_val < alpha
-
-            st.text(f"""
-=====================
-Chi-Square Test of Independence / Homogeneity
-=====================
-Observed Table:
-{data}
-Expected Table:
-{np.round(expected, decimal)}
-Chi-squared statistic = {chi2_stat:.{decimal}f}
-Degrees of freedom = {df}
-P-value = {p_val:.{decimal}f}
-Conclusion: {'Reject' if reject else 'Do not reject'} the null hypothesis
-""")
+                matrix = parse_matrix(matrix_input)
+                chi_squared_independence(matrix, st.session_state.alpha, decimal_places)
+            except Exception as e:
+                st.error(f"Error: {e}")
 
 if __name__ == "__main__":
     run_chi_square_tool()
+
