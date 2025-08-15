@@ -1,48 +1,58 @@
 # 📊 MIND: Statistics Visualizer Suite
 
-Created by **Professor Edward Pineda-Castro** at Los Angeles City College, this interactive Streamlit app helps students explore core statistics concepts using visuals, simulations, and hands-on data analysis tools.
+Created by **Professor Edward Pineda-Castro** at **Los Angeles City College**  
+An interactive Streamlit app that helps students explore core statistics concepts through visuals, simulations, and hands-on data analysis tools.
+
+---
 
 ## 🚀 Tools Included
 
-1. **Descriptive Statistics Tool**
-   - Create frequency and relative frequency tables
-   - Generate bar charts, pie charts, and histograms
-   - Handle qualitative, discrete quantitative, and continuous data
-   - ✅ *Challenge*: Build a grouped frequency table and interpret relative frequencies.
+### 1. Descriptive Statistics Tool
+- 📊 Create frequency & relative frequency tables  
+- 📈 Generate bar charts, pie charts, and histograms  
+- 📂 Handle qualitative, discrete quantitative, and continuous data  
+- ✅ **Challenge:** Build a grouped frequency table and interpret relative frequencies  
 
-2. **Probability Explorer** *(coming soon)*
-   - Visualize basic probability concepts
-   - Interactive tree diagrams and Venn diagrams
-   - ✅ *Challenge*: Solve compound probability problems using diagrams.
+### 2. Probability Explorer (coming soon)
+- 🎲 Visualize basic probability concepts  
+- 🔗 Interactive tree diagrams & Venn diagrams  
+- ✅ **Challenge:** Solve compound probability problems using diagrams  
 
-3. **Discrete Distributions Tool** *(coming soon)*
-   - Explore Binomial, Poisson, and other discrete distributions
-   - Plot probability mass functions (PMFs)
-   - ✅ *Challenge*: Compute probabilities for given discrete random variables.
+### 3. Discrete Distributions Tool (coming soon)
+- 🧮 Explore Binomial, Poisson, and other discrete distributions  
+- 📉 Plot probability mass functions (PMFs)  
+- ✅ **Challenge:** Compute probabilities for given discrete random variables  
 
-4. **Continuous Distributions Tool** *(coming soon)*
-   - Visualize normal, exponential, and other continuous distributions
-   - Calculate areas under the curve
-   - ✅ *Challenge*: Find probabilities and percentiles for continuous data.
+### 4. Continuous Distributions Tool (coming soon)
+- 📈 Visualize normal, exponential, and other continuous distributions  
+- 📐 Calculate areas under the curve  
+- ✅ **Challenge:** Find probabilities and percentiles for continuous data  
 
-5. **Confidence Interval Builder** *(coming soon)*
-   - Construct confidence intervals for means and proportions
-   - Visualize sampling distributions
-   - ✅ *Challenge*: Interpret confidence levels for real-world datasets.
+### 5. Confidence Interval Builder (coming soon)
+- 📏 Construct confidence intervals for means & proportions  
+- 📊 Visualize sampling distributions  
+- ✅ **Challenge:** Interpret confidence levels for real-world datasets  
 
-6. **Hypothesis Testing Tools** *(coming soon)*
-   - Perform one-sample and two-sample hypothesis tests
-   - Visual representation of rejection regions
-   - ✅ *Challenge*: Decide whether to reject \(H_0\) based on test statistics and p-values.
+### 6. Hypothesis Testing Tools (coming soon)
+- 🧪 Perform one-sample & two-sample hypothesis tests  
+- 🚦 Visual representation of rejection regions  
+- ✅ **Challenge:** Decide whether to reject \( H_0 \) based on test statistics and p-values  
 
-7. **Chi-Square and ANOVA Analyzer** *(coming soon)*
-   - Conduct Chi-square tests and ANOVA for categorical and multi-group comparisons
-   - ✅ *Challenge*: Interpret results and significance levels.
+### 7. Chi-Square and ANOVA Analyzer (coming soon)
+- 🔍 Conduct Chi-square tests and ANOVA for categorical and multi-group comparisons  
+- ✅ **Challenge:** Interpret results and significance levels  
 
-8. **Regression Analysis Explorer** *(coming soon)*
-   - Visualize linear regression with real-time plots
-   - Display slope, intercept, and correlation coefficient
-   - ✅ *Challenge*: Predict outcomes and evaluate model fit.
+### 8. Regression Analysis Explorer (coming soon)
+- 📉 Visualize linear regression with real-time plots  
+- ✏️ Display slope, intercept, and correlation coefficient  
+- ✅ **Challenge:** Predict outcomes and evaluate model fit  
+
+### 9. Multiple Regression Explorer (coming soon)
+- 📊 Fit and visualize multiple linear regression models with 2+ predictors  
+- 📑 Display regression coefficients, \( R^2 \), and adjusted \( R^2 \)  
+- 🔍 Interpret interaction terms and categorical predictors  
+- ✅ **Challenge:** Build a predictive model using multiple variables and explain each predictor’s contribution
+
 
 ## 🏁 Getting Started
 
