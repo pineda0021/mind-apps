@@ -50,31 +50,31 @@ def get_summary_stats(data, decimals=2):
     }
 
 def display_summary_streamlit(data):
-    stats = get_summary_stats(data)
+    stats_summary = get_summary_stats(data)
     st.markdown("### 📊 Five-Number Summary & IQR")
     for key in ["Minimum", "Q1", "Median", "Q3", "Maximum", "IQR"]:
-        st.write(f"**{key}:** {stats[key]}")
+        st.write(f"**{key}:** {stats_summary[key]}")
 
     st.markdown("### 📈 Descriptive Statistics")
-    st.write(f"**Mean:** {stats['Mean']}")
-    st.write(f"**Mode:** {', '.join(map(str, stats['Mode']))}")
-    st.write(f"**Range:** {stats['Range']}")
-    st.write(f"**Population Variance:** {stats['Population Variance']}")
-    st.write(f"**Population Std Dev:** {stats['Population Std Dev']}")
-    st.write(f"**Sample Variance:** {stats['Sample Variance']}")
-    st.write(f"**Sample Std Dev:** {stats['Sample Std Dev']}")
+    st.write(f"**Mean:** {stats_summary['Mean']}")
+    st.write(f"**Mode:** {', '.join(map(str, stats_summary['Mode']))}")
+    st.write(f"**Range:** {stats_summary['Range']}")
+    st.write(f"**Population Variance:** {stats_summary['Population Variance']}")
+    st.write(f"**Population Std Dev:** {stats_summary['Population Std Dev']}")
+    st.write(f"**Sample Variance:** {stats_summary['Sample Variance']}")
+    st.write(f"**Sample Std Dev:** {stats_summary['Sample Std Dev']}")
 
     st.markdown("### 🚨 Outlier Analysis")
-    st.write(f"**Lower Bound:** {stats['Lower Bound']}")
-    st.write(f"**Upper Bound:** {stats['Upper Bound']}")
+    st.write(f"**Lower Bound:** {stats_summary['Lower Bound']}")
+    st.write(f"**Upper Bound:** {stats_summary['Upper Bound']}")
 
-    if stats["Outliers"]:
-        st.warning(f"Potential outliers: {stats['Outliers']}")
+    if stats_summary["Outliers"]:
+        st.warning(f"Potential outliers: {stats_summary['Outliers']}")
     else:
         st.success("No potential outliers detected.")
 
 def display_plotly_boxplot_streamlit(data):
-    stats = get_summary_stats(data)
+    stats_summary = get_summary_stats(data)
     fig = go.Figure()
 
     fig.add_trace(go.Box(
@@ -98,10 +98,107 @@ def display_plotly_boxplot_streamlit(data):
     st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("### 🚨 Outlier Analysis")
-    if stats["Outliers"]:
-        st.warning(f"Potential outliers: {stats['Outliers']}")
+    if stats_summary["Outliers"]:
+        st.warning(f"Potential outliers: {stats_summary['Outliers']}")
     else:
         st.success("No potential outliers detected.")
+
+# ---------- Helper Functions ----------
+
+def bins_adjusted_for_inclusivity(bin_edges):
+    """
+    Adjust bin edges so that all intervals are right-inclusive.
+    np.histogram normally treats bins as [left, right) except the last one.
+    We nudge the last edge slightly so that values equal to the upper bound
+    are counted inside the last bin.
+    """
+    adjusted = np.array(bin_edges, dtype=float)
+    adjusted[-1] += 1e-8  # tiny epsilon to include rightmost edge
+    return adjusted
+
+def group_continuous_data(data, bin_edges):
+    adjusted_edges = bins_adjusted_for_inclusivity(bin_edges)
+    counts, _ = np.histogram(data, bins=adjusted_edges)
+    rel_freq = np.round(counts / counts.sum(), 4)
+
+    categories = []
+    for i in range(len(bin_edges) - 1):
+        left = bin_edges[i]
+        right = bin_edges[i + 1]
+        if i < len(bin_edges) - 2:
+            categories.append(f"{left:.2f} ≤ x < {right:.2f}")
+        else:
+            categories.append(f"{left:.2f} ≤ x ≤ {right:.2f}")
+
+    df = pd.DataFrame({
+        'Class Interval': categories,
+        'Frequency': counts,
+        'Relative Frequency': rel_freq
+    })
+    return df, bin_edges
+
+def display_frequency_table(data):
+    freq = dict(Counter(data))
+    total = sum(freq.values())
+    rel_freq = {k: round(v / total, 4) for k, v in freq.items()}
+    df = pd.DataFrame({
+        'Category': list(freq.keys()),
+        'Frequency': list(freq.values()),
+        'Relative Frequency': list(rel_freq.values())
+    })
+    try:
+        df['Category'] = pd.to_numeric(df['Category'])
+        df = df.sort_values(by='Category')
+    except:
+        df = df.sort_values(by='Category')
+    return df.reset_index(drop=True)
+
+def plot_qualitative(df):
+    labels = df['Category'].astype(str)
+    freq = df['Frequency']
+    rel_freq = df['Relative Frequency']
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+    axes[0].bar(labels, freq, color='skyblue')
+    axes[0].set_title('Frequency Bar Chart')
+    axes[0].set_xlabel('Category')
+    axes[0].set_ylabel('Frequency')
+
+    axes[1].pie(rel_freq, labels=labels, autopct='%.2f%%', startangle=90)
+    axes[1].set_title('Pie Chart (Relative Frequency)')
+    plt.tight_layout()
+    st.pyplot(fig)
+
+def plot_histograms(data, discrete=True, bins=None):
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+
+    if discrete:
+        axes[0].hist(data, bins=range(min(data), max(data) + 2), edgecolor='black', color='lightblue')
+        axes[0].set_title('Frequency Histogram')
+        axes[0].set_xlabel('Value')
+        axes[0].set_ylabel('Frequency')
+
+        weights = np.ones_like(data) / len(data)
+        axes[1].hist(data, bins=range(min(data), max(data) + 2), weights=weights, edgecolor='black', color='salmon')
+        axes[1].set_title('Relative Frequency Histogram')
+        axes[1].set_xlabel('Value')
+        axes[1].set_ylabel('Relative Frequency')
+
+    else:
+        bins_adj = bins_adjusted_for_inclusivity(bins)
+        axes[0].hist(data, bins=bins_adj, edgecolor='black', color='lightgreen')
+        axes[0].set_title('Frequency Histogram')
+        axes[0].set_xlabel('Class Intervals')
+        axes[0].set_ylabel('Frequency')
+
+        weights = np.ones_like(data) / len(data)
+        axes[1].hist(data, bins=bins_adj, weights=weights, edgecolor='black', color='orange')
+        axes[1].set_title('Relative Frequency Histogram')
+        axes[1].set_xlabel('Class Intervals')
+        axes[1].set_ylabel('Relative Frequency')
+
+    plt.tight_layout()
+    st.pyplot(fig)
 
 # ---------- Main App ----------
 
@@ -111,12 +208,7 @@ def run():
 
     choice = st.sidebar.radio(
         "Select Data Type:",
-        [
-            "Qualitative",
-            "Quantitative (Discrete)",
-            "Quantitative (Continuous)",
-            "Summary Statistics & Boxplot"
-        ]
+        ["Qualitative", "Quantitative (Discrete)", "Quantitative (Continuous)", "Summary Statistics & Boxplot"]
     )
 
     st.markdown("### 📤 Upload Data File (CSV or Excel)")
@@ -141,7 +233,7 @@ def run():
         if isinstance(raw_data, str):
             data = [val.strip() for val in raw_data.split(',') if val.strip() != ""]
         else:
-            data = raw_data  # from uploaded file
+            data = raw_data
 
         df = None
 
@@ -164,14 +256,22 @@ def run():
         elif choice == "Quantitative (Continuous)":
             try:
                 numeric_data = list(map(float, data))
-                st.markdown("Enter class intervals as comma-separated ranges, e.g.: 0-2,3-5,6-8")
-                class_interval_input = st.text_input("Class Intervals")
+                st.markdown("### 📌 Select or Enter Class Intervals")
+                interval_choice = st.selectbox(
+                    "Choose a preset interval grouping or enter custom intervals below:",
+                    ["Custom", "0-2,2-4,4-6", "0-5,5-10,10-15"]
+                )
+
+                class_interval_input = ""
+                if interval_choice == "Custom":
+                    class_interval_input = st.text_input("Enter class intervals (e.g. 0-2,2-4,4-6)")
+                else:
+                    class_interval_input = interval_choice
 
                 if class_interval_input.strip():
                     try:
                         intervals = [item.strip() for item in class_interval_input.split(",") if item.strip()]
                         bins = []
-
                         for interval in intervals:
                             if "-" not in interval:
                                 st.error(f"Invalid interval format: '{interval}'. Use format like 0-2.")
@@ -182,7 +282,6 @@ def run():
                                 st.error(f"Invalid interval: upper bound must be >= lower bound in '{interval}'")
                                 return
                             bins.append((left, right))
-
                         bins = sorted(bins, key=lambda x: x[0])
                         bin_edges = [bins[0][0]]
                         for left, right in bins:
@@ -229,93 +328,6 @@ def run():
                 file_name="frequency_table.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-
-# ---------- Other Helper Functions ----------
-
-def display_frequency_table(data):
-    freq = dict(Counter(data))
-    total = sum(freq.values())
-    rel_freq = {k: round(v / total, 4) for k, v in freq.items()}
-    df = pd.DataFrame({
-        'Category': list(freq.keys()),
-        'Frequency': list(freq.values()),
-        'Relative Frequency': list(rel_freq.values())
-    })
-    try:
-        df['Category'] = pd.to_numeric(df['Category'])
-        df = df.sort_values(by='Category')
-    except:
-        df = df.sort_values(by='Category')
-    return df.reset_index(drop=True)
-
-def plot_qualitative(df):
-    labels = df['Category'].astype(str)
-    freq = df['Frequency']
-    rel_freq = df['Relative Frequency']
-
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-
-    axes[0].bar(labels, freq, color='skyblue')
-    axes[0].set_title('Frequency Bar Chart')
-    axes[0].set_xlabel('Category')
-    axes[0].set_ylabel('Frequency')
-
-    axes[1].pie(rel_freq, labels=labels, autopct='%.2f%%', startangle=90)
-    axes[1].set_title('Pie Chart (Relative Frequency)')
-
-    plt.tight_layout()
-    st.pyplot(fig)
-
-def plot_histograms(data, discrete=True, bins=None):
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-
-    if discrete:
-        axes[0].hist(data, bins=range(min(data), max(data) + 2), edgecolor='black', color='lightblue')
-        axes[0].set_title('Frequency Histogram')
-        axes[0].set_xlabel('Value')
-        axes[0].set_ylabel('Frequency')
-
-        weights = np.ones_like(data) / len(data)
-        axes[1].hist(data, bins=range(min(data), max(data) + 2), weights=weights, edgecolor='black', color='salmon')
-        axes[1].set_title('Relative Frequency Histogram')
-        axes[1].set_xlabel('Value')
-        axes[1].set_ylabel('Relative Frequency')
-
-    else:
-        bins_adj = bins_adjusted_for_inclusivity(bins)
-        axes[0].hist(data, bins=bins_adj, edgecolor='black', color='lightgreen')
-        axes[0].set_title('Frequency Histogram')
-        axes[0].set_xlabel('Class Intervals')
-        axes[0].set_ylabel('Frequency')
-
-        weights = np.ones_like(data) / len(data)
-        axes[1].hist(data, bins=bins_adj, weights=weights, edgecolor='black', color='orange')
-        axes[1].set_title('Relative Frequency Histogram')
-        axes[1].set_xlabel('Class Intervals')
-        axes[1].set_ylabel('Relative Frequency')
-
-    plt.tight_layout()
-    st.pyplot(fig)
-
-def bins_adjusted_for_inclusivity(bin_edges):
-    # Shift bins slightly to include upper bound in last bin
-    eps = 1e-8
-    adjusted = np.array(bin_edges, dtype=float)
-    adjusted[:-1] = adjusted[:-1] - eps  # subtract tiny amount to make intervals closed on right
-    return adjusted
-
-def group_continuous_data(data, bin_edges):
-    adjusted_edges = bins_adjusted_for_inclusivity(bin_edges)
-    counts, _ = np.histogram(data, bins=adjusted_edges)
-    rel_freq = np.round(counts / counts.sum(), 4)
-    categories = [f"{bin_edges[i]:.2f} - {bin_edges[i+1]:.2f}" for i in range(len(bin_edges)-1)]
-
-    df = pd.DataFrame({
-        'Class Interval': categories,
-        'Frequency': counts,
-        'Relative Frequency': rel_freq
-    })
-    return df, bin_edges
 
 if __name__ == "__main__":
     run()
