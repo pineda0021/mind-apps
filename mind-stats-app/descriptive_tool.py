@@ -103,39 +103,92 @@ def display_plotly_boxplot_streamlit(data):
     else:
         st.success("No potential outliers detected.")
 
-# ---------- Helper Functions ----------
+# ---------- Continuous grouping & plotting (fixed) ----------
 
-def bins_adjusted_for_inclusivity(bin_edges):
+def parse_intervals(interval_string):
     """
-    Adjust bin edges so that all intervals are right-inclusive.
-    np.histogram normally treats bins as [left, right) except the last one.
-    We nudge the last edge slightly so that values equal to the upper bound
-    are counted inside the last bin.
+    Parse string like "0-2,3-5,6-8" into [(0,2),(3,5),(6,8)].
     """
-    adjusted = np.array(bin_edges, dtype=float)
-    adjusted[-1] += 1e-8  # tiny epsilon to include rightmost edge
-    return adjusted
+    intervals = []
+    parts = [p.strip() for p in interval_string.split(",") if p.strip()]
+    for p in parts:
+        if "-" not in p:
+            raise ValueError(f"Invalid interval '{p}' (expected left-right with '-')")
+        left_s, right_s = p.split("-", 1)
+        left = float(left_s.strip())
+        right = float(right_s.strip())
+        if right < left:
+            raise ValueError(f"Interval upper bound < lower bound in '{p}'")
+        intervals.append((left, right))
+    intervals = sorted(intervals, key=lambda x: x[0])
+    return intervals
 
-def group_continuous_data(data, bin_edges):
-    adjusted_edges = bins_adjusted_for_inclusivity(bin_edges)
-    counts, _ = np.histogram(data, bins=adjusted_edges)
-    rel_freq = np.round(counts / counts.sum(), 4)
-
+def group_continuous_data_explicit_counts(data, intervals):
+    """
+    Count values for each explicit interval.
+    If an interval's right endpoint equals the next interval's left endpoint (adjacent),
+    we count values as left <= x < right for that interval to avoid double counting.
+    Otherwise (a gap), we count left <= x <= right.
+    Returns a DataFrame with labeled intervals and counts.
+    """
+    data_arr = np.array(data, dtype=float)
+    n = len(data_arr)
     categories = []
-    for i in range(len(bin_edges) - 1):
-        left = bin_edges[i]
-        right = bin_edges[i + 1]
-        if i < len(bin_edges) - 2:
-            categories.append(f"{left:.2f} ≤ x < {right:.2f}")
+    counts = []
+    rel_freqs = []
+
+    for i, (left, right) in enumerate(intervals):
+        adjacent_to_next = False
+        if i < len(intervals) - 1:
+            next_left = intervals[i + 1][0]
+            # use a small tolerance for float comparisons
+            adjacent_to_next = np.isclose(right, next_left, atol=1e-8)
+
+        if adjacent_to_next:
+            # left <= x < right
+            mask = (data_arr >= left) & (data_arr < right)
+            label = f"{left:.0f} ≤ x < {right:.0f}" if left.is_integer() and right.is_integer() else f"{left:.2f} ≤ x < {right:.2f}"
         else:
-            categories.append(f"{left:.2f} ≤ x ≤ {right:.2f}")
+            # left <= x <= right (right-inclusive)
+            mask = (data_arr >= left) & (data_arr <= right)
+            label = f"{left:.0f} ≤ x ≤ {right:.0f}" if left.is_integer() and right.is_integer() else f"{left:.2f} ≤ x ≤ {right:.2f}"
+
+        cnt = int(np.sum(mask))
+        categories.append(label)
+        counts.append(cnt)
+        rel_freqs.append(round(cnt / n, 6) if n > 0 else 0.0)
 
     df = pd.DataFrame({
-        'Class Interval': categories,
-        'Frequency': counts,
-        'Relative Frequency': rel_freq
+        "Class Interval": categories,
+        "Frequency": counts,
+        "Relative Frequency": rel_freqs
     })
-    return df, bin_edges
+    return df
+
+def plot_grouped_intervals(df):
+    labels = df["Class Interval"].tolist()
+    counts = df["Frequency"].tolist()
+    rels = df["Relative Frequency"].tolist()
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+
+    axes[0].bar(range(len(labels)), counts, edgecolor='black')
+    axes[0].set_xticks(range(len(labels)))
+    axes[0].set_xticklabels(labels, rotation=45, ha='right')
+    axes[0].set_ylabel("Frequency")
+    axes[0].set_title("Grouped Frequency (Counts)")
+
+    axes[1].bar(range(len(labels)), rels, edgecolor='black')
+    axes[1].set_xticks(range(len(labels)))
+    axes[1].set_xticklabels(labels, rotation=45, ha='right')
+    axes[1].set_ylabel("Relative Frequency")
+    axes[1].set_title("Grouped Frequency (Relative)")
+
+    plt.tight_layout()
+    st.pyplot(fig)
+
+
+# ---------- Other Helper Functions ----------
 
 def display_frequency_table(data):
     freq = dict(Counter(data))
@@ -173,29 +226,35 @@ def plot_histograms(data, discrete=True, bins=None):
     fig, axes = plt.subplots(1, 2, figsize=(10, 4))
 
     if discrete:
-        axes[0].hist(data, bins=range(min(data), max(data) + 2), edgecolor='black', color='lightblue')
+        axes[0].hist(data, bins=range(min(data), max(data) + 2), edgecolor='black')
         axes[0].set_title('Frequency Histogram')
         axes[0].set_xlabel('Value')
         axes[0].set_ylabel('Frequency')
 
         weights = np.ones_like(data) / len(data)
-        axes[1].hist(data, bins=range(min(data), max(data) + 2), weights=weights, edgecolor='black', color='salmon')
+        axes[1].hist(data, bins=range(min(data), max(data) + 2), weights=weights, edgecolor='black')
         axes[1].set_title('Relative Frequency Histogram')
         axes[1].set_xlabel('Value')
         axes[1].set_ylabel('Relative Frequency')
 
     else:
-        bins_adj = bins_adjusted_for_inclusivity(bins)
-        axes[0].hist(data, bins=bins_adj, edgecolor='black', color='lightgreen')
-        axes[0].set_title('Frequency Histogram')
-        axes[0].set_xlabel('Class Intervals')
-        axes[0].set_ylabel('Frequency')
+        # If bins is provided but we used explicit counts for table/plot,
+        # we can fall back to a simple histogram for visualization only,
+        # but the grouped bar plot (plot_grouped_intervals) is the authoritative plot.
+        if bins is not None:
+            axes[0].hist(data, bins=bins, edgecolor='black')
+            axes[0].set_title('Frequency Histogram (visual)')
+            axes[0].set_xlabel('Value')
+            axes[0].set_ylabel('Frequency')
 
-        weights = np.ones_like(data) / len(data)
-        axes[1].hist(data, bins=bins_adj, weights=weights, edgecolor='black', color='orange')
-        axes[1].set_title('Relative Frequency Histogram')
-        axes[1].set_xlabel('Class Intervals')
-        axes[1].set_ylabel('Relative Frequency')
+            weights = np.ones_like(data) / len(data)
+            axes[1].hist(data, bins=bins, weights=weights, edgecolor='black')
+            axes[1].set_title('Relative Frequency Histogram (visual)')
+            axes[1].set_xlabel('Value')
+            axes[1].set_ylabel('Relative Frequency')
+        else:
+            axes[0].text(0.5, 0.5, 'No histogram available', ha='center')
+            axes[1].text(0.5, 0.5, 'No histogram available', ha='center')
 
     plt.tight_layout()
     st.pyplot(fig)
@@ -259,44 +318,33 @@ def run():
                 st.markdown("### 📌 Select or Enter Class Intervals")
                 interval_choice = st.selectbox(
                     "Choose a preset interval grouping or enter custom intervals below:",
-                    ["Custom", "0-2,2-4,4-6", "0-5,5-10,10-15"]
+                    ["Custom", "0-2,3-5,6-8,9-11,12-14,15-17", "0-5,5-10,10-15"]
                 )
 
                 class_interval_input = ""
                 if interval_choice == "Custom":
-                    class_interval_input = st.text_input("Enter class intervals (e.g. 0-2,2-4,4-6)")
+                    class_interval_input = st.text_input("Enter class intervals (e.g. 0-2,3-5,6-8)")
                 else:
                     class_interval_input = interval_choice
 
                 if class_interval_input.strip():
                     try:
-                        intervals = [item.strip() for item in class_interval_input.split(",") if item.strip()]
-                        bins = []
-                        for interval in intervals:
-                            if "-" not in interval:
-                                st.error(f"Invalid interval format: '{interval}'. Use format like 0-2.")
-                                return
-                            left_str, right_str = interval.split("-")
-                            left, right = float(left_str), float(right_str)
-                            if right < left:
-                                st.error(f"Invalid interval: upper bound must be >= lower bound in '{interval}'")
-                                return
-                            bins.append((left, right))
-                        bins = sorted(bins, key=lambda x: x[0])
-                        bin_edges = [bins[0][0]]
-                        for left, right in bins:
-                            bin_edges.append(right)
+                        intervals = parse_intervals(class_interval_input)
                     except Exception as e:
                         st.error(f"Error parsing intervals: {e}")
                         return
                 else:
+                    # fallback: equal-width bins
                     default_bins = 5
                     bin_edges = np.histogram_bin_edges(numeric_data, bins=default_bins)
+                    # convert edges to adjacent intervals
+                    intervals = [(bin_edges[i], bin_edges[i+1]) for i in range(len(bin_edges)-1)]
 
-                df, bin_edges = group_continuous_data(numeric_data, bin_edges)
+                df, = (group_continuous_data_explicit_counts(numeric_data, intervals),)
                 st.subheader("Grouped Frequency Table (Continuous Data)")
                 st.dataframe(df)
-                plot_histograms(numeric_data, discrete=False, bins=bin_edges)
+                # bar plot that exactly matches the table
+                plot_grouped_intervals(df)
 
             except ValueError:
                 st.error("Please enter valid numeric values for continuous data.")
@@ -331,3 +379,4 @@ def run():
 
 if __name__ == "__main__":
     run()
+
