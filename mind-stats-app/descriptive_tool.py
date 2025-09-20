@@ -24,14 +24,14 @@ def get_summary_stats(data, decimals=2):
     mean = round(np.mean(data), decimals)
     mode_result = stats.mode(data, keepdims=True)
     mode_count = mode_result.count[0] if len(mode_result.count) > 0 else 0
-    if mode_count <= 1:  # No repeating values
+    if mode_count <= 1:
         mode = "No mode"
     else:
         mode = ", ".join(map(str, np.round(mode_result.mode, decimals)))
 
     range_val = round(maximum - minimum, decimals)
-    pop_var = round(np.var(data), decimals)
-    pop_std = round(np.std(data), decimals)
+    pop_var = round(np.var(data, ddof=0), decimals)
+    pop_std = round(np.std(data, ddof=0), decimals)
     samp_var = round(np.var(data, ddof=1), decimals)
     samp_std = round(np.std(data, ddof=1), decimals)
 
@@ -49,9 +49,9 @@ def get_summary_stats(data, decimals=2):
         "Mode": mode,
         "Range": range_val,
         "σ² (Population Variance)": pop_var,
-        "Population Std Dev": pop_std,
-        "Sample Variance": samp_var,
-        "Sample Std Dev": samp_std
+        "σ (Population Std Dev)": pop_std,
+        "s² (Sample Variance)": samp_var,
+        "s (Sample Std Dev)": samp_std
     }
 
 def display_summary_streamlit(data):
@@ -64,10 +64,10 @@ def display_summary_streamlit(data):
     st.write(f"**Mean:** {stats_summary['Mean']}")
     st.write(f"**Mode:** {stats_summary['Mode']}")
     st.write(f"**Range:** {stats_summary['Range']}")
-    st.write(f"**Population Variance (σ²) :** {stats_summary['Population Variance']}")
-    st.write(f"**Population Std Dev (σ):** {stats_summary['Population Std Dev)']}")
-    st.write(f"**Sample Variance (s²):** {stats_summary['Sample Variance']}")
-    st.write(f"**Sample Std Dev (s):** {stats_summary['Sample Std Dev']}")
+    st.write(f"**Population Variance (σ²):** {stats_summary['σ² (Population Variance)']}")
+    st.write(f"**Population Std Dev (σ):** {stats_summary['σ (Population Std Dev)']}")
+    st.write(f"**Sample Variance (s²):** {stats_summary['s² (Sample Variance)']}")
+    st.write(f"**Sample Std Dev (s):** {stats_summary['s (Sample Std Dev)']}")
 
     st.markdown("### 🚨 Outlier Analysis")
     st.write(f"**Lower Bound:** {stats_summary['Lower Bound']}")
