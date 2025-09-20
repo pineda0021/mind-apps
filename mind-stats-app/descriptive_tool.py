@@ -23,7 +23,12 @@ def get_summary_stats(data, decimals=2):
 
     mean = round(np.mean(data), decimals)
     mode_result = stats.mode(data, keepdims=True)
-    mode = list(np.round(mode_result.mode, decimals))
+    mode_count = mode_result.count[0] if len(mode_result.count) > 0 else 0
+    if mode_count <= 1:  # No repeating values
+        mode = "No mode"
+    else:
+        mode = ", ".join(map(str, np.round(mode_result.mode, decimals)))
+
     range_val = round(maximum - minimum, decimals)
     pop_var = round(np.var(data), decimals)
     pop_std = round(np.std(data), decimals)
@@ -43,7 +48,7 @@ def get_summary_stats(data, decimals=2):
         "Mean": mean,
         "Mode": mode,
         "Range": range_val,
-        "Population Variance": pop_var,
+        "σ² (Population Variance)": pop_var,
         "Population Std Dev": pop_std,
         "Sample Variance": samp_var,
         "Sample Std Dev": samp_std
@@ -57,12 +62,12 @@ def display_summary_streamlit(data):
 
     st.markdown("### 📈 Descriptive Statistics")
     st.write(f"**Mean:** {stats_summary['Mean']}")
-    st.write(f"**Mode:** {', '.join(map(str, stats_summary['Mode']))}")
+    st.write(f"**Mode:** {stats_summary['Mode']}")
     st.write(f"**Range:** {stats_summary['Range']}")
-    st.write(f"**Population Variance:** {stats_summary['Population Variance']}")
-    st.write(f"**Population Std Dev:** {stats_summary['Population Std Dev']}")
-    st.write(f"**Sample Variance:** {stats_summary['Sample Variance']}")
-    st.write(f"**Sample Std Dev:** {stats_summary['Sample Std Dev']}")
+    st.write(f"**σ² (Population Variance):** {stats_summary['σ² (Population Variance)']}")
+    st.write(f"**σ (Population Std Dev):** {stats_summary['σ (Population Std Dev)']}")
+    st.write(f"**s² (Sample Variance):** {stats_summary['s² (Sample Variance)']}")
+    st.write(f"**s (Sample Std Dev):** {stats_summary['s (Sample Std Dev)']}")
 
     st.markdown("### 🚨 Outlier Analysis")
     st.write(f"**Lower Bound:** {stats_summary['Lower Bound']}")
@@ -151,9 +156,6 @@ def group_continuous_data_explicit_counts(data, intervals):
     return df
 
 def plot_histogram_from_intervals(data, intervals):
-    """
-    Proper histogram for continuous data with correct bin widths.
-    """
     data = np.array(data, dtype=float)
     bin_edges = [intervals[0][0]] + [right for _, right in intervals]
 
