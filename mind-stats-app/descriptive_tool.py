@@ -175,7 +175,7 @@ def plot_histogram_from_intervals(data, intervals):
     plt.tight_layout()
     st.pyplot(fig)
 
-# ---------- Other Helper Functions ----------
+# ---------- Helper Functions ----------
 
 def display_frequency_table(data):
     freq = dict(Counter(data))
@@ -247,10 +247,11 @@ def plot_histograms(data, discrete=True, bins=None):
 
 def run():
     st.header("📊 Descriptive Statistics Tool")
-    st.write("Analyze qualitative, discrete, continuous data or get detailed summary statistics with boxplot.")
+    st.write("Analyze your data by choosing a category below — qualitative, discrete, continuous, or summary statistics with boxplot visualization.")
 
+    # Sidebar selection
     choice = st.sidebar.radio(
-        "Select Data Type:",
+        "🧭 Choose Category:",
         ["Qualitative", "Quantitative (Discrete)", "Quantitative (Continuous)", "Summary Statistics & Boxplot"]
     )
 
@@ -280,23 +281,29 @@ def run():
 
         df = None
 
+        # ---------- QUALITATIVE ----------
         if choice == "Qualitative":
+            st.subheader("📂 Category: Qualitative Data")
             df = display_frequency_table(data)
-            st.subheader("Frequency and Relative Frequency Table")
+            st.markdown("### Frequency and Relative Frequency Table")
             st.dataframe(df)
             plot_qualitative(df)
 
+        # ---------- DISCRETE ----------
         elif choice == "Quantitative (Discrete)":
+            st.subheader("📂 Category: Quantitative (Discrete) Data")
             try:
                 numeric_data = list(map(int, data))
                 df = display_frequency_table(numeric_data)
-                st.subheader("Frequency and Relative Frequency Table")
+                st.markdown("### Frequency and Relative Frequency Table")
                 st.dataframe(df)
                 plot_histograms(numeric_data, discrete=True)
             except ValueError:
                 st.error("Please enter valid integers for discrete quantitative data.")
 
+        # ---------- CONTINUOUS ----------
         elif choice == "Quantitative (Continuous)":
+            st.subheader("📂 Category: Quantitative (Continuous) Data")
             try:
                 numeric_data = list(map(float, data))
                 st.markdown("### 📌 Select or Enter Class Intervals")
@@ -323,14 +330,16 @@ def run():
                     intervals = [(bin_edges[i], bin_edges[i+1]) for i in range(len(bin_edges)-1)]
 
                 df = group_continuous_data_explicit_counts(numeric_data, intervals)
-                st.subheader("Grouped Frequency Table (Continuous Data)")
+                st.markdown("### Grouped Frequency Table (Continuous Data)")
                 st.dataframe(df)
                 plot_histogram_from_intervals(numeric_data, intervals)
 
             except ValueError:
                 st.error("Please enter valid numeric values for continuous data.")
 
+        # ---------- SUMMARY STATISTICS ----------
         elif choice == "Summary Statistics & Boxplot":
+            st.subheader("📂 Category: Summary Statistics & Boxplot")
             try:
                 numeric_data = np.array(list(map(float, data)))
                 display_summary_streamlit(numeric_data)
@@ -338,6 +347,7 @@ def run():
             except ValueError:
                 st.error("Please enter valid numeric values for summary statistics.")
 
+        # ---------- DOWNLOAD ----------
         if df is not None:
             st.markdown("### 📥 Download Results")
             csv = df.to_csv(index=False).encode('utf-8')
