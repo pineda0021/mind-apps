@@ -133,9 +133,6 @@ def binomial_distribution_tool():
         elif calc_type == "Between: P(a ≤ X ≤ b)":
             prob = binom.cdf(b, n, p) - binom.cdf(a - 1, n, p) if a > 0 else binom.cdf(b, n, p)
             st.success(f"P({a} ≤ X ≤ {b}) = {prob:.5f}")
-        elif calc_type == "Between: P(a < X < b)":
-            prob = binom.cdf(b - 1, n, p) - binom.cdf(a, n, p)
-            st.success(f"P({a} < X < {b}) = {prob:.5f}")
         elif calc_type == "Show table and graph":
             summary_df = pd.DataFrame({
                 "x": x_vals,
@@ -213,9 +210,6 @@ def poisson_distribution_tool():
         elif calc_type == "Between: P(a ≤ X ≤ b)":
             prob = poisson.cdf(b, lam) - poisson.cdf(a - 1, lam) if a > 0 else poisson.cdf(b, lam)
             st.success(f"P({a} ≤ X ≤ {b}) = {prob:.5f}")
-        elif calc_type == "Between: P(a < X < b)":
-            prob = poisson.cdf(b - 1, lam) - poisson.cdf(a, lam)
-            st.success(f"P({a} < X < {b}) = {prob:.5f}")
         elif calc_type == "Show table and graph":
             summary_df = pd.DataFrame({
                 "x": x_vals,
