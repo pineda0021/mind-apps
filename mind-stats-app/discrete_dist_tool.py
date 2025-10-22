@@ -106,19 +106,19 @@ def binomial_distribution_tool():
         x = st.number_input("Enter x value:", min_value=0, max_value=int(n), step=1)
 
     if st.button("📊 Calculate Binomial"):
-        if calc_type == "Exactly:P(X = x)":
+        if calc_type == "P(X = x)":
             prob = binom.pmf(x, n, p)
             st.success(f"P(X = {x}) = {prob:.5f}")
-        elif calc_type == "At most:P(X ≤ x)":
+        elif calc_type == "P(X ≤ x)":
             prob = binom.cdf(x, n, p)
             st.success(f"P(X ≤ {x}) = {prob:.5f}")
-        elif calc_type == "Less than:P(X < x)":
+        elif calc_type == "P(X < x)":
             prob = binom.cdf(x - 1, n, p) if x > 0 else 0.0
             st.success(f"P(X < {x}) = {prob:.5f}")
-        elif calc_type == "At least:P(X ≥ x)":
+        elif calc_type == "P(X ≥ x)":
             prob = 1 - binom.cdf(x - 1, n, p) if x > 0 else 1.0
             st.success(f"P(X ≥ {x}) = {prob:.5f}")
-        elif calc_type == "Greater than:P(X > x)":
+        elif calc_type == "P(X > x)":
             prob = 1 - binom.cdf(x, n, p)
             st.success(f"P(X > {x}) = {prob:.5f}")
         elif calc_type == "Show table and graph":
