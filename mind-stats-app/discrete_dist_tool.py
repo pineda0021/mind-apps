@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import binom, poisson
 from fractions import Fraction
 
+# ---------- Helper Function ----------
 def parse_fraction(p_str):
     try:
         return float(Fraction(p_str.strip()))
@@ -13,8 +14,9 @@ def parse_fraction(p_str):
         st.error("❌ Please enter a valid decimal or fraction (e.g., 0.5 or 1/2).")
         return None
 
+# ---------- Discrete Distribution ----------
 def discrete_distribution_tool():
-    st.header("🎲 Discrete Probability Distribution Tool")
+    st.subheader("🎲 Discrete Probability Distribution")
 
     st.write("Enter values of discrete random variable X and their probabilities P(X).")
     x_input = st.text_input("Values of X (comma-separated):")
@@ -44,14 +46,12 @@ def discrete_distribution_tool():
         variance = np.sum(P * (X - mean) ** 2)
         std_dev = np.sqrt(variance)
 
-        st.subheader("Discrete Distribution Summary")
-
+        st.markdown("### 📋 Distribution Summary")
         summary_df = pd.DataFrame({
             "x": X,
             "P(X = x)": np.round(P, 5)
         }).sort_values("x").reset_index(drop=True)
-
-        st.table(summary_df)
+        st.dataframe(summary_df, use_container_width=True)
 
         st.markdown(
             f"**Mean:** {mean:.5f}  \n"
@@ -69,8 +69,9 @@ def discrete_distribution_tool():
         )
         st.plotly_chart(fig, use_container_width=True)
 
+# ---------- Binomial Distribution ----------
 def binomial_distribution_tool():
-    st.header("🎲 Binomial Distribution Tool")
+    st.subheader("🎲 Binomial Distribution")
 
     n = st.number_input("Number of trials (n)", min_value=1, step=1)
     p_str = st.text_input("Probability of success (p)", value="1/2")
@@ -78,32 +79,31 @@ def binomial_distribution_tool():
 
     if p is None:
         return
-
     if not (0 <= p <= 1):
         st.warning("⚠️ Probability must be between 0 and 1.")
         return
 
     x_vals = np.arange(0, n + 1)
     pmf_vals = binom.pmf(x_vals, n, p)
-    cdf_vals = binom.cdf(x_vals, n, p)
 
     mean = n * p
     variance = n * p * (1 - p)
     std_dev = np.sqrt(variance)
 
-    st.subheader("Binomial Distribution Summary")
+    st.markdown("### 📋 Binomial Summary")
     st.markdown(
         f"**Mean:** {mean:.5f}  \n"
         f"**Variance:** {variance:.5f}  \n"
         f"**Standard Deviation:** {std_dev:.5f}"
     )
 
-    calc_type = st.selectbox("Choose a probability calculation:",
-                             ["Exactly: P(X = x)", "P(X ≤ x)", "P(X < x)", 
-                              "P(X ≥ x)", "P(X > x)", "Between: P(a ≤ X ≤ b)", 
-                              "Show table and graph"])
+    calc_type = st.selectbox(
+        "Choose a probability calculation:",
+        ["Exactly: P(X = x)", "P(X ≤ x)", "P(X < x)", 
+         "P(X ≥ x)", "P(X > x)", "Between: P(a ≤ X ≤ b)", 
+         "Show table and graph"]
+    )
 
-    # Inputs for single or range values
     x = a = b = None
     if "Between" in calc_type:
         a = st.number_input("Enter lower bound (a):", min_value=0, max_value=int(n), step=1)
@@ -138,21 +138,20 @@ def binomial_distribution_tool():
                 "x": x_vals,
                 "P(X = x)": np.round(pmf_vals, 5)
             })
-            st.subheader("Binomial Probability Table")
-            st.table(summary_df)
+            st.dataframe(summary_df, use_container_width=True)
 
-            st.subheader("Binomial Distribution Plot")
-            fig, ax = plt.subplots(figsize=(8, 4))
-            ax.bar(x_vals, pmf_vals, color='skyblue', edgecolor='black')
-            ax.set_title(f'Binomial Distribution (n={n}, p={p})')
-            ax.set_xlabel('Number of Successes')
-            ax.set_ylabel('Probability')
-            ax.grid(axis='y')
-            st.pyplot(fig)
+            fig = go.Figure(go.Bar(x=x_vals, y=pmf_vals, marker_color='skyblue'))
+            fig.update_layout(
+                title=f'Binomial Distribution (n={n}, p={p})',
+                xaxis_title='x',
+                yaxis_title='P(X = x)',
+                template='simple_white'
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
-
+# ---------- Poisson Distribution ----------
 def poisson_distribution_tool():
-    st.header("🎲 Poisson Distribution Tool")
+    st.subheader("🎲 Poisson Distribution")
 
     lam = st.number_input("Mean number of occurrences (λ)", min_value=0.0, format="%.4f")
     x_max = st.number_input("Max number of occurrences to consider (x max)", min_value=1, step=1)
@@ -163,23 +162,24 @@ def poisson_distribution_tool():
 
     x_vals = np.arange(0, int(x_max) + 1)
     pmf_vals = poisson.pmf(x_vals, lam)
-    cdf_vals = poisson.cdf(x_vals, lam)
 
     mean = lam
     variance = lam
     std_dev = np.sqrt(variance)
 
-    st.subheader("Poisson Distribution Summary")
+    st.markdown("### 📋 Poisson Summary")
     st.markdown(
         f"**Mean:** {mean:.5f}  \n"
         f"**Variance:** {variance:.5f}  \n"
         f"**Standard Deviation:** {std_dev:.5f}"
     )
 
-    calc_type = st.selectbox("Choose a probability calculation:",
-                             ["Exactly: P(X = x)", "P(X ≤ x)", "P(X < x)",
-                              "P(X ≥ x)", "P(X > x)", "Between: P(a ≤ X ≤ b)",
-                              "Show table and graph"])
+    calc_type = st.selectbox(
+        "Choose a probability calculation:",
+        ["Exactly: P(X = x)", "P(X ≤ x)", "P(X < x)",
+         "P(X ≥ x)", "P(X > x)", "Between: P(a ≤ X ≤ b)",
+         "Show table and graph"]
+    )
 
     x = a = b = None
     if "Between" in calc_type:
@@ -215,23 +215,37 @@ def poisson_distribution_tool():
                 "x": x_vals,
                 "P(X = x)": np.round(pmf_vals, 5)
             })
+            st.dataframe(summary_df, use_container_width=True)
 
-            st.subheader("Poisson Probability Table")
-            st.table(summary_df)
+            fig = go.Figure(go.Bar(x=x_vals, y=pmf_vals, marker_color='salmon'))
+            fig.update_layout(
+                title=f'Poisson Distribution (λ={lam})',
+                xaxis_title='x',
+                yaxis_title='P(X = x)',
+                template='simple_white'
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
-            st.subheader("Poisson Distribution Plot")
-            fig, ax = plt.subplots(figsize=(8, 4))
-            ax.bar(x_vals, pmf_vals, color='lightcoral', edgecolor='black')
-            ax.set_title(f'Poisson Distribution (λ={lam})')
-            ax.set_xlabel('Number of Occurrences')
-            ax.set_ylabel('Probability')
-            ax.grid(axis='y')
-            st.pyplot(fig)
-
-
+# ---------- Main App ----------
 def run():
-    st.sidebar.title("Choose a Distribution")
-    choice = st.sidebar.radio("", ["Discrete Distribution", "Binomial Distribution", "Poisson Distribution"])
+    st.header("🎰 Probability Distribution Calculator")
+
+    categories = [
+        "Discrete Distribution",
+        "Binomial Distribution",
+        "Poisson Distribution"
+    ]
+
+    choice = st.selectbox(
+        "Choose a category:",
+        categories,
+        index=None,
+        placeholder="Select a distribution type..."
+    )
+
+    if not choice:
+        st.info("👆 Please choose a category to begin.")
+        return
 
     if choice == "Discrete Distribution":
         discrete_distribution_tool()
@@ -242,5 +256,3 @@ def run():
 
 if __name__ == "__main__":
     run()
-
-
