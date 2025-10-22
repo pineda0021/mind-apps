@@ -145,7 +145,7 @@ def plot_qualitative(df):
 # ---------- Main App ----------
 
 def run():
-    st.header("📊 Descriptive Statistics Analyzer")
+    st.header("📘 Descriptive Statistics Tool")
 
     categories = [
         "Qualitative",
@@ -154,6 +154,7 @@ def run():
         "Summary Statistics & Boxplot"
     ]
 
+    # --- Matching dropdown look to CI calculator ---
     choice = st.selectbox(
         "Choose a category:",
         categories,
@@ -191,12 +192,14 @@ def run():
 
         df = None
 
+        # ---------- QUALITATIVE ----------
         if choice == "Qualitative":
             st.subheader("📂 Category: Qualitative Data")
             df = display_frequency_table(data)
             st.dataframe(df)
             plot_qualitative(df)
 
+        # ---------- DISCRETE ----------
         elif choice == "Quantitative (Discrete)":
             st.subheader("📂 Category: Quantitative (Discrete) Data")
             try:
@@ -209,6 +212,7 @@ def run():
             except ValueError:
                 st.error("Please enter valid integers for discrete data.")
 
+        # ---------- CONTINUOUS ----------
         elif choice == "Quantitative (Continuous)":
             st.subheader("📂 Category: Quantitative (Continuous) Data")
             try:
@@ -219,6 +223,7 @@ def run():
             except ValueError:
                 st.error("Please enter valid numeric values.")
 
+        # ---------- SUMMARY ----------
         elif choice == "Summary Statistics & Boxplot":
             st.subheader("📂 Category: Summary Statistics & Boxplot")
             try:
