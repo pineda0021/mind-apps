@@ -101,7 +101,7 @@ def binomial_distribution_tool():
     calc_type = st.selectbox("Choose a probability calculation:",
                              ["Exactly: P(X = x)", "P(X ≤ x)", "P(X < x)", 
                               "P(X ≥ x)", "P(X > x)", "Between: P(a ≤ X ≤ b)", 
-                              "Between: P(a < X < b)", "Show table and graph"])
+                              "Show table and graph"])
 
     # Inputs for single or range values
     x = a = b = None
@@ -179,7 +179,7 @@ def poisson_distribution_tool():
     calc_type = st.selectbox("Choose a probability calculation:",
                              ["Exactly: P(X = x)", "P(X ≤ x)", "P(X < x)",
                               "P(X ≥ x)", "P(X > x)", "Between: P(a ≤ X ≤ b)",
-                              "Between: P(a < X < b)", "Show table and graph"])
+                              "Show table and graph"])
 
     x = a = b = None
     if "Between" in calc_type:
