@@ -246,13 +246,20 @@ def plot_histograms(data, discrete=True, bins=None):
 # ---------- Main App ----------
 
 def run():
-    st.header("📊 Descriptive Statistics Tool")
-    st.write("Analyze your data by choosing a category below — qualitative, discrete, continuous, or summary statistics with boxplot visualization.")
+    st.title("📊 Descriptive Statistics Analyzer")
 
-    # Sidebar selection
-    choice = st.sidebar.radio(
-        "🧭 Choose Category:",
-        ["Qualitative", "Quantitative (Discrete)", "Quantitative (Continuous)", "Summary Statistics & Boxplot"]
+    # Dropdown with search bar (like Confidence Interval Calculator)
+    st.markdown("### 🧭 Choose a Category:")
+    choice = st.selectbox(
+        "Choose a category:",
+        [
+            "Qualitative",
+            "Quantitative (Discrete)",
+            "Quantitative (Continuous)",
+            "Summary Statistics & Boxplot"
+        ],
+        index=None,
+        placeholder="Select a category to begin..."
     )
 
     st.markdown("### 📤 Upload Data File (CSV or Excel)")
@@ -272,6 +279,10 @@ def run():
             st.error(f"Error reading file: {e}")
     else:
         raw_data = st.text_area("Or enter comma-separated values:", "")
+
+    if not choice:
+        st.info("👆 Please choose a category from the dropdown to get started.")
+        return
 
     if raw_data:
         if isinstance(raw_data, str):
