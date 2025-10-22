@@ -99,14 +99,23 @@ def binomial_distribution_tool():
     )
 
     calc_type = st.selectbox("Choose a probability calculation:",
-                             ["P(X = x)", "P(X ≤ x)", "P(X < x)", "P(X ≥ x)", "P(X > x)", "Show table and graph"])
+                             ["Exactly: P(X = x)", "P(X ≤ x)", "P(X < x)", 
+                              "P(X ≥ x)", "P(X > x)", "Between: P(a ≤ X ≤ b)", 
+                              "Between: P(a < X < b)", "Show table and graph"])
 
-    x = None
-    if calc_type != "Show table and graph":
+    # Inputs for single or range values
+    x = a = b = None
+    if "Between" in calc_type:
+        a = st.number_input("Enter lower bound (a):", min_value=0, max_value=int(n), step=1)
+        b = st.number_input("Enter upper bound (b):", min_value=0, max_value=int(n), step=1)
+        if a > b:
+            st.warning("⚠️ Lower bound (a) must be ≤ upper bound (b).")
+            return
+    elif calc_type != "Show table and graph":
         x = st.number_input("Enter x value:", min_value=0, max_value=int(n), step=1)
 
     if st.button("📊 Calculate Binomial"):
-        if calc_type == "P(X = x)":
+        if calc_type == "Exactly: P(X = x)":
             prob = binom.pmf(x, n, p)
             st.success(f"P(X = {x}) = {prob:.5f}")
         elif calc_type == "P(X ≤ x)":
@@ -121,12 +130,17 @@ def binomial_distribution_tool():
         elif calc_type == "P(X > x)":
             prob = 1 - binom.cdf(x, n, p)
             st.success(f"P(X > {x}) = {prob:.5f}")
+        elif calc_type == "Between: P(a ≤ X ≤ b)":
+            prob = binom.cdf(b, n, p) - binom.cdf(a - 1, n, p) if a > 0 else binom.cdf(b, n, p)
+            st.success(f"P({a} ≤ X ≤ {b}) = {prob:.5f}")
+        elif calc_type == "Between: P(a < X < b)":
+            prob = binom.cdf(b - 1, n, p) - binom.cdf(a, n, p)
+            st.success(f"P({a} < X < {b}) = {prob:.5f}")
         elif calc_type == "Show table and graph":
             summary_df = pd.DataFrame({
                 "x": x_vals,
                 "P(X = x)": np.round(pmf_vals, 5)
             })
-
             st.subheader("Binomial Probability Table")
             st.table(summary_df)
 
@@ -138,6 +152,7 @@ def binomial_distribution_tool():
             ax.set_ylabel('Probability')
             ax.grid(axis='y')
             st.pyplot(fig)
+
 
 def poisson_distribution_tool():
     st.header("🎲 Poisson Distribution Tool")
