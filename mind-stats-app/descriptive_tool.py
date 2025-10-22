@@ -161,11 +161,12 @@ def run():
         index=None,
         placeholder="Select a category to begin..."
     )
-    
-     if not choice:
+
+    # --- FIXED indentation error here ---
+    if not choice:
         st.info("👆 Please choose a category to begin.")
         return
-    
+
     st.markdown("### 📤 Upload Data File (CSV or Excel)")
     uploaded_file = st.file_uploader("Upload your dataset:", type=["csv", "xlsx"])
     raw_data = ""
@@ -183,10 +184,6 @@ def run():
             st.error(f"Error reading file: {e}")
     else:
         raw_data = st.text_area("Or enter comma-separated values:", "")
-
-    if not choice:
-        st.info("👆 Please choose a category from the dropdown to get started.")
-        return
 
     if raw_data:
         if isinstance(raw_data, str):
