@@ -108,73 +108,6 @@ def display_plotly_boxplot_streamlit(data):
     else:
         st.success("No potential outliers detected.")
 
-# ---------- Continuous grouping & plotting ----------
-
-def parse_intervals(interval_string):
-    intervals = []
-    parts = [p.strip() for p in interval_string.split(",") if p.strip()]
-    for p in parts:
-        if "-" not in p:
-            raise ValueError(f"Invalid interval '{p}' (expected left-right with '-')")
-        left_s, right_s = p.split("-", 1)
-        left = float(left_s.strip())
-        right = float(right_s.strip())
-        if right < left:
-            raise ValueError(f"Interval upper bound < lower bound in '{p}'")
-        intervals.append((left, right))
-    intervals = sorted(intervals, key=lambda x: x[0])
-    return intervals
-
-def group_continuous_data_explicit_counts(data, intervals):
-    data_arr = np.array(data, dtype=float)
-    n = len(data_arr)
-    categories, counts, rel_freqs = [], [], []
-
-    for i, (left, right) in enumerate(intervals):
-        adjacent_to_next = False
-        if i < len(intervals) - 1:
-            next_left = intervals[i + 1][0]
-            adjacent_to_next = np.isclose(right, next_left, atol=1e-8)
-
-        if adjacent_to_next:
-            mask = (data_arr >= left) & (data_arr < right)
-            label = f"{left:.0f} ≤ x < {right:.0f}" if left.is_integer() and right.is_integer() else f"{left:.2f} ≤ x < {right:.2f}"
-        else:
-            mask = (data_arr >= left) & (data_arr <= right)
-            label = f"{left:.0f} ≤ x ≤ {right:.0f}" if left.is_integer() and right.is_integer() else f"{left:.2f} ≤ x ≤ {right:.2f}"
-
-        cnt = int(np.sum(mask))
-        categories.append(label)
-        counts.append(cnt)
-        rel_freqs.append(round(cnt / n, 6) if n > 0 else 0.0)
-
-    df = pd.DataFrame({
-        "Class Interval": categories,
-        "Frequency": counts,
-        "Relative Frequency": rel_freqs
-    })
-    return df
-
-def plot_histogram_from_intervals(data, intervals):
-    data = np.array(data, dtype=float)
-    bin_edges = [intervals[0][0]] + [right for _, right in intervals]
-
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-
-    axes[0].hist(data, bins=bin_edges, edgecolor='black', align='mid')
-    axes[0].set_title("Frequency Histogram")
-    axes[0].set_xlabel("Class Interval")
-    axes[0].set_ylabel("Frequency")
-
-    weights = np.ones_like(data) / len(data)
-    axes[1].hist(data, bins=bin_edges, weights=weights, edgecolor='black', align='mid')
-    axes[1].set_title("Relative Frequency Histogram")
-    axes[1].set_xlabel("Class Interval")
-    axes[1].set_ylabel("Relative Frequency")
-
-    plt.tight_layout()
-    st.pyplot(fig)
-
 # ---------- Helper Functions ----------
 
 def display_frequency_table(data):
@@ -209,55 +142,21 @@ def plot_qualitative(df):
     plt.tight_layout()
     st.pyplot(fig)
 
-def plot_histograms(data, discrete=True, bins=None):
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-
-    if discrete:
-        axes[0].hist(data, bins=range(min(data), max(data) + 2), edgecolor='black')
-        axes[0].set_title('Frequency Histogram')
-        axes[0].set_xlabel('Value')
-        axes[0].set_ylabel('Frequency')
-
-        weights = np.ones_like(data) / len(data)
-        axes[1].hist(data, bins=range(min(data), max(data) + 2), weights=weights, edgecolor='black')
-        axes[1].set_title('Relative Frequency Histogram')
-        axes[1].set_xlabel('Value')
-        axes[1].set_ylabel('Relative Frequency')
-
-    else:
-        if bins is not None:
-            axes[0].hist(data, bins=bins, edgecolor='black')
-            axes[0].set_title('Frequency Histogram (visual)')
-            axes[0].set_xlabel('Value')
-            axes[0].set_ylabel('Frequency')
-
-            weights = np.ones_like(data) / len(data)
-            axes[1].hist(data, bins=bins, weights=weights, edgecolor='black')
-            axes[1].set_title('Relative Frequency Histogram (visual)')
-            axes[1].set_xlabel('Value')
-            axes[1].set_ylabel('Relative Frequency')
-        else:
-            axes[0].text(0.5, 0.5, 'No histogram available', ha='center')
-            axes[1].text(0.5, 0.5, 'No histogram available', ha='center')
-
-    plt.tight_layout()
-    st.pyplot(fig)
-
 # ---------- Main App ----------
 
 def run():
-    st.title("📊 Descriptive Statistics Analyzer")
+    st.header("📊 Descriptive Statistics Analyzer")
 
-    # Dropdown with search bar (like Confidence Interval Calculator)
-    st.markdown("### 🧭 Choose a Category:")
+    categories = [
+        "Qualitative",
+        "Quantitative (Discrete)",
+        "Quantitative (Continuous)",
+        "Summary Statistics & Boxplot"
+    ]
+
     choice = st.selectbox(
         "Choose a category:",
-        [
-            "Qualitative",
-            "Quantitative (Discrete)",
-            "Quantitative (Continuous)",
-            "Summary Statistics & Boxplot"
-        ],
+        categories,
         index=None,
         placeholder="Select a category to begin..."
     )
@@ -292,63 +191,34 @@ def run():
 
         df = None
 
-        # ---------- QUALITATIVE ----------
         if choice == "Qualitative":
             st.subheader("📂 Category: Qualitative Data")
             df = display_frequency_table(data)
-            st.markdown("### Frequency and Relative Frequency Table")
             st.dataframe(df)
             plot_qualitative(df)
 
-        # ---------- DISCRETE ----------
         elif choice == "Quantitative (Discrete)":
             st.subheader("📂 Category: Quantitative (Discrete) Data")
             try:
                 numeric_data = list(map(int, data))
                 df = display_frequency_table(numeric_data)
-                st.markdown("### Frequency and Relative Frequency Table")
                 st.dataframe(df)
-                plot_histograms(numeric_data, discrete=True)
+                st.markdown("### 📊 Frequency Histogram")
+                plt.hist(numeric_data, bins=range(min(numeric_data), max(numeric_data)+2), edgecolor='black')
+                st.pyplot(plt)
             except ValueError:
-                st.error("Please enter valid integers for discrete quantitative data.")
+                st.error("Please enter valid integers for discrete data.")
 
-        # ---------- CONTINUOUS ----------
         elif choice == "Quantitative (Continuous)":
             st.subheader("📂 Category: Quantitative (Continuous) Data")
             try:
                 numeric_data = list(map(float, data))
-                st.markdown("### 📌 Select or Enter Class Intervals")
-                interval_choice = st.selectbox(
-                    "Choose a preset interval grouping or enter custom intervals below:",
-                    ["Custom", "0-2,3-5,6-8,9-11,12-14,15-17", "0-5,5-10,10-15"]
-                )
-
-                class_interval_input = ""
-                if interval_choice == "Custom":
-                    class_interval_input = st.text_input("Enter class intervals (e.g. 0-2,3-5,6-8)")
-                else:
-                    class_interval_input = interval_choice
-
-                if class_interval_input.strip():
-                    try:
-                        intervals = parse_intervals(class_interval_input)
-                    except Exception as e:
-                        st.error(f"Error parsing intervals: {e}")
-                        return
-                else:
-                    default_bins = 5
-                    bin_edges = np.histogram_bin_edges(numeric_data, bins=default_bins)
-                    intervals = [(bin_edges[i], bin_edges[i+1]) for i in range(len(bin_edges)-1)]
-
-                df = group_continuous_data_explicit_counts(numeric_data, intervals)
-                st.markdown("### Grouped Frequency Table (Continuous Data)")
-                st.dataframe(df)
-                plot_histogram_from_intervals(numeric_data, intervals)
-
+                st.markdown("### 📊 Continuous Data Histogram")
+                plt.hist(numeric_data, bins=10, edgecolor='black')
+                st.pyplot(plt)
             except ValueError:
-                st.error("Please enter valid numeric values for continuous data.")
+                st.error("Please enter valid numeric values.")
 
-        # ---------- SUMMARY STATISTICS ----------
         elif choice == "Summary Statistics & Boxplot":
             st.subheader("📂 Category: Summary Statistics & Boxplot")
             try:
@@ -357,27 +227,6 @@ def run():
                 display_plotly_boxplot_streamlit(numeric_data)
             except ValueError:
                 st.error("Please enter valid numeric values for summary statistics.")
-
-        # ---------- DOWNLOAD ----------
-        if df is not None:
-            st.markdown("### 📥 Download Results")
-            csv = df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="⬇️ Download as CSV",
-                data=csv,
-                file_name="frequency_table.csv",
-                mime="text/csv"
-            )
-
-            excel_buffer = io.BytesIO()
-            with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
-                df.to_excel(writer, index=False, sheet_name='Data')
-            st.download_button(
-                label="⬇️ Download as Excel",
-                data=excel_buffer,
-                file_name="frequency_table.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
 
 if __name__ == "__main__":
     run()
