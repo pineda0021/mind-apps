@@ -161,7 +161,11 @@ def run():
         index=None,
         placeholder="Select a category to begin..."
     )
-
+    
+     if not choice:
+        st.info("👆 Please choose a category to begin.")
+        return
+    
     st.markdown("### 📤 Upload Data File (CSV or Excel)")
     uploaded_file = st.file_uploader("Upload your dataset:", type=["csv", "xlsx"])
     raw_data = ""
