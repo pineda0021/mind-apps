@@ -11,12 +11,15 @@ import inferences_two_sample_tool
 import chi_square_tests_tool
 import anova_tool
 import regression_analysis_tool  
+import ti84  # ✅ NEW: TI-84 embedded calculator
 
 
+# ---------- App Configuration ----------
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
 st.title("🧠 MIND: Statistics Visualizer Suite")
 
 
+# ---------- Sidebar Navigation ----------
 st.sidebar.header("📚 Select a Concept")
 tool = st.sidebar.radio("Choose a tool:", [
     "Descriptive Statistics",
@@ -29,10 +32,12 @@ tool = st.sidebar.radio("Choose a tool:", [
     "Chi-Square Tests",
     "One-Way ANOVA",
     "Simple Regression",
-    "Multiple Regression"
+    "Multiple Regression",
+    "TI-84 Calculator"  # ✅ Added new option
 ])
 
 
+# ---------- Tool Routing ----------
 if tool == "Descriptive Statistics":
     descriptive_tool.run()
 
@@ -66,7 +71,11 @@ elif tool == "Simple Regression":
 elif tool == "Multiple Regression":
     regression_analysis_tool.run_multiple_regression_tool()
 
+elif tool == "TI-84 Calculator":  
+    ti84.run()  # ✅ Launches embedded TI-84 calculator
 
+
+# ---------- Footer ----------
 st.markdown("""
 ---
 📘 Explore statistics with interactive tools built for conceptual clarity, practice, and fun.
