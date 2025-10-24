@@ -1,86 +1,87 @@
 import streamlit as st
-import numpy as np
-import scipy.stats as stats
-import matplotlib.pyplot as plt
-import math
+import descriptive_tool
+import discrete_dist_tool
+import binomial_tool
+import poisson_tool
+import probability_tool  
+import continuous_dist_tool
+import confidence_intervals_tool
+import inferences_one_sample_tool  
+import inferences_two_sample_tool  
+import chi_square_tests_tool
+import anova_tool
+import regression_analysis_tool  
+import ti84  # ✅ NEW: TI-84 embedded calculator
 
-def parse_stdev(sd_expr):
-    try:
-        # Allow sqrt only
-        return eval(sd_expr, {"__builtins__": None}, {"sqrt": math.sqrt})
-    except Exception as e:
-        st.error(f"Invalid standard deviation input: {e}")
-        return None
 
-def run():
-    st.header("🔔 Normal Distribution Calculator")
+# ---------- App Configuration ----------
+st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
+st.title("🧠 MIND: Statistics Visualizer Suite")
 
-    mean = st.number_input("Enter the mean (μ)", value=0.0, format="%.4f")
-    sd_expr = st.text_input("Enter the standard deviation (σ)", value="1")
-    decimal = st.number_input("Decimal places for output", min_value=0, max_value=10, value=4, step=1)
 
-    sd = parse_stdev(sd_expr)
-    if sd is None:
-        return
+# ---------- Sidebar Navigation ----------
+st.sidebar.header("📚 Select a Concept")
+tool = st.sidebar.radio("Choose a tool:", [
+    "Descriptive Statistics",
+    "Probability",              
+    "Discrete Distributions",
+    "Continuous Distributions",
+    "Confidence Intervals",
+    "Inferences on One Sample",
+    "Inferences on Two Samples",
+    "Chi-Square Tests",
+    "One-Way ANOVA",
+    "Simple Regression",
+    "Multiple Regression",
+    "TI-84 Calculator"  # ✅ Added new option
+])
 
-    st.markdown("---")
-    st.write("Choose a probability calculation:")
-    option = st.radio("", [
-        "1. Probability to the left of x (P(X < x))",
-        "2. Probability to the right of x (P(X > x))",
-        "3. Probability between two values (P(a < X < b))"
-    ])
 
-    x_val = None
-    a = None
-    b = None
-    if option == "1. Probability to the left of x (P(X < x))":
-        x_val = st.number_input("Enter the value of x", value=mean)
-    elif option == "2. Probability to the right of x (P(X > x))":
-        x_val = st.number_input("Enter the value of x", value=mean)
-    elif option == "3. Probability between two values (P(a < X < b))":
-        a = st.number_input("Enter the lower bound a", value=mean - sd)
-        b = st.number_input("Enter the upper bound b", value=mean + sd)
-        if b < a:
-            st.error("Upper bound b must be greater than or equal to lower bound a.")
-            return
+# ---------- Tool Routing ----------
+if tool == "Descriptive Statistics":
+    descriptive_tool.run()
 
-    if st.button("📊 Calculate Probability"):
-        x = np.linspace(mean - 4 * sd, mean + 4 * sd, 1000)
-        y = stats.norm.pdf(x, mean, sd)
+elif tool == "Probability":     
+    probability_tool.run()
 
-        fig, ax = plt.subplots(figsize=(8, 4))
-        ax.plot(x, y, label="Normal Distribution", color='blue')
+elif tool == "Discrete Distributions":
+    discrete_dist_tool.run()
 
-        def round_prob(p):
-            return round(p, decimal)
+elif tool == "Continuous Distributions":
+    continuous_dist_tool.run()
 
-        if option == "1. Probability to the left of x (P(X < x))":
-            prob = stats.norm.cdf(x_val, mean, sd)
-            st.success(f"P(X < {x_val}) = {round_prob(prob)}")
-            ax.fill_between(x, 0, y, where=(x <= x_val), color='lightblue')
-            ax.axvline(x_val, color='red', linestyle='--')
+elif tool == "Confidence Intervals":   
+    confidence_intervals_tool.run()
 
-        elif option == "2. Probability to the right of x (P(X > x))":
-            prob = 1 - stats.norm.cdf(x_val, mean, sd)
-            st.success(f"P(X > {x_val}) = {round_prob(prob)}")
-            ax.fill_between(x, 0, y, where=(x >= x_val), color='lightblue')
-            ax.axvline(x_val, color='red', linestyle='--')
+elif tool == "Inferences on One Sample":
+    inferences_one_sample_tool.run_hypothesis_tool() 
 
-        elif option == "3. Probability between two values (P(a < X < b))":
-            prob = stats.norm.cdf(b, mean, sd) - stats.norm.cdf(a, mean, sd)
-            st.success(f"P({a} < X < {b}) = {round_prob(prob)}")
-            ax.fill_between(x, 0, y, where=(x >= a) & (x <= b), color='lightblue')
-            ax.axvline(a, color='red', linestyle='--')
-            ax.axvline(b, color='red', linestyle='--')
+elif tool == "Inferences on Two Samples":   
+    inferences_two_sample_tool.run_two_sample_tool()  
 
-        ax.set_xlabel("X")
-        ax.set_ylabel("Density")
-        ax.set_title("Normal Distribution")
-        ax.legend()
-        ax.grid(True)
+elif tool == "Chi-Square Tests":
+    chi_square_tests_tool.run_chi_square_tool()  
 
-        st.pyplot(fig)
+elif tool == "One-Way ANOVA":  
+    anova_tool.run_anova_tool()  
 
-if __name__ == "__main__":
-    run()
+elif tool == "Simple Regression":
+    regression_analysis_tool.run_simple_regression_tool()
+
+elif tool == "Multiple Regression":
+    regression_analysis_tool.run_multiple_regression_tool()
+
+elif tool == "TI-84 Calculator":  
+    ti84.run()  # ✅ Launches embedded TI-84 calculator
+
+
+# ---------- Footer ----------
+st.markdown("""
+---
+📘 Explore statistics with interactive tools built for conceptual clarity, practice, and fun.
+
+👨‍🏫 **About the Creator:** Professor Edward Pineda-Castro  
+Department of Mathematics, Los Angeles City College  
+📧 Email: pinedaem@lacitycollege.edu | 📞 Tel: (323) 953-4000 ext. 2827  
+Founder of **MIND** — *Making Inference Digestible*
+""")
