@@ -73,7 +73,7 @@ def run():
             return
 
         if st.button("Calculate"):
-            result = round(stats.norm.ppf(1 - p, mean, sd), decimal)
+            result = round(stats.norm.ppf(p, mean, sd), decimal)
             st.success(f"X for P(X > x) = {p} is {result}")
             plot_normal_distribution(mean, sd, result=result)
 
