@@ -118,16 +118,16 @@ def binomial_distribution_tool():
         if calc_type == "Exactly: P(X = x)":
             prob = binom.pmf(x, n, p)
             st.success(f"P(X = {x}) = {prob:.5f}")
-        elif calc_type == "P(X ≤ x)":
+        elif calc_type == "At most: P(X ≤ x)":
             prob = binom.cdf(x, n, p)
             st.success(f"P(X ≤ {x}) = {prob:.5f}")
-        elif calc_type == "P(X < x)":
+        elif calc_type == "Less than: P(X < x)":
             prob = binom.cdf(x - 1, n, p) if x > 0 else 0.0
             st.success(f"P(X < {x}) = {prob:.5f}")
-        elif calc_type == "P(X ≥ x)":
+        elif calc_type == "At least: P(X ≥ x)":
             prob = 1 - binom.cdf(x - 1, n, p) if x > 0 else 1.0
             st.success(f"P(X ≥ {x}) = {prob:.5f}")
-        elif calc_type == "P(X > x)":
+        elif calc_type == "Greater than: P(X > x)":
             prob = 1 - binom.cdf(x, n, p)
             st.success(f"P(X > {x}) = {prob:.5f}")
         elif calc_type == "Between: P(a ≤ X ≤ b)":
