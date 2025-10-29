@@ -195,16 +195,16 @@ def poisson_distribution_tool():
         if calc_type == "Exactly: P(X = x)":
             prob = poisson.pmf(x, lam)
             st.success(f"P(X = {x}) = {prob:.5f}")
-        elif calc_type == "P(X ≤ x)":
+        elif calc_type == "At most: P(X ≤ x)":
             prob = poisson.cdf(x, lam)
             st.success(f"P(X ≤ {x}) = {prob:.5f}")
-        elif calc_type == "P(X < x)":
+        elif calc_type == "Less than: P(X < x)":
             prob = poisson.cdf(x - 1, lam) if x > 0 else 0.0
             st.success(f"P(X < {x}) = {prob:.5f}")
-        elif calc_type == "P(X ≥ x)":
+        elif calc_type == "At least: P(X ≥ x)":
             prob = 1 - poisson.cdf(x - 1, lam) if x > 0 else 1.0
             st.success(f"P(X ≥ {x}) = {prob:.5f}")
-        elif calc_type == "P(X > x)":
+        elif calc_type == "Greater than: P(X > x)":
             prob = 1 - poisson.cdf(x, lam)
             st.success(f"P(X > {x}) = {prob:.5f}")
         elif calc_type == "Between: P(a ≤ X ≤ b)":
