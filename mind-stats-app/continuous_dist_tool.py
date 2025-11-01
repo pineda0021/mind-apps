@@ -1,8 +1,5 @@
 import streamlit as st
 import uniform_tool
-import normal_tool
-import inverse_normal_tool
-import sample_mean_tool
 import sample_proportion_tool
 
 def run():
