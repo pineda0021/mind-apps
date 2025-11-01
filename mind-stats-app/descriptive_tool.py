@@ -78,35 +78,24 @@ def display_summary_streamlit(data):
     else:
         st.success("No potential outliers detected.")
 
-def display_plotly_boxplot_streamlit(data):
-    stats_summary = get_summary_stats(data)
+
+def display_plotly_boxplot_comparison(datasets):
     fig = go.Figure()
-
-    fig.add_trace(go.Box(
-        x=data,
-        boxpoints='outliers',
-        orientation='h',
-        marker=dict(color='red'),
-        line=dict(color='black'),
-        fillcolor='lightblue',
-        name='Boxplot'
-    ))
-
+    for name, data in datasets.items():
+        fig.add_trace(go.Box(
+            y=data,
+            name=name,
+            boxpoints='outliers',
+            marker=dict(color='teal'),
+            line=dict(color='black')
+        ))
     fig.update_layout(
-        title="Interactive Boxplot for the Dataset",
-        xaxis_title="Values",
-        yaxis=dict(showticklabels=False),
-        showlegend=False,
+        title="📦 Boxplot Comparison",
+        yaxis_title="Values",
         template="simple_white"
     )
-
     st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown("### 🚨 Outlier Analysis")
-    if stats_summary["Outliers"]:
-        st.warning(f"Potential outliers: {stats_summary['Outliers']}")
-    else:
-        st.success("No potential outliers detected.")
 
 # ---------- Helper Functions ----------
 
@@ -142,6 +131,7 @@ def plot_qualitative(df):
     plt.tight_layout()
     st.pyplot(fig)
 
+
 # ---------- Main App ----------
 
 def run():
@@ -154,7 +144,6 @@ def run():
         "Summary Statistics & Boxplot"
     ]
 
-    # --- Matching dropdown look to CI calculator ---
     choice = st.selectbox(
         "Choose a category:",
         categories,
@@ -162,7 +151,6 @@ def run():
         placeholder="Select a category to begin..."
     )
 
-    # --- FIXED indentation error here ---
     if not choice:
         st.info("👆 Please choose a category to begin.")
         return
@@ -179,32 +167,60 @@ def run():
                 df_uploaded = pd.read_excel(uploaded_file)
             st.success("✅ File uploaded successfully!")
             st.dataframe(df_uploaded)
-            raw_data = df_uploaded.iloc[:, 0].dropna().astype(str).tolist()
         except Exception as e:
             st.error(f"Error reading file: {e}")
+            return
     else:
-        raw_data = st.text_area("Or enter comma-separated values:", "")
+        df_uploaded = None
 
-    if raw_data:
-        if isinstance(raw_data, str):
-            data = [val.strip() for val in raw_data.split(',') if val.strip() != ""]
+    # ---------- SUMMARY ---------- #
+    if choice == "Summary Statistics & Boxplot":
+        st.subheader("📦 Summary Statistics & Boxplot Comparison")
+
+        mode = st.radio("Select Mode:", ["Single Dataset", "Compare Multiple Datasets"])
+
+        if mode == "Single Dataset":
+            raw_data = st.text_area("Enter comma-separated values:", "")
+            if raw_data:
+                try:
+                    numeric_data = np.array(list(map(float, raw_data.split(','))))
+                    display_summary_streamlit(numeric_data)
+                    display_plotly_boxplot_comparison({"Dataset 1": numeric_data})
+                except ValueError:
+                    st.error("Please enter valid numeric values.")
         else:
-            data = raw_data
+            st.info("💡 Select two or more numeric columns from your uploaded file to compare.")
+            if df_uploaded is not None:
+                numeric_cols = df_uploaded.select_dtypes(include=[np.number]).columns.tolist()
+                if numeric_cols:
+                    selected_cols = st.multiselect("Select columns to compare:", numeric_cols)
+                    if len(selected_cols) >= 2:
+                        datasets = {col: df_uploaded[col].dropna().values for col in selected_cols}
+                        display_plotly_boxplot_comparison(datasets)
+                    else:
+                        st.warning("Please select at least two numeric columns.")
+                else:
+                    st.error("No numeric columns found in uploaded file.")
+            else:
+                st.warning("Please upload a dataset with multiple numeric columns to compare.")
 
-        df = None
-
-        # ---------- QUALITATIVE ----------
-        if choice == "Qualitative":
-            st.subheader("📂 Category: Qualitative Data")
+    # ---------- QUALITATIVE ---------- #
+    elif choice == "Qualitative":
+        st.subheader("📂 Category: Qualitative Data")
+        raw_data = st.text_area("Enter comma-separated values:", "")
+        if raw_data:
+            data = [val.strip() for val in raw_data.split(',') if val.strip() != ""]
             df = display_frequency_table(data)
             st.dataframe(df)
             plot_qualitative(df)
 
-        # ---------- DISCRETE ----------
-        elif choice == "Quantitative (Discrete)":
-            st.subheader("📂 Category: Quantitative (Discrete) Data")
+    # ---------- DISCRETE ---------- #
+    elif choice == "Quantitative (Discrete)":
+        st.subheader("📂 Category: Quantitative (Discrete) Data")
+        raw_data = st.text_area("Enter comma-separated integers:", "")
+        if raw_data:
             try:
-                numeric_data = list(map(int, data))
+                numeric_data = list(map(int, raw_data.split(',')))
                 df = display_frequency_table(numeric_data)
                 st.dataframe(df)
                 st.markdown("### 📊 Frequency Histogram")
@@ -213,26 +229,19 @@ def run():
             except ValueError:
                 st.error("Please enter valid integers for discrete data.")
 
-        # ---------- CONTINUOUS ----------
-        elif choice == "Quantitative (Continuous)":
-            st.subheader("📂 Category: Quantitative (Continuous) Data")
+    # ---------- CONTINUOUS ---------- #
+    elif choice == "Quantitative (Continuous)":
+        st.subheader("📂 Category: Quantitative (Continuous) Data")
+        raw_data = st.text_area("Enter comma-separated numeric values:", "")
+        if raw_data:
             try:
-                numeric_data = list(map(float, data))
+                numeric_data = list(map(float, raw_data.split(',')))
                 st.markdown("### 📊 Continuous Data Histogram")
                 plt.hist(numeric_data, bins=10, edgecolor='black')
                 st.pyplot(plt)
             except ValueError:
                 st.error("Please enter valid numeric values.")
 
-        # ---------- SUMMARY ----------
-        elif choice == "Summary Statistics & Boxplot":
-            st.subheader("📂 Category: Summary Statistics & Boxplot")
-            try:
-                numeric_data = np.array(list(map(float, data)))
-                display_summary_streamlit(numeric_data)
-                display_plotly_boxplot_streamlit(numeric_data)
-            except ValueError:
-                st.error("Please enter valid numeric values for summary statistics.")
 
 if __name__ == "__main__":
     run()
