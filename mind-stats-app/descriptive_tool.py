@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from collections import Counter
-import io
 import plotly.graph_objects as go
 from scipy import stats
 
@@ -54,29 +53,25 @@ def get_summary_stats(data, decimals=2):
         "s (Sample Std Dev)": samp_std
     }
 
-def display_summary_streamlit(data):
-    stats_summary = get_summary_stats(data)
-    st.markdown("### 📊 Five-Number Summary & IQR")
-    for key in ["Minimum", "Q1", "Median", "Q3", "Maximum", "IQR"]:
-        st.write(f"**{key}:** {stats_summary[key]}")
 
-    st.markdown("### 📈 Descriptive Statistics")
-    st.write(f"**Mean:** {stats_summary['Mean']}")
-    st.write(f"**Mode:** {stats_summary['Mode']}")
-    st.write(f"**Range:** {stats_summary['Range']}")
-    st.write(f"**Population Variance (σ²):** {stats_summary['σ² (Population Variance)']}")
-    st.write(f"**Population Std Dev (σ):** {stats_summary['σ (Population Std Dev)']}")
-    st.write(f"**Sample Variance (s²):** {stats_summary['s² (Sample Variance)']}")
-    st.write(f"**Sample Std Dev (s):** {stats_summary['s (Sample Std Dev)']}")
-
-    st.markdown("### 🚨 Outlier Analysis")
-    st.write(f"**Lower Bound:** {stats_summary['Lower Bound']}")
-    st.write(f"**Upper Bound:** {stats_summary['Upper Bound']}")
-
-    if stats_summary["Outliers"]:
-        st.warning(f"Potential outliers: {stats_summary['Outliers']}")
-    else:
-        st.success("No potential outliers detected.")
+def display_summary_table(datasets):
+    """Display summary stats for multiple datasets side by side."""
+    summary_data = []
+    for name, data in datasets.items():
+        s = get_summary_stats(data)
+        summary_data.append({
+            "Dataset": name,
+            "Mean": s["Mean"],
+            "Median": s["Median"],
+            "Q1": s["Q1"],
+            "Q3": s["Q3"],
+            "IQR": s["IQR"],
+            "Std Dev (s)": s["s (Sample Std Dev)"],
+            "Range": s["Range"]
+        })
+    df_summary = pd.DataFrame(summary_data)
+    st.markdown("### 📊 Summary Statistics Comparison")
+    st.dataframe(df_summary, use_container_width=True)
 
 
 def display_plotly_boxplot_comparison(datasets):
@@ -95,41 +90,6 @@ def display_plotly_boxplot_comparison(datasets):
         template="simple_white"
     )
     st.plotly_chart(fig, use_container_width=True)
-
-
-# ---------- Helper Functions ----------
-
-def display_frequency_table(data):
-    freq = dict(Counter(data))
-    total = sum(freq.values())
-    rel_freq = {k: round(v / total, 4) for k, v in freq.items()}
-    df = pd.DataFrame({
-        'Category': list(freq.keys()),
-        'Frequency': list(freq.values()),
-        'Relative Frequency': list(rel_freq.values())
-    })
-    try:
-        df['Category'] = pd.to_numeric(df['Category'])
-        df = df.sort_values(by='Category')
-    except:
-        df = df.sort_values(by='Category')
-    return df.reset_index(drop=True)
-
-def plot_qualitative(df):
-    labels = df['Category'].astype(str)
-    freq = df['Frequency']
-    rel_freq = df['Relative Frequency']
-
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-    axes[0].bar(labels, freq, color='skyblue')
-    axes[0].set_title('Frequency Bar Chart')
-    axes[0].set_xlabel('Category')
-    axes[0].set_ylabel('Frequency')
-
-    axes[1].pie(rel_freq, labels=labels, autopct='%.2f%%', startangle=90)
-    axes[1].set_title('Pie Chart (Relative Frequency)')
-    plt.tight_layout()
-    st.pyplot(fig)
 
 
 # ---------- Main App ----------
@@ -155,54 +115,43 @@ def run():
         st.info("👆 Please choose a category to begin.")
         return
 
-    st.markdown("### 📤 Upload Data File (CSV or Excel)")
-    uploaded_file = st.file_uploader("Upload your dataset:", type=["csv", "xlsx"])
-    raw_data = ""
-
-    if uploaded_file:
-        try:
-            if uploaded_file.name.endswith(".csv"):
-                df_uploaded = pd.read_csv(uploaded_file)
-            else:
-                df_uploaded = pd.read_excel(uploaded_file)
-            st.success("✅ File uploaded successfully!")
-            st.dataframe(df_uploaded)
-        except Exception as e:
-            st.error(f"Error reading file: {e}")
-            return
-    else:
-        df_uploaded = None
-
     # ---------- SUMMARY ---------- #
     if choice == "Summary Statistics & Boxplot":
         st.subheader("📦 Summary Statistics & Boxplot Comparison")
 
-        mode = st.radio("Select Mode:", ["Single Dataset", "Compare Multiple Datasets"])
+        num_datasets = st.selectbox(
+            "How many datasets do you want to compare?",
+            options=[1, 2, 3, 4, 5],
+            index=0
+        )
 
-        if mode == "Single Dataset":
-            raw_data = st.text_area("Enter comma-separated values:", "")
+        datasets = {}
+        for i in range(num_datasets):
+            raw_data = st.text_area(f"Enter values for Dataset {i+1} (comma-separated):", key=f"data_{i}")
             if raw_data:
                 try:
                     numeric_data = np.array(list(map(float, raw_data.split(','))))
-                    display_summary_streamlit(numeric_data)
-                    display_plotly_boxplot_comparison({"Dataset 1": numeric_data})
+                    datasets[f"Dataset {i+1}"] = numeric_data
                 except ValueError:
-                    st.error("Please enter valid numeric values.")
-        else:
-            st.info("💡 Select two or more numeric columns from your uploaded file to compare.")
-            if df_uploaded is not None:
-                numeric_cols = df_uploaded.select_dtypes(include=[np.number]).columns.tolist()
-                if numeric_cols:
-                    selected_cols = st.multiselect("Select columns to compare:", numeric_cols)
-                    if len(selected_cols) >= 2:
-                        datasets = {col: df_uploaded[col].dropna().values for col in selected_cols}
-                        display_plotly_boxplot_comparison(datasets)
-                    else:
-                        st.warning("Please select at least two numeric columns.")
+                    st.error(f"Dataset {i+1}: Please enter valid numeric values.")
+
+        if len(datasets) >= 1:
+            if len(datasets) == 1:
+                name, data = list(datasets.items())[0]
+                st.markdown(f"### 📋 Summary for {name}")
+                single_summary = get_summary_stats(data)
+                for k, v in single_summary.items():
+                    if k not in ["Outliers"]:
+                        st.write(f"**{k}:** {v}")
+                if single_summary["Outliers"]:
+                    st.warning(f"Potential outliers: {single_summary['Outliers']}")
                 else:
-                    st.error("No numeric columns found in uploaded file.")
+                    st.success("No potential outliers detected.")
+                display_plotly_boxplot_comparison(datasets)
             else:
-                st.warning("Please upload a dataset with multiple numeric columns to compare.")
+                st.success(f"✅ Comparing {len(datasets)} datasets.")
+                display_summary_table(datasets)
+                display_plotly_boxplot_comparison(datasets)
 
     # ---------- QUALITATIVE ---------- #
     elif choice == "Qualitative":
@@ -210,9 +159,14 @@ def run():
         raw_data = st.text_area("Enter comma-separated values:", "")
         if raw_data:
             data = [val.strip() for val in raw_data.split(',') if val.strip() != ""]
-            df = display_frequency_table(data)
+            freq = dict(Counter(data))
+            total = sum(freq.values())
+            df = pd.DataFrame({
+                "Category": list(freq.keys()),
+                "Frequency": list(freq.values()),
+                "Relative Frequency": [round(v / total, 4) for v in freq.values()]
+            })
             st.dataframe(df)
-            plot_qualitative(df)
 
     # ---------- DISCRETE ---------- #
     elif choice == "Quantitative (Discrete)":
@@ -221,10 +175,7 @@ def run():
         if raw_data:
             try:
                 numeric_data = list(map(int, raw_data.split(',')))
-                df = display_frequency_table(numeric_data)
-                st.dataframe(df)
-                st.markdown("### 📊 Frequency Histogram")
-                plt.hist(numeric_data, bins=range(min(numeric_data), max(numeric_data)+2), edgecolor='black')
+                plt.hist(numeric_data, bins=range(min(numeric_data), max(numeric_data) + 2), edgecolor='black')
                 st.pyplot(plt)
             except ValueError:
                 st.error("Please enter valid integers for discrete data.")
@@ -236,7 +187,6 @@ def run():
         if raw_data:
             try:
                 numeric_data = list(map(float, raw_data.split(',')))
-                st.markdown("### 📊 Continuous Data Histogram")
                 plt.hist(numeric_data, bins=10, edgecolor='black')
                 st.pyplot(plt)
             except ValueError:
