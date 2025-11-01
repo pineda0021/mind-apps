@@ -10,9 +10,6 @@ def run():
 
     categories = [
         "Uniform Distribution",
-        "Normal Distribution",
-        "Inverse Normal Distribution",
-        "Distribution of the Sample Mean",
         "Distribution of the Sample Proportion"
     ]
 
@@ -31,12 +28,6 @@ def run():
     # --- Route to the correct module ---
     if choice == "Uniform Distribution":
         uniform_tool.run()
-    elif choice == "Normal Distribution":
-        normal_tool.run()
-    elif choice == "Inverse Normal Distribution":
-        inverse_normal_tool.run()
-    elif choice == "Distribution of the Sample Mean":
-        sample_mean_tool.run()
     elif choice == "Distribution of the Sample Proportion":
         sample_proportion_tool.run()
 
