@@ -53,7 +53,6 @@ def get_summary_stats(data, decimals=2):
         "s (Sample Std Dev)": samp_std
     }
 
-
 def display_summary_table(datasets):
     """Display summary stats for multiple datasets side by side."""
     summary_data = []
@@ -73,15 +72,15 @@ def display_summary_table(datasets):
     st.markdown("### 📊 Summary Statistics Comparison")
     st.dataframe(df_summary, use_container_width=True)
 
-
 def display_plotly_boxplot_comparison(datasets):
+    colors = ["teal", "orange", "purple", "green", "red", "blue"]
     fig = go.Figure()
-    for name, data in datasets.items():
+    for i, (name, data) in enumerate(datasets.items()):
         fig.add_trace(go.Box(
             y=data,
             name=name,
             boxpoints='outliers',
-            marker=dict(color='teal'),
+            marker=dict(color=colors[i % len(colors)]),
             line=dict(color='black')
         ))
     fig.update_layout(
@@ -91,6 +90,39 @@ def display_plotly_boxplot_comparison(datasets):
     )
     st.plotly_chart(fig, use_container_width=True)
 
+# ---------- Helper Functions ----------
+
+def display_frequency_table(data):
+    freq = dict(Counter(data))
+    total = sum(freq.values())
+    rel_freq = {k: round(v / total, 4) for k, v in freq.items()}
+    df = pd.DataFrame({
+        'Category': list(freq.keys()),
+        'Frequency': list(freq.values()),
+        'Relative Frequency': list(rel_freq.values())
+    })
+    try:
+        df['Category'] = pd.to_numeric(df['Category'])
+        df = df.sort_values(by='Category')
+    except:
+        df = df.sort_values(by='Category')
+    return df.reset_index(drop=True)
+
+def plot_qualitative(df):
+    labels = df['Category'].astype(str)
+    freq = df['Frequency']
+    rel_freq = df['Relative Frequency']
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+    axes[0].bar(labels, freq, color='skyblue')
+    axes[0].set_title('Frequency Bar Chart')
+    axes[0].set_xlabel('Category')
+    axes[0].set_ylabel('Frequency')
+
+    axes[1].pie(rel_freq, labels=labels, autopct='%.2f%%', startangle=90)
+    axes[1].set_title('Pie Chart (Relative Frequency)')
+    plt.tight_layout()
+    st.pyplot(fig)
 
 # ---------- Main App ----------
 
@@ -115,36 +147,132 @@ def run():
         st.info("👆 Please choose a category to begin.")
         return
 
+    st.markdown("### 📤 Upload Data File (CSV or Excel)")
+    uploaded_file = st.file_uploader("Upload your dataset:", type=["csv", "xlsx"])
+    df_uploaded = None
+
+    if uploaded_file:
+        try:
+            if uploaded_file.name.endswith(".csv"):
+                df_uploaded = pd.read_csv(uploaded_file)
+            else:
+                df_uploaded = pd.read_excel(uploaded_file)
+            st.success("✅ File uploaded successfully!")
+            st.dataframe(df_uploaded)
+        except Exception as e:
+            st.error(f"Error reading file: {e}")
+            return
+
+    # ---------- QUALITATIVE ---------- #
+    if choice == "Qualitative":
+        st.subheader("📂 Category: Qualitative Data")
+
+        if df_uploaded is not None:
+            col = st.selectbox("Select column for analysis:", df_uploaded.columns)
+            data = df_uploaded[col].dropna().astype(str).tolist()
+        else:
+            raw_data = st.text_area("Enter comma-separated values:", "")
+            data = [val.strip() for val in raw_data.split(',') if val.strip() != ""]
+
+        if data:
+            df = display_frequency_table(data)
+            st.dataframe(df)
+            plot_qualitative(df)
+
+    # ---------- DISCRETE ---------- #
+    elif choice == "Quantitative (Discrete)":
+        st.subheader("📂 Category: Quantitative (Discrete) Data")
+
+        if df_uploaded is not None:
+            numeric_cols = df_uploaded.select_dtypes(include=[np.number]).columns.tolist()
+            if numeric_cols:
+                col = st.selectbox("Select numeric column:", numeric_cols)
+                numeric_data = df_uploaded[col].dropna().astype(int).values
+            else:
+                st.error("No numeric columns found.")
+                return
+        else:
+            raw_data = st.text_area("Enter comma-separated integers:", "")
+            try:
+                numeric_data = np.array(list(map(int, raw_data.split(','))))
+            except ValueError:
+                st.error("Please enter valid integers.")
+                return
+
+        plt.hist(numeric_data, bins=range(min(numeric_data), max(numeric_data) + 2), edgecolor='black')
+        st.pyplot(plt)
+
+    # ---------- CONTINUOUS ---------- #
+    elif choice == "Quantitative (Continuous)":
+        st.subheader("📂 Category: Quantitative (Continuous) Data")
+
+        if df_uploaded is not None:
+            numeric_cols = df_uploaded.select_dtypes(include=[np.number]).columns.tolist()
+            if numeric_cols:
+                col = st.selectbox("Select numeric column:", numeric_cols)
+                numeric_data = df_uploaded[col].dropna().astype(float).values
+            else:
+                st.error("No numeric columns found.")
+                return
+        else:
+            raw_data = st.text_area("Enter comma-separated numeric values:", "")
+            try:
+                numeric_data = np.array(list(map(float, raw_data.split(','))))
+            except ValueError:
+                st.error("Please enter valid numeric values.")
+                return
+
+        plt.hist(numeric_data, bins=10, edgecolor='black')
+        st.pyplot(plt)
+
     # ---------- SUMMARY ---------- #
-    if choice == "Summary Statistics & Boxplot":
+    elif choice == "Summary Statistics & Boxplot":
         st.subheader("📦 Summary Statistics & Boxplot Comparison")
 
-        num_datasets = st.selectbox(
-            "How many datasets do you want to compare?",
-            options=[1, 2, 3, 4, 5],
-            index=0
-        )
+        input_mode = st.radio("Choose input mode:", ["Manual Entry", "File Upload"])
 
         datasets = {}
-        for i in range(num_datasets):
-            raw_data = st.text_area(f"Enter values for Dataset {i+1} (comma-separated):", key=f"data_{i}")
-            if raw_data:
-                try:
-                    numeric_data = np.array(list(map(float, raw_data.split(','))))
-                    datasets[f"Dataset {i+1}"] = numeric_data
-                except ValueError:
-                    st.error(f"Dataset {i+1}: Please enter valid numeric values.")
 
+        # Manual mode (1–5 datasets)
+        if input_mode == "Manual Entry":
+            num_datasets = st.selectbox(
+                "How many datasets do you want to compare?",
+                options=[1, 2, 3, 4, 5],
+                index=0
+            )
+            for i in range(num_datasets):
+                raw_data = st.text_area(f"Enter values for Dataset {i+1} (comma-separated):", key=f"data_{i}")
+                if raw_data:
+                    try:
+                        numeric_data = np.array(list(map(float, raw_data.split(','))))
+                        datasets[f"Dataset {i+1}"] = numeric_data
+                    except ValueError:
+                        st.error(f"Dataset {i+1}: Please enter valid numeric values.")
+
+        # Upload mode (select multiple numeric columns)
+        else:
+            if df_uploaded is not None:
+                numeric_cols = df_uploaded.select_dtypes(include=[np.number]).columns.tolist()
+                if numeric_cols:
+                    selected_cols = st.multiselect("Select columns to compare:", numeric_cols)
+                    for col in selected_cols:
+                        datasets[col] = df_uploaded[col].dropna().values
+                else:
+                    st.error("No numeric columns found in uploaded file.")
+            else:
+                st.warning("Please upload a dataset first.")
+
+        # Display results
         if len(datasets) >= 1:
             if len(datasets) == 1:
                 name, data = list(datasets.items())[0]
                 st.markdown(f"### 📋 Summary for {name}")
-                single_summary = get_summary_stats(data)
-                for k, v in single_summary.items():
-                    if k not in ["Outliers"]:
+                s = get_summary_stats(data)
+                for k, v in s.items():
+                    if k != "Outliers":
                         st.write(f"**{k}:** {v}")
-                if single_summary["Outliers"]:
-                    st.warning(f"Potential outliers: {single_summary['Outliers']}")
+                if s["Outliers"]:
+                    st.warning(f"Potential outliers: {s['Outliers']}")
                 else:
                     st.success("No potential outliers detected.")
                 display_plotly_boxplot_comparison(datasets)
@@ -152,45 +280,6 @@ def run():
                 st.success(f"✅ Comparing {len(datasets)} datasets.")
                 display_summary_table(datasets)
                 display_plotly_boxplot_comparison(datasets)
-
-    # ---------- QUALITATIVE ---------- #
-    elif choice == "Qualitative":
-        st.subheader("📂 Category: Qualitative Data")
-        raw_data = st.text_area("Enter comma-separated values:", "")
-        if raw_data:
-            data = [val.strip() for val in raw_data.split(',') if val.strip() != ""]
-            freq = dict(Counter(data))
-            total = sum(freq.values())
-            df = pd.DataFrame({
-                "Category": list(freq.keys()),
-                "Frequency": list(freq.values()),
-                "Relative Frequency": [round(v / total, 4) for v in freq.values()]
-            })
-            st.dataframe(df)
-
-    # ---------- DISCRETE ---------- #
-    elif choice == "Quantitative (Discrete)":
-        st.subheader("📂 Category: Quantitative (Discrete) Data")
-        raw_data = st.text_area("Enter comma-separated integers:", "")
-        if raw_data:
-            try:
-                numeric_data = list(map(int, raw_data.split(',')))
-                plt.hist(numeric_data, bins=range(min(numeric_data), max(numeric_data) + 2), edgecolor='black')
-                st.pyplot(plt)
-            except ValueError:
-                st.error("Please enter valid integers for discrete data.")
-
-    # ---------- CONTINUOUS ---------- #
-    elif choice == "Quantitative (Continuous)":
-        st.subheader("📂 Category: Quantitative (Continuous) Data")
-        raw_data = st.text_area("Enter comma-separated numeric values:", "")
-        if raw_data:
-            try:
-                numeric_data = list(map(float, raw_data.split(',')))
-                plt.hist(numeric_data, bins=10, edgecolor='black')
-                st.pyplot(plt)
-            except ValueError:
-                st.error("Please enter valid numeric values.")
 
 
 if __name__ == "__main__":
