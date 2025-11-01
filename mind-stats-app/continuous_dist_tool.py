@@ -1,6 +1,6 @@
 import streamlit as st
 import uniform_tool
-import sample_proportion_tool
+import sample_proportion_tool  # this is your combined normal & sampling module
 
 def run():
     st.header("📈 Continuous Probability Distributions")
@@ -25,7 +25,7 @@ def run():
     # --- Route to the correct module ---
     if choice == "Uniform Distribution":
         uniform_tool.run()
-    elif choice == "Distribution of the Sample Proportion":
+    elif choice == "Normal Distribution and Sampling":
         sample_proportion_tool.run()
 
 # ---------- Run App ----------
