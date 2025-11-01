@@ -60,6 +60,7 @@ def run():
 
     st.markdown("""
     Choose a distribution type:
+    
     1️⃣ **Regular Normal Distribution (X ~ N(μ, σ))**  
     2️⃣ **Sampling Distribution of the Mean (μₓ̄)**  
     3️⃣ **Sampling Distribution of the Proportion (p̂)**
