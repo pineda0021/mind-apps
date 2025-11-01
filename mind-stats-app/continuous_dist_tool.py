@@ -7,7 +7,7 @@ def run():
 
     categories = [
         "Uniform Distribution",
-        "Distribution of the Sample Proportion"
+        "Normal Distribution and Sampling"
     ]
 
     # --- Main dropdown replaces sidebar ---
