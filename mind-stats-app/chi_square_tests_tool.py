@@ -14,7 +14,7 @@ def print_report(title, chi2_stat, p_value, critical_value, df, expected_matrix,
     st.write(np.round(expected_matrix, decimal_places))
 
     reject = p_value <= st.session_state.alpha
-    decision = "✅ Reject the null hypothesis" if reject else "❌ Fail to reject the null hypothesis"
+    decision = "✅ Reject the null hypothesis" if reject else "❌ Do not reject the null hypothesis"
     st.markdown(f"**Conclusion:** {decision}")
 
 # ---------- Chi-Square Tests ----------
