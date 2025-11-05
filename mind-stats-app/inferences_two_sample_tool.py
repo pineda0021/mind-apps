@@ -49,7 +49,7 @@ def run_two_sample_tool():
             z_stat = (p1 - p2) / se
             p_val = 2 * (1 - stats.norm.cdf(abs(z_stat)))
             z_crit = stats.norm.ppf(1 - alpha / 2)
-            decision = "✅ Reject the null hypothesis." if abs(z_stat) > z_crit else "❌ Fail to reject the null hypothesis."
+            decision = "✅ Reject the null hypothesis." if abs(z_stat) > z_crit else "❌ Do not reject the null hypothesis."
 
             report = f"""
 =====================
@@ -104,7 +104,7 @@ Decision: {decision}
             t_stat = mean_diff / se
             t_crit = stats.t.ppf(1 - alpha / 2, df=n - 1)
             p_val = 2 * (1 - stats.t.cdf(abs(t_stat), df=n - 1))
-            decision = "✅ Reject the null hypothesis." if abs(t_stat) > t_crit else "❌ Fail to reject the null hypothesis."
+            decision = "✅ Reject the null hypothesis." if abs(t_stat) > t_crit else "❌ Do not reject the null hypothesis."
 
             report = f"""
 =====================
@@ -137,7 +137,7 @@ Decision: {decision}
             t_stat = mean_diff / se
             t_crit = stats.t.ppf(1 - alpha / 2, df=n - 1)
             p_val = 2 * (1 - stats.t.cdf(abs(t_stat), df=n - 1))
-            decision = "✅ Reject the null hypothesis." if abs(t_stat) > t_crit else "❌ Fail to reject the null hypothesis."
+            decision = "✅ Reject the null hypothesis." if abs(t_stat) > t_crit else "❌ Do not reject the null hypothesis."
 
             report = f"""
 =====================
@@ -192,7 +192,7 @@ Decision: {decision}
             t_stat = (mean1 - mean2) / se
             t_crit = stats.t.ppf(1 - alpha / 2, df=df_deg)
             p_val = 2 * (1 - stats.t.cdf(abs(t_stat), df=df_deg))
-            decision = "✅ Reject the null hypothesis." if abs(t_stat) > t_crit else "❌ Fail to reject the null hypothesis."
+            decision = "✅ Reject the null hypothesis." if abs(t_stat) > t_crit else "❌ Do not reject the null hypothesis."
 
             report = f"""
 =====================
@@ -254,7 +254,7 @@ Decision: {decision}
             F_crit_low = stats.f.ppf(alpha / 2, df1, df2)
             F_crit_high = stats.f.ppf(1 - alpha / 2, df1, df2)
             p_val = 2 * min(stats.f.cdf(F, df1, df2), 1 - stats.f.cdf(F, df1, df2))
-            decision = "✅ Reject the null hypothesis." if F < F_crit_low or F > F_crit_high else "❌ Fail to reject the null hypothesis."
+            decision = "✅ Reject the null hypothesis." if F < F_crit_low or F > F_crit_high else "❌ Do not reject the null hypothesis."
 
             report = f"""
 =====================
