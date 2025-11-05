@@ -37,9 +37,9 @@ def one_way_anova_test(groups, alpha, decimal_places):
     print_group_means(groups)
 
     if p_value <= alpha:
-        st.success("Reject Null Hypothesis: There is a significant difference between the groups.")
+        st.success("✅ Reject Null Hypothesis: There is a significant difference between the groups.")
     else:
-        st.info("Do Not Reject Null Hypothesis: There is no significant difference between the groups.")
+        st.info("❌ Do Not Reject Null Hypothesis: There is no significant difference between the groups.")
 
 def parse_groups(input_text):
     try:
