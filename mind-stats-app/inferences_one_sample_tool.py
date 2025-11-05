@@ -16,7 +16,6 @@ def load_uploaded_data():
                 df = pd.read_csv(uploaded_file)
             else:
                 df = pd.read_excel(uploaded_file)
-            # Take the first numeric column
             for col in df.columns:
                 if pd.api.types.is_numeric_dtype(df[col]):
                     return df[col].dropna().to_numpy()
@@ -24,6 +23,7 @@ def load_uploaded_data():
         except Exception as e:
             st.error(f"Error reading file: {e}")
     return None
+
 
 # ---------- Main App ----------
 def run_hypothesis_tool():
@@ -38,7 +38,6 @@ def run_hypothesis_tool():
         "Chi-squared test for std dev (raw data)"
     ]
 
-    # --- Consistent Dropdown Style ---
     test_choice = st.selectbox(
         "Choose a hypothesis test:",
         test_options,
@@ -57,7 +56,7 @@ def run_hypothesis_tool():
     if test_choice in ["Proportion test (large sample)", "Proportion test (small sample, binomial)"]:
         x = st.number_input("Number of successes (x)", min_value=0, step=1)
         n = st.number_input("Sample size (n)", min_value=1, step=1)
-        p0 = st.number_input("Null proportion (p₀)", min_value=0.0, max_value=1.0, format="%.10f")
+        p0 = st.number_input("Null proportion (p₀)", min_value=0.0, max_value=1.0, format="%.6f")
 
         if st.button("👨‍💻 Calculate"):
             p_hat = x / n
@@ -70,6 +69,7 @@ Sample size = {n}
 Sample proportion = {p_hat:.4f}
 Null proportion p₀ = {p0:.4f}
 """
+
             if test_choice == "Proportion test (large sample)":
                 se = math.sqrt(p0 * (1 - p0) / n)
                 z_stat = (p_hat - p0) / se
@@ -86,14 +86,15 @@ Null proportion p₀ = {p0:.4f}
                     crit_str = f"{z_crit:.4f}"
                 else:
                     z_crit_left = -abs(norm.ppf(alpha / 2))
-                    z_crit_right = abs(norm.ppf(alpha / 2))
+                    z_crit_right = abs(norm.ppf(1 - alpha / 2))
                     p_val = 2 * (1 - norm.cdf(abs(z_stat)))
                     reject = abs(z_stat) > z_crit_right
                     crit_str = f"{z_crit_left:.4f}, {z_crit_right:.4f}"
 
-                report += f"Z = {z_stat:.4f}\nCritical Value(s) = {crit_str}\nP-value = {p_val:.4f}\nDecision = {'Reject' if reject else 'Do not reject'}\n"
+                decision = "✅ Reject the null hypothesis" if reject else "❌ Do not reject the null hypothesis"
+                report += f"Z = {z_stat:.4f}\nCritical Value(s) = {crit_str}\nP-value = {p_val:.4f}\nDecision = {decision}\n"
 
-            else:  # small sample binomial
+            else:  # small sample binomial test
                 if tails == "left":
                     p_val = binom.cdf(x, n, p0)
                 elif tails == "right":
@@ -101,22 +102,23 @@ Null proportion p₀ = {p0:.4f}
                 else:
                     p_val = 2 * min(binom.cdf(x, n, p0), 1 - binom.cdf(x - 1, n, p0))
                 reject = p_val < alpha
-                report += f"P-value = {p_val:.4f}\nDecision = {'Reject' if reject else 'Do not reject'}\n"
+                decision = "✅ Reject the null hypothesis" if reject else "❌ Do not reject the null hypothesis"
+                report += f"P-value = {p_val:.4f}\nDecision = {decision}\n"
 
             st.text(report)
 
     # ------------------- T-TESTS -------------------
     elif test_choice in ["t-test for population mean (summary stats)", "t-test for population mean (raw data)"]:
         if test_choice == "t-test for population mean (summary stats)":
-            mean = st.number_input("Sample mean (x̄)", format="%.10f")
-            sd = st.number_input("Sample standard deviation (s)", format="%.10f")
+            mean = st.number_input("Sample mean (x̄)", format="%.6f")
+            sd = st.number_input("Sample standard deviation (s)", format="%.6f")
             n = st.number_input("Sample size (n)", min_value=2, step=1)
         else:
             st.markdown("### 📊 Provide Sample Data")
             uploaded_data = load_uploaded_data()
             raw_input = st.text_area("Or enter comma-separated values (e.g., 1.2, 2.3, 3.1):")
 
-        mu0 = st.number_input("Null hypothesis mean (μ₀)", format="%.10f")
+        mu0 = st.number_input("Null hypothesis mean (μ₀)", format="%.6f")
 
         if st.button("👨‍💻 Calculate"):
             if test_choice == "t-test for population mean (raw data)":
@@ -151,11 +153,12 @@ Null proportion p₀ = {p0:.4f}
                 crit_str = f"{t_crit:.4f}"
             else:
                 t_crit_left = -abs(t.ppf(alpha / 2, df))
-                t_crit_right = abs(t.ppf(alpha / 2, df))
+                t_crit_right = abs(t.ppf(1 - alpha / 2, df))
                 p_val = 2 * (1 - t.cdf(abs(t_stat), df))
                 reject = abs(t_stat) > t_crit_right
                 crit_str = f"{t_crit_left:.4f}, {t_crit_right:.4f}"
 
+            decision = "✅ Reject the null hypothesis" if reject else "❌ Do not reject the null hypothesis"
             report = f"""
 =====================
 {test_choice}
@@ -167,21 +170,21 @@ Null hypothesis mean = {mu0:.4f}
 t = {t_stat:.4f}
 Critical Value(s) = {crit_str}
 P-value = {p_val:.4f}
-Decision = {'Reject' if reject else 'Do not reject'}
+Decision = {decision}
 """
             st.text(report)
 
     # ------------------- CHI-SQUARED TESTS -------------------
     elif test_choice in ["Chi-squared test for std dev (summary stats)", "Chi-squared test for std dev (raw data)"]:
         if test_choice == "Chi-squared test for std dev (summary stats)":
-            sd = st.number_input("Sample standard deviation (s)", format="%.10f")
+            sd = st.number_input("Sample standard deviation (s)", format="%.6f")
             n = st.number_input("Sample size (n)", min_value=2, step=1)
         else:
             st.markdown("### 📊 Provide Sample Data")
             uploaded_data = load_uploaded_data()
             raw_input = st.text_area("Or enter comma-separated values (e.g., 1.2, 2.3, 3.1):")
 
-        sigma0 = st.number_input("Population standard deviation (σ₀, null hypothesis)", format="%.10f")
+        sigma0 = st.number_input("Population standard deviation (σ₀, null hypothesis)", format="%.6f")
 
         if st.button("👨‍💻 Calculate"):
             if test_choice == "Chi-squared test for std dev (raw data)":
@@ -219,6 +222,7 @@ Decision = {'Reject' if reject else 'Do not reject'}
                 reject = chi2_stat < chi2_crit_left or chi2_stat > chi2_crit_right
                 crit_str = f"{chi2_crit_left:.4f}, {chi2_crit_right:.4f}"
 
+            decision = "✅ Reject the null hypothesis" if reject else "❌ Do not reject the null hypothesis"
             report = f"""
 =====================
 {test_choice}
@@ -229,9 +233,10 @@ Population SD (null) = {sigma0:.4f}
 Chi-squared = {chi2_stat:.4f}
 Critical Value(s) = {crit_str}
 P-value = {p_val:.4f}
-Decision = {'Reject' if reject else 'Do not reject'}
+Decision = {decision}
 """
             st.text(report)
+
 
 # ---------- Run ----------
 if __name__ == "__main__":
