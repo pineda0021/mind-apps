@@ -5,7 +5,6 @@ import scipy.stats as stats
 import matplotlib.pyplot as plt
 
 # ---------- Helper Functions ----------
-
 def round_value(value, decimals=4):
     return round(value, decimals)
 
@@ -20,7 +19,7 @@ def load_uploaded_data():
                 df = pd.read_csv(uploaded_file)
             else:
                 df = pd.read_excel(uploaded_file)
-            # Take the first numeric column
+            # Take first numeric column
             for col in df.columns:
                 if pd.api.types.is_numeric_dtype(df[col]):
                     return df[col].dropna().to_numpy()
@@ -30,7 +29,6 @@ def load_uploaded_data():
     return None
 
 # ---------- Main App ----------
-
 def run():
     st.header("🔮 Confidence Interval Calculator")
 
@@ -38,6 +36,7 @@ def run():
         "Confidence Interval for Proportion",
         "Sample Size for Proportion",
         "Confidence Interval for Mean (Known SD)",
+        "Confidence Interval for Mean (Given Sample SD)",
         "Confidence Interval for Mean (With Data)",
         "Sample Size for Mean",
         "Confidence Interval for Variance (Without Data)",
@@ -46,7 +45,6 @@ def run():
         "Confidence Interval for Standard Deviation (With Data)"
     ]
 
-    # --- Updated Dropdown Style ---
     choice = st.selectbox(
         "Choose a category:",
         categories,
@@ -60,7 +58,7 @@ def run():
 
     decimal = st.number_input("Decimal places for output", min_value=0, max_value=10, value=4)
 
-    # ------------------- WITH DATA / RAW INPUT HELPER -------------------
+    # ---------------- Helper to get data ----------------
     def get_data():
         uploaded_data = load_uploaded_data()
         raw_input = st.text_area("Or enter comma-separated values:")
@@ -76,7 +74,9 @@ def run():
             st.warning("⚠️ Please provide data via file upload or manual entry.")
             return None
 
-    # ------------------- 1. CI for Proportion -------------------
+    # =====================================================
+    # 1. CI for Proportion
+    # =====================================================
     if choice == categories[0]:
         n = st.number_input("Sample size (n)", min_value=1, step=1)
         x = st.number_input("Number of successes (x)", min_value=0, max_value=n, step=1)
@@ -94,12 +94,15 @@ Confidence Interval for Proportion
 =====================
 Sample successes = {x}
 Sample size = {n}
-Sample proportion = {p_hat:.{decimal}f}
+Point estimator (p̂) = {p_hat:.{decimal}f}
 Critical Value (Z) = {z:.{decimal}f}
+Standard Error = {se:.{decimal}f}
 {confidence_level*100:.1f}% CI = ({lower:.{decimal}f}, {upper:.{decimal}f})
 """)
 
-    # ------------------- 2. Sample Size for Proportion -------------------
+    # =====================================================
+    # 2. Sample Size for Proportion
+    # =====================================================
     elif choice == categories[1]:
         confidence_level = st.number_input("Confidence level", value=0.95)
         p_est = st.number_input("Estimated proportion (p̂)", value=0.5, min_value=0.0, max_value=1.0, step=0.001)
@@ -108,9 +111,20 @@ Critical Value (Z) = {z:.{decimal}f}
         if st.button("👨‍💻 Calculate"):
             z = stats.norm.ppf((1 + confidence_level) / 2)
             n_req = (z**2 * p_est * (1 - p_est)) / (moe**2)
-            st.success(f"📏 Required sample size: **{int(np.ceil(n_req))}**")
+            st.text(f"""
+=====================
+Sample Size for Proportion
+=====================
+Confidence Level = {confidence_level*100:.1f}%
+Estimated p̂ = {p_est:.{decimal}f}
+Critical Value (Z) = {z:.{decimal}f}
+Margin of Error (E) = {moe}
+Required Sample Size (n) = {np.ceil(n_req):.0f}
+""")
 
-    # ------------------- 3. CI for Mean (Known SD) -------------------
+    # =====================================================
+    # 3. CI for Mean (Known SD)
+    # =====================================================
     elif choice == categories[2]:
         mean = st.number_input("Sample mean")
         sd = st.number_input("Population standard deviation (σ)", min_value=0.0)
@@ -130,11 +144,41 @@ Sample mean = {mean:.{decimal}f}
 Population SD (σ) = {sd:.{decimal}f}
 Sample size = {n}
 Critical Value (Z) = {z:.{decimal}f}
+Standard Error = {se:.{decimal}f}
 {confidence_level*100:.1f}% CI = ({lower:.{decimal}f}, {upper:.{decimal}f})
 """)
 
-    # ------------------- 4. CI for Mean (With Data) -------------------
+    # =====================================================
+    # 4. CI for Mean (Given Sample SD, not population SD)
+    # =====================================================
     elif choice == categories[3]:
+        mean = st.number_input("Sample mean")
+        sd = st.number_input("Sample standard deviation (s)", min_value=0.0)
+        n = st.number_input("Sample size (n)", min_value=2, step=1)
+        confidence_level = st.number_input("Confidence level", value=0.95)
+
+        if st.button("👨‍💻 Calculate"):
+            df = n - 1
+            t_crit = stats.t.ppf((1 + confidence_level)/2, df=df)
+            se = sd / np.sqrt(n)
+            moe = t_crit * se
+            lower, upper = mean - moe, mean + moe
+            st.text(f"""
+=====================
+Confidence Interval for Mean (Given Sample SD)
+=====================
+Sample mean = {mean:.{decimal}f}
+Sample SD (s) = {sd:.{decimal}f}
+Sample size = {n}
+Critical Value (t) = {t_crit:.{decimal}f}
+Standard Error = {se:.{decimal}f}
+{confidence_level*100:.1f}% CI = ({lower:.{decimal}f}, {upper:.{decimal}f})
+""")
+
+    # =====================================================
+    # 5. CI for Mean (With Raw Data)
+    # =====================================================
+    elif choice == categories[4]:
         data = get_data()
         confidence_level = st.number_input("Confidence level", value=0.95)
         if st.button("👨‍💻 Calculate") and data is not None and len(data) > 0:
@@ -157,7 +201,6 @@ Critical Value (t) = {t_crit:.{decimal}f}
 {confidence_level*100:.1f}% CI = ({lower:.{decimal}f}, {upper:.{decimal}f})
 """)
 
-            # Histogram visualization
             fig, ax = plt.subplots()
             ax.hist(data, bins=10, color="skyblue", edgecolor="black", alpha=0.7)
             ax.axvline(lower, color="red", linestyle="--", label="Lower CI")
@@ -167,8 +210,10 @@ Critical Value (t) = {t_crit:.{decimal}f}
             ax.legend()
             st.pyplot(fig)
 
-    # ------------------- 5. Sample Size for Mean -------------------
-    elif choice == categories[4]:
+    # =====================================================
+    # 6. Sample Size for Mean (showing Z)
+    # =====================================================
+    elif choice == categories[5]:
         confidence_level = st.number_input("Confidence level", value=0.95)
         sigma = st.number_input("Population SD (σ)", min_value=0.0)
         moe = st.number_input("Margin of error (E)", min_value=0.0)
@@ -176,16 +221,27 @@ Critical Value (t) = {t_crit:.{decimal}f}
         if st.button("👨‍💻 Calculate"):
             z = stats.norm.ppf((1 + confidence_level)/2)
             n_req = (z * sigma / moe)**2
-            st.success(f"📏 Required sample size: **{int(np.ceil(n_req))}**")
+            st.text(f"""
+=====================
+Sample Size for Mean
+=====================
+Confidence Level = {confidence_level*100:.1f}%
+Critical Value (Z) = {z:.{decimal}f}
+Population SD (σ) = {sigma}
+Margin of Error (E) = {moe}
+Required Sample Size (n) = {np.ceil(n_req):.0f}
+""")
 
-    # ------------------- 6-9. CI for Variance / Standard Deviation -------------------
-    elif choice in categories[5:]:
+    # =====================================================
+    # 7–10. CI for Variance / SD
+    # =====================================================
+    elif choice in categories[6:]:
         data = None
         if "With Data" in choice:
             data = get_data()
 
         if "Without Data" in choice:
-            n = st.number_input("Sample size (n)", min_value=1, step=1)
+            n = st.number_input("Sample size (n)", min_value=2, step=1)
             if "Variance" in choice:
                 var = st.number_input("Sample variance (s²)", min_value=0.0)
             else:
@@ -214,7 +270,7 @@ Critical Value (t) = {t_crit:.{decimal}f}
 =====================
 Sample size = {n}
 Sample variance = {var:.{decimal}f}
-Critical Values (Chi²): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}
+Critical Values (χ²): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}
 {confidence_level*100:.1f}% CI for Variance = ({lower:.{decimal}f}, {upper:.{decimal}f})
 """)
             else:
@@ -226,11 +282,12 @@ Critical Values (Chi²): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.
 =====================
 Sample size = {n}
 Sample SD = {sd:.{decimal}f}
-Critical Values (Chi²): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}
+Critical Values (χ²): Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}
 {confidence_level*100:.1f}% CI for SD = ({lower:.{decimal}f}, {upper:.{decimal}f})
 """)
 
 # ---------- Run ----------
 if __name__ == "__main__":
     run()
+
 
