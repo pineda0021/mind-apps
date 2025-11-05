@@ -80,7 +80,7 @@ def run():
     if choice == categories[0]:
         n = st.number_input("Sample size (n)", min_value=1, step=1)
         x = st.number_input("Number of successes (x)", min_value=0, max_value=n, step=1)
-        confidence_level = st.number_input("Confidence level (0–1)", min_value=0.0, max_value=1.0, value=0.95)
+        confidence_level = st.number_input("Confidence level (0–1)", min_value=0.0, max_value=1.0, value=0.95, format="%.3f")
 
         if st.button("👨‍💻 Calculate"):
             p_hat = x / n
@@ -104,9 +104,9 @@ Standard Error = {se:.{decimal}f}
     # 2. Sample Size for Proportion
     # =====================================================
     elif choice == categories[1]:
-        confidence_level = st.number_input("Confidence level", value=0.95)
-        p_est = st.number_input("Estimated proportion (p̂)", value=0.5, min_value=0.0, max_value=1.0, step=0.001)
-        moe = st.number_input("Margin of error (E)", value=0.05, min_value=0.0, step=0.001)
+        confidence_level = st.number_input("Confidence level", value=0.95, format="%.3f")
+        p_est = st.number_input("Estimated proportion (p̂)", value=0.5, min_value=0.0, max_value=1.0, step=0.001, format="%.3f")
+        moe = st.number_input("Margin of error (E)", value=0.05, min_value=0.000001, step=0.001, format="%.6f")
 
         if st.button("👨‍💻 Calculate"):
             z = stats.norm.ppf((1 + confidence_level) / 2)
@@ -127,9 +127,9 @@ Required Sample Size (n) = {np.ceil(n_req):.0f}
     # =====================================================
     elif choice == categories[2]:
         mean = st.number_input("Sample mean")
-        sd = st.number_input("Population standard deviation (σ)", min_value=0.0)
+        sd = st.number_input("Population standard deviation (σ)", min_value=0.0, format="%.4f")
         n = st.number_input("Sample size (n)", min_value=1, step=1)
-        confidence_level = st.number_input("Confidence level", value=0.95)
+        confidence_level = st.number_input("Confidence level", value=0.95, format="%.3f")
 
         if st.button("👨‍💻 Calculate"):
             z = stats.norm.ppf((1 + confidence_level) / 2)
@@ -149,13 +149,13 @@ Standard Error = {se:.{decimal}f}
 """)
 
     # =====================================================
-    # 4. CI for Mean (Given Sample SD, not population SD)
+    # 4. CI for Mean (Given Sample SD)
     # =====================================================
     elif choice == categories[3]:
         mean = st.number_input("Sample mean")
-        sd = st.number_input("Sample standard deviation (s)", min_value=0.0)
+        sd = st.number_input("Sample standard deviation (s)", min_value=0.0, format="%.4f")
         n = st.number_input("Sample size (n)", min_value=2, step=1)
-        confidence_level = st.number_input("Confidence level", value=0.95)
+        confidence_level = st.number_input("Confidence level", value=0.95, format="%.3f")
 
         if st.button("👨‍💻 Calculate"):
             df = n - 1
@@ -180,7 +180,7 @@ Standard Error = {se:.{decimal}f}
     # =====================================================
     elif choice == categories[4]:
         data = get_data()
-        confidence_level = st.number_input("Confidence level", value=0.95)
+        confidence_level = st.number_input("Confidence level", value=0.95, format="%.3f")
         if st.button("👨‍💻 Calculate") and data is not None and len(data) > 0:
             n = len(data)
             mean = np.mean(data)
@@ -214,9 +214,9 @@ Critical Value (t) = {t_crit:.{decimal}f}
     # 6. Sample Size for Mean (showing Z)
     # =====================================================
     elif choice == categories[5]:
-        confidence_level = st.number_input("Confidence level", value=0.95)
-        sigma = st.number_input("Population SD (σ)", min_value=0.0)
-        moe = st.number_input("Margin of error (E)", min_value=0.0)
+        confidence_level = st.number_input("Confidence level", value=0.95, format="%.3f")
+        sigma = st.number_input("Population SD (σ)", min_value=0.0, format="%.4f")
+        moe = st.number_input("Margin of error (E)", min_value=0.000001, value=0.05, step=0.001, format="%.6f")
 
         if st.button("👨‍💻 Calculate"):
             z = stats.norm.ppf((1 + confidence_level)/2)
@@ -243,9 +243,9 @@ Required Sample Size (n) = {np.ceil(n_req):.0f}
         if "Without Data" in choice:
             n = st.number_input("Sample size (n)", min_value=2, step=1)
             if "Variance" in choice:
-                var = st.number_input("Sample variance (s²)", min_value=0.0)
+                var = st.number_input("Sample variance (s²)", min_value=0.0, format="%.6f")
             else:
-                sd = st.number_input("Sample SD (s)", min_value=0.0)
+                sd = st.number_input("Sample SD (s)", min_value=0.0, format="%.6f")
         else:
             if data is not None and len(data) > 0:
                 n = len(data)
@@ -255,7 +255,7 @@ Required Sample Size (n) = {np.ceil(n_req):.0f}
                 st.warning("⚠️ Please provide sample data.")
                 return
 
-        confidence_level = st.number_input("Confidence level", value=0.95)
+        confidence_level = st.number_input("Confidence level", value=0.95, format="%.3f")
         df = n - 1
         chi2_lower = stats.chi2.ppf((1 - confidence_level)/2, df=df)
         chi2_upper = stats.chi2.ppf(1 - (1 - confidence_level)/2, df=df)
