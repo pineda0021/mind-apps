@@ -91,7 +91,7 @@ Null proportion p₀ = {p0:.4f}
                     reject = abs(z_stat) > z_crit_right
                     crit_str = f"{z_crit_left:.4f}, {z_crit_right:.4f}"
 
-                report += f"Z = {z_stat:.4f}\nCritical Value(s) = {crit_str}\nP-value = {p_val:.4f}\nDecision = {'Reject' if reject else 'Fail to reject'}\n"
+                report += f"Z = {z_stat:.4f}\nCritical Value(s) = {crit_str}\nP-value = {p_val:.4f}\nDecision = {'Reject' if reject else 'Do not reject'}\n"
 
             else:  # small sample binomial
                 if tails == "left":
@@ -101,7 +101,7 @@ Null proportion p₀ = {p0:.4f}
                 else:
                     p_val = 2 * min(binom.cdf(x, n, p0), 1 - binom.cdf(x - 1, n, p0))
                 reject = p_val < alpha
-                report += f"P-value = {p_val:.4f}\nDecision = {'Reject' if reject else 'Fail to reject'}\n"
+                report += f"P-value = {p_val:.4f}\nDecision = {'Reject' if reject else 'Do not reject'}\n"
 
             st.text(report)
 
@@ -167,7 +167,7 @@ Null hypothesis mean = {mu0:.4f}
 t = {t_stat:.4f}
 Critical Value(s) = {crit_str}
 P-value = {p_val:.4f}
-Decision = {'Reject' if reject else 'Fail to reject'}
+Decision = {'Reject' if reject else 'Do not reject'}
 """
             st.text(report)
 
@@ -229,7 +229,7 @@ Population SD (null) = {sigma0:.4f}
 Chi-squared = {chi2_stat:.4f}
 Critical Value(s) = {crit_str}
 P-value = {p_val:.4f}
-Decision = {'Reject' if reject else 'Fail to reject'}
+Decision = {'Reject' if reject else 'Do not reject'}
 """
             st.text(report)
 
