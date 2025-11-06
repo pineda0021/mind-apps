@@ -54,74 +54,6 @@ def get_summary_stats(data, decimals=2):
         "s (Sample Std Dev)": samp_std
     }
 
-def display_summary_table(datasets):
-    summary_data = []
-    for name, data in datasets.items():
-        s = get_summary_stats(data)
-        summary_data.append({
-            "Dataset": name,
-            "Mean": s["Mean"],
-            "Median": s["Median"],
-            "Q1": s["Q1"],
-            "Q3": s["Q3"],
-            "IQR": s["IQR"],
-            "Std Dev (s)": s["s (Sample Std Dev)"],
-            "Range": s["Range"]
-        })
-    df_summary = pd.DataFrame(summary_data)
-    st.markdown("### 📊 Summary Statistics Comparison")
-    st.dataframe(df_summary, use_container_width=True)
-
-def display_plotly_boxplot_comparison(datasets):
-    colors = ["teal", "orange", "purple", "green", "red", "blue"]
-    fig = go.Figure()
-    for i, (name, data) in enumerate(datasets.items()):
-        fig.add_trace(go.Box(
-            y=data,
-            name=name,
-            boxpoints='outliers',
-            marker=dict(color=colors[i % len(colors)]),
-            line=dict(color='black')
-        ))
-    fig.update_layout(title="📦 Boxplot Comparison", yaxis_title="Values", template="simple_white")
-    st.plotly_chart(fig, use_container_width=True)
-
-def display_frequency_table(data):
-    freq = dict(Counter(data))
-    total = sum(freq.values())
-    rel_freq = {k: round(v / total, 4) for k, v in freq.items()}
-    df = pd.DataFrame({
-        'Category': list(freq.keys()),
-        'Frequency': list(freq.values()),
-        'Relative Frequency': list(rel_freq.values())
-    })
-    try:
-        df['Category'] = pd.to_numeric(df['Category'])
-        df = df.sort_values(by='Category')
-    except:
-        df = df.sort_values(by='Category')
-    return df.reset_index(drop=True)
-
-def plot_qualitative(df):
-    labels = df['Category'].astype(str)
-    freq = df['Frequency']
-    rel_freq = df['Relative Frequency']
-
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-    axes[0].bar(labels, freq, color='skyblue')
-    axes[0].set_title('Frequency Bar Chart')
-    axes[0].set_xlabel('Category')
-    axes[0].set_ylabel('Frequency')
-
-    axes[1].pie(rel_freq, labels=labels, autopct='%.2f%%', startangle=90)
-    axes[1].set_title('Pie Chart (Relative Frequency)')
-    plt.tight_layout()
-    st.pyplot(fig)
-
-# ==========================================================
-# Continuous Data Helpers
-# ==========================================================
-
 def parse_intervals(interval_text):
     """Parse intervals like [670,679], [680,689], etc."""
     intervals = []
@@ -155,15 +87,15 @@ def compute_frequency_table(data, intervals, manual_freq=None):
     return df, total
 
 # ==========================================================
-# Continuous Data (Auto + Manual Intervals)
+# Continuous Data (Automatic Intervals + Optional Manual Edit)
 # ==========================================================
 
 def run_continuous(df_uploaded=None):
     st.subheader("📂 Quantitative (Continuous) Data Analyzer")
 
     st.markdown("""
-    Enter your continuous data and class intervals below.  
-    The app can automatically generate intervals — or you can customize them manually.
+    This tool automatically constructs class intervals and frequency tables from continuous data.  
+    You can also adjust the intervals manually if desired.
     """)
 
     # ---------- Data Input ----------
@@ -196,7 +128,7 @@ def run_continuous(df_uploaded=None):
             return
 
     # ---------- Automatic Class Intervals ----------
-    st.markdown("### 🧮 Automatic Class Interval Suggestion")
+    st.markdown("### 🧮 Automatically Generated Class Intervals")
 
     min_val = np.min(numeric_data)
     max_val = np.max(numeric_data)
@@ -214,20 +146,18 @@ def run_continuous(df_uploaded=None):
         auto_intervals.append((low, high))
 
     default_intervals_text = ", ".join([f"[{int(l)},{int(h)}]" for l, h in auto_intervals])
-    st.info(f"Based on **Sturges' Rule**, {k} class intervals were generated (width ≈ {int(class_width)}).")
-    st.markdown("You can modify these intervals below:")
+    st.info(f"✅ Generated {k} class intervals (width ≈ {int(class_width)}). You may modify them below if desired.")
 
     # ---------- Editable Intervals ----------
-    interval_text = st.text_area(
-        "✍️ Edit class intervals (optional):",
-        default_intervals_text,
-        help="Example: [670,679], [680,689], [690,699], ..."
-    )
-    intervals = parse_intervals(interval_text)
-
-    if not intervals:
-        st.warning("⚠️ Please enter valid intervals like [670,679], [680,689], etc.")
-        return
+    edit_toggle = st.checkbox("✏️ Edit class intervals manually?", value=False)
+    if edit_toggle:
+        interval_text = st.text_area("Enter custom class intervals (optional):", default_intervals_text)
+        intervals = parse_intervals(interval_text)
+        if not intervals:
+            st.warning("⚠️ Please enter valid intervals like [670,679], [680,689], etc.")
+            return
+    else:
+        intervals = auto_intervals
 
     # ---------- Frequency Input ----------
     freq_mode = st.radio("Would you like to enter frequencies manually?",
@@ -278,10 +208,10 @@ def run_continuous(df_uploaded=None):
     # ---------- Interpretation ----------
     st.markdown("### 🧭 Interpretation")
     st.write(
-        f"The dataset contains **{total} observations** across **{len(intervals)} intervals**. "
-        f"Class width ≈ **{int(class_width)}**, based on **Sturges' Rule** for n = {n}."
+        f"The dataset contains **{total} observations** divided into **{len(intervals)} intervals**. "
+        f"Class width ≈ **{int(class_width)}**, based on **Sturges' Rule** (k = {k})."
     )
-    st.caption("💡 Students can experiment with different intervals to explore histogram shapes.")
+    st.caption("💡 Students can toggle manual editing to experiment with different interval widths.")
 
 # ==========================================================
 # Main App
@@ -318,85 +248,10 @@ def run():
             return
 
     # ---------- ROUTES ----------
-    if choice == "Qualitative":
-        st.subheader("📂 Qualitative Data")
-        if df_uploaded is not None:
-            col = st.selectbox("Select column for analysis:", df_uploaded.columns)
-            data = df_uploaded[col].dropna().astype(str).tolist()
-        else:
-            raw_data = st.text_area("Enter comma-separated categories:", "")
-            data = [val.strip() for val in raw_data.split(',') if val.strip()]
-        if data:
-            df = display_frequency_table(data)
-            st.dataframe(df)
-            plot_qualitative(df)
-
-    elif choice == "Quantitative (Discrete)":
-        st.subheader("📂 Quantitative (Discrete) Data")
-        if df_uploaded is not None:
-            numeric_cols = df_uploaded.select_dtypes(include=[np.number]).columns.tolist()
-            if numeric_cols:
-                col = st.selectbox("Select numeric column:", numeric_cols)
-                numeric_data = df_uploaded[col].dropna().astype(int).values
-            else:
-                st.error("No numeric columns found.")
-                return
-        else:
-            raw_data = st.text_area("Enter comma-separated integers:", "")
-            try:
-                numeric_data = np.array(list(map(int, raw_data.split(','))))
-            except ValueError:
-                st.error("Please enter valid integers.")
-                return
-        plt.hist(numeric_data, bins=range(min(numeric_data), max(numeric_data) + 2), edgecolor='black')
-        plt.title("Discrete Data Histogram")
-        st.pyplot(plt)
-
-    elif choice == "Quantitative (Continuous)":
+    if choice == "Quantitative (Continuous)":
         run_continuous(df_uploaded)
-
-    elif choice == "Summary Statistics & Boxplot":
-        st.subheader("📦 Summary Statistics & Boxplot Comparison")
-        input_mode = st.radio("Input Mode:", ["Manual Entry", "File Upload"])
-        datasets = {}
-        if input_mode == "Manual Entry":
-            num_datasets = st.selectbox("How many datasets?", [1, 2, 3, 4, 5], index=0)
-            for i in range(num_datasets):
-                raw_data = st.text_area(f"Dataset {i+1} (comma-separated):", key=f"data_{i}")
-                if raw_data:
-                    try:
-                        numeric_data = np.array(list(map(float, raw_data.split(','))))
-                        datasets[f"Dataset {i+1}"] = numeric_data
-                    except ValueError:
-                        st.error(f"Dataset {i+1}: invalid numeric input.")
-        else:
-            if df_uploaded is not None:
-                numeric_cols = df_uploaded.select_dtypes(include=[np.number]).columns.tolist()
-                if numeric_cols:
-                    selected_cols = st.multiselect("Select columns to compare:", numeric_cols)
-                    for col in selected_cols:
-                        datasets[col] = df_uploaded[col].dropna().values
-                else:
-                    st.error("No numeric columns found.")
-            else:
-                st.warning("Please upload a dataset first.")
-        if len(datasets) >= 1:
-            if len(datasets) == 1:
-                name, data = list(datasets.items())[0]
-                st.markdown(f"### 📋 Summary for {name}")
-                s = get_summary_stats(data)
-                for k, v in s.items():
-                    if k != "Outliers":
-                        st.write(f"**{k}:** {v}")
-                if s["Outliers"]:
-                    st.warning(f"Potential outliers: {s['Outliers']}")
-                else:
-                    st.success("No potential outliers detected.")
-                display_plotly_boxplot_comparison(datasets)
-            else:
-                st.success(f"✅ Comparing {len(datasets)} datasets.")
-                display_summary_table(datasets)
-                display_plotly_boxplot_comparison(datasets)
+    else:
+        st.warning("Currently, only the Continuous Data Analyzer has been optimized with auto interval detection.")
 
 # ==========================================================
 # Run App
