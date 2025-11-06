@@ -20,7 +20,7 @@ def run():
 
     st.markdown(
         f"""
-        <div style="text-align:center; margin-top:20px; margin-bottom:20px;">
+        <div style="text-align:center; margin-top:20px; margin-bottom:30px;">
             <a href="{colab_url}" target="_blank">
                 <button style="
                     background-color:#0072B2;
@@ -38,23 +38,23 @@ def run():
         unsafe_allow_html=True
     )
 
-    # --- Optional Read-Only Preview ---
+    # --- Static Preview using nbviewer or GitHub HTML export ---
     st.markdown("---")
     st.subheader("📄 Preview (Read-Only)")
-    st.markdown("""
+    st.write("""
     You can scroll through the notebook below.  
-    To **execute R code**, click “Open in Colab” in the frame header.
+    To **execute R code**, click the “Open in Colab” button above.
     """)
 
+    # Option 1: GitHub or nbviewer mirror of your Colab file (read-only)
     st.markdown(
         """
-        <iframe src="https://colab.research.google.com/drive/1hhooUeCY8h4zWiUVpcrd2nuU8GBZpQPH?usp=sharing"
-                width="100%" height="600" style="border:none;" allowfullscreen>
+        <iframe src="https://nbviewer.org/github/pineda0021/mind-apps/blob/main/RStudio_Notebook.ipynb"
+                width="100%" height="600" style="border:none;">
         </iframe>
         """,
         unsafe_allow_html=True
     )
 
-    # --- Footer ---
     st.markdown("---")
     st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College — built with the students in MIND 🎓")
