@@ -34,7 +34,7 @@ tool = st.sidebar.radio("Choose a tool:", [
     "Simple Regression",
     "Multiple Regression",
     "TI-84 Calculator"  # ✅ Added new option
-    "External Tools: RStudio & TI-84"  # 👈 add new option
+    "RStudio"  # 👈 add new option
 ])
 
 
@@ -75,7 +75,7 @@ elif tool == "Multiple Regression":
 elif tool == "TI-84 Calculator":  
     ti84.run()  # ✅ Launches embedded TI-84 calculator
 
-elif tool == "External Tools: RStudio & TI-84":
+elif tool == "RStudio":
     RStudio.run()  # 👈 this activates your new module
 
 
