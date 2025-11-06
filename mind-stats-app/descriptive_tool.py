@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from collections import Counter
 from scipy import stats
 import plotly.graph_objects as go
+import re
 
 # ==========================================================
 # Helper Functions
@@ -118,25 +119,29 @@ def plot_qualitative(df):
     st.pyplot(fig)
 
 # ==========================================================
-# Quantitative (Continuous) Enhanced
+# Continuous Data (Enhanced)
 # ==========================================================
 
 def parse_intervals(interval_text):
-    """Parse intervals entered as [670,679], [680,689], etc."""
+    """
+    Parse intervals entered as [670,679], [680,689], etc.
+    Returns [(670,679), (680,689), ...]
+    """
     intervals = []
-    for part in interval_text.split(']'):
-        if ',' in part:
-            part = part.replace('[', '').replace(']', '').strip()
-            try:
-                low, high = map(float, part.split(','))
-                if low < high:
-                    intervals.append((low, high))
-            except:
-                pass
+    pattern = r"\[(\s*\d+\.?\d*\s*),(\s*\d+\.?\d*\s*)\]"
+    matches = re.findall(pattern, interval_text)
+    for match in matches:
+        try:
+            low = float(match[0])
+            high = float(match[1])
+            if low < high:
+                intervals.append((low, high))
+        except:
+            continue
     return intervals
 
 def compute_frequency_table(data, intervals, manual_freq=None):
-    """Compute or accept manual frequencies."""
+    """Compute frequencies or accept manual ones."""
     if manual_freq:
         freq = manual_freq
     else:
@@ -160,7 +165,7 @@ def run_continuous(df_uploaded=None):
     You can upload a dataset or enter your own values manually.
     """)
 
-    # ---------------- STEP 1: DATA INPUT ----------------
+    # ---------- Data Input ----------
     input_mode = st.radio("Data Input Mode:", ["Upload File", "Manual Entry"], horizontal=True)
     numeric_data = None
 
@@ -175,32 +180,29 @@ def run_continuous(df_uploaded=None):
                 st.error("No numeric columns found.")
                 return
         else:
-            st.warning("Please upload a dataset using the file uploader above.")
+            st.warning("Please upload a dataset first.")
             return
     else:
-        raw_data = st.text_area("Enter comma-separated numeric values:", "670,678,690,700,710,720,729,730,735")
+        raw_data = st.text_area("Enter comma-separated numeric values:", 
+            "728,730,726,698,721,722,700,720,729,678,722,716,702,703,718,703,723,699,703,713,672,711,695,731,726,695,718")
         try:
             numeric_data = np.array([float(x.strip()) for x in raw_data.split(",") if x.strip() != ""])
             st.success(f"✅ Loaded {len(numeric_data)} observations.")
         except ValueError:
-            st.error("❌ Invalid numeric input. Please enter comma-separated numbers.")
+            st.error("❌ Invalid numeric input.")
             return
 
-    # ---------------- STEP 2: CLASS INTERVALS ----------------
+    # ---------- Intervals ----------
     st.markdown("### 🧩 Enter Class Intervals")
     st.info("Example: `[670,679], [680,689], [690,699], [700,709], [710,719], [720,729], [730,739]`")
-
-    interval_text = st.text_area(
-        "Enter class intervals:",
-        "[670,679], [680,689], [690,699], [700,709], [710,719], [720,729], [730,739]"
-    )
+    interval_text = st.text_area("Enter class intervals:", "[670,679], [680,689], [690,699], [700,709], [710,719], [720,729], [730,739]")
     intervals = parse_intervals(interval_text)
 
     if not intervals:
         st.warning("⚠️ Please enter valid intervals like `[670,679], [680,689]`.")
         return
 
-    # ---------------- STEP 3: FREQUENCY OPTIONS ----------------
+    # ---------- Frequency Input ----------
     freq_mode = st.radio("Would you like to enter frequencies manually?",
                          ["No (calculate automatically)", "Yes (enter manually)"], horizontal=True)
 
@@ -210,20 +212,20 @@ def run_continuous(df_uploaded=None):
         try:
             manual_freq = [int(x.strip()) for x in freq_input.split(",")]
             if len(manual_freq) != len(intervals):
-                st.error("⚠️ Number of frequencies must match the number of class intervals.")
+                st.error("⚠️ The number of frequencies must match the number of class intervals.")
                 return
         except ValueError:
             st.error("❌ Please enter valid integers for frequencies.")
             return
 
-    # ---------------- STEP 4: COMPUTE TABLE ----------------
+    # ---------- Frequency Table ----------
     df_freq, total = compute_frequency_table(numeric_data, intervals, manual_freq)
     st.markdown("### 📋 Frequency Distribution Table")
     st.dataframe(df_freq, use_container_width=True)
     st.markdown(f"**Total Frequency (n):** {total}")
 
-    # ---------------- STEP 5: VISUALIZATION ----------------
-    plot_option = st.radio("Choose visualization:",
+    # ---------- Visualization ----------
+    plot_option = st.radio("Choose visualization:", 
                            ["Histogram", "Histogram + Cumulative Frequency Polygon (Ogive)"],
                            horizontal=True)
 
@@ -236,7 +238,6 @@ def run_continuous(df_uploaded=None):
     ax.set_ylabel("Frequency")
     ax.set_xticks(bins)
 
-    # Ogive Option
     if plot_option == "Histogram + Cumulative Frequency Polygon (Ogive)":
         cum_freq = df_freq["Cumulative Freq"].values
         upper_bounds = [high for _, high in intervals]
@@ -248,14 +249,9 @@ def run_continuous(df_uploaded=None):
 
     st.pyplot(fig)
 
-    # ---------------- STEP 6: INTERPRETATION ----------------
     st.markdown("### 🧭 Interpretation")
-    st.write(
-        f"The dataset contains **{total} observations** across **{len(intervals)} intervals**. "
-        "Use this visualization to identify skewness or modality patterns in your distribution."
-    )
-    st.caption("Tip: Use manual frequency entry for classroom exercises where students construct frequency tables by hand.")
-
+    st.write(f"The dataset contains **{total} observations** across **{len(intervals)} intervals**.")
+    st.caption("Tip: Use manual frequency entry for classroom exercises where students construct tables by hand.")
 
 # ==========================================================
 # Main App
@@ -291,6 +287,7 @@ def run():
             st.error(f"Error reading file: {e}")
             return
 
+    # -------- ROUTES --------
     if choice == "Qualitative":
         st.subheader("📂 Qualitative Data")
         if df_uploaded is not None:
@@ -370,7 +367,6 @@ def run():
                 st.success(f"✅ Comparing {len(datasets)} datasets.")
                 display_summary_table(datasets)
                 display_plotly_boxplot_comparison(datasets)
-
 
 # ==========================================================
 # Run App
