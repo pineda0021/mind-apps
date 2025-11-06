@@ -15,9 +15,11 @@ def run():
     and explore statistical analysis in real time without local installation.
     """)
 
-    # --- Launch Button ---
+    # --- URLs ---
     colab_url = "https://colab.research.google.com/drive/1hhooUeCY8h4zWiUVpcrd2nuU8GBZpQPH?usp=sharing"
+    nbviewer_url = "https://nbviewer.org/github/pineda0021/mind-apps/blob/9d010d7c832f6c55d037898a3872683dd7b06f43/RStudio_Notebook.ipynb.ipynb"
 
+    # --- Launch Button ---
     st.markdown(
         f"""
         <div style="text-align:center; margin-top:20px; margin-bottom:30px;">
@@ -38,7 +40,7 @@ def run():
         unsafe_allow_html=True
     )
 
-    # --- Static Preview using nbviewer or GitHub HTML export ---
+    # --- Read-Only Preview ---
     st.markdown("---")
     st.subheader("📄 Preview (Read-Only)")
     st.write("""
@@ -46,15 +48,14 @@ def run():
     To **execute R code**, click the “Open in Colab” button above.
     """)
 
-    # Option 1: GitHub or nbviewer mirror of your Colab file (read-only)
     st.markdown(
-        """
-        <iframe src="https://nbviewer.org/github/pineda0021/mind-apps/blob/main/RStudio_Notebook.ipynb"
-                width="100%" height="600" style="border:none;">
+        f"""
+        <iframe src="{nbviewer_url}" width="100%" height="600" style="border:none;">
         </iframe>
         """,
         unsafe_allow_html=True
     )
 
+    # --- Footer ---
     st.markdown("---")
     st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College — built with the students in MIND 🎓")
