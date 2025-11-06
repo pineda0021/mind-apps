@@ -119,14 +119,11 @@ def plot_qualitative(df):
     st.pyplot(fig)
 
 # ==========================================================
-# Continuous Data (Enhanced)
+# Continuous Data Helpers
 # ==========================================================
 
 def parse_intervals(interval_text):
-    """
-    Parse intervals entered as [670,679], [680,689], etc.
-    Returns [(670,679), (680,689), ...]
-    """
+    """Parse intervals like [670,679], [680,689], etc."""
     intervals = []
     pattern = r"\[(\s*\d+\.?\d*\s*),(\s*\d+\.?\d*\s*)\]"
     matches = re.findall(pattern, interval_text)
@@ -157,12 +154,16 @@ def compute_frequency_table(data, intervals, manual_freq=None):
     })
     return df, total
 
+# ==========================================================
+# Continuous Data (Auto + Manual Intervals)
+# ==========================================================
+
 def run_continuous(df_uploaded=None):
     st.subheader("📂 Quantitative (Continuous) Data Analyzer")
 
     st.markdown("""
     Enter your continuous data and class intervals below.  
-    You can upload a dataset or enter your own values manually.
+    The app can automatically generate intervals — or you can customize them manually.
     """)
 
     # ---------- Data Input ----------
@@ -183,8 +184,10 @@ def run_continuous(df_uploaded=None):
             st.warning("Please upload a dataset first.")
             return
     else:
-        raw_data = st.text_area("Enter comma-separated numeric values:", 
-            "728,730,726,698,721,722,700,720,729,678,722,716,702,703,718,703,723,699,703,713,672,711,695,731,726,695,718")
+        raw_data = st.text_area(
+            "Enter comma-separated numeric values:",
+            "728,730,726,698,721,722,700,720,729,678,722,716,702,703,718,703,723,699,703,713,672,711,695,731,726,695,718"
+        )
         try:
             numeric_data = np.array([float(x.strip()) for x in raw_data.split(",") if x.strip() != ""])
             st.success(f"✅ Loaded {len(numeric_data)} observations.")
@@ -192,30 +195,54 @@ def run_continuous(df_uploaded=None):
             st.error("❌ Invalid numeric input.")
             return
 
-    # ---------- Intervals ----------
-    st.markdown("### 🧩 Enter Class Intervals")
-    st.info("Example: `[670,679], [680,689], [690,699], [700,709], [710,719], [720,729], [730,739]`")
-    interval_text = st.text_area("Enter class intervals:", "[670,679], [680,689], [690,699], [700,709], [710,719], [720,729], [730,739]")
+    # ---------- Automatic Class Intervals ----------
+    st.markdown("### 🧮 Automatic Class Interval Suggestion")
+
+    min_val = np.min(numeric_data)
+    max_val = np.max(numeric_data)
+    n = len(numeric_data)
+
+    # Use Sturges' Rule
+    k = int(np.ceil(1 + 3.322 * np.log10(n)))
+    class_width = np.ceil((max_val - min_val) / k)
+
+    auto_intervals = []
+    start = np.floor(min_val)
+    for i in range(k):
+        low = start + i * class_width
+        high = low + class_width - 1
+        auto_intervals.append((low, high))
+
+    default_intervals_text = ", ".join([f"[{int(l)},{int(h)}]" for l, h in auto_intervals])
+    st.info(f"Based on **Sturges' Rule**, {k} class intervals were generated (width ≈ {int(class_width)}).")
+    st.markdown("You can modify these intervals below:")
+
+    # ---------- Editable Intervals ----------
+    interval_text = st.text_area(
+        "✍️ Edit class intervals (optional):",
+        default_intervals_text,
+        help="Example: [670,679], [680,689], [690,699], ..."
+    )
     intervals = parse_intervals(interval_text)
 
     if not intervals:
-        st.warning("⚠️ Please enter valid intervals like `[670,679], [680,689]`.")
+        st.warning("⚠️ Please enter valid intervals like [670,679], [680,689], etc.")
         return
 
     # ---------- Frequency Input ----------
     freq_mode = st.radio("Would you like to enter frequencies manually?",
                          ["No (calculate automatically)", "Yes (enter manually)"], horizontal=True)
-
     manual_freq = None
+
     if freq_mode == "Yes (enter manually)":
-        freq_input = st.text_area("Enter frequencies separated by commas (must match number of intervals):", "2,0,4,5,5,9,2")
+        freq_input = st.text_area("Enter frequencies separated by commas (must match number of intervals):", "")
         try:
             manual_freq = [int(x.strip()) for x in freq_input.split(",")]
             if len(manual_freq) != len(intervals):
-                st.error("⚠️ The number of frequencies must match the number of class intervals.")
+                st.error("⚠️ The number of frequencies must match the number of intervals.")
                 return
         except ValueError:
-            st.error("❌ Please enter valid integers for frequencies.")
+            st.error("❌ Please enter valid integers.")
             return
 
     # ---------- Frequency Table ----------
@@ -225,15 +252,14 @@ def run_continuous(df_uploaded=None):
     st.markdown(f"**Total Frequency (n):** {total}")
 
     # ---------- Visualization ----------
-    plot_option = st.radio("Choose visualization:", 
+    plot_option = st.radio("Choose visualization:",
                            ["Histogram", "Histogram + Cumulative Frequency Polygon (Ogive)"],
                            horizontal=True)
 
     bins = [low for low, _ in intervals] + [intervals[-1][1]]
-
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.hist(numeric_data, bins=bins, edgecolor="black", color="skyblue")
-    ax.set_title("📊 Frequency Histogram (User-defined Intervals)")
+    ax.set_title("📊 Frequency Histogram")
     ax.set_xlabel("Class Intervals")
     ax.set_ylabel("Frequency")
     ax.set_xticks(bins)
@@ -249,9 +275,13 @@ def run_continuous(df_uploaded=None):
 
     st.pyplot(fig)
 
+    # ---------- Interpretation ----------
     st.markdown("### 🧭 Interpretation")
-    st.write(f"The dataset contains **{total} observations** across **{len(intervals)} intervals**.")
-    st.caption("Tip: Use manual frequency entry for classroom exercises where students construct tables by hand.")
+    st.write(
+        f"The dataset contains **{total} observations** across **{len(intervals)} intervals**. "
+        f"Class width ≈ **{int(class_width)}**, based on **Sturges' Rule** for n = {n}."
+    )
+    st.caption("💡 Students can experiment with different intervals to explore histogram shapes.")
 
 # ==========================================================
 # Main App
@@ -267,10 +297,10 @@ def run():
         "Summary Statistics & Boxplot"
     ]
 
-    choice = st.selectbox("Choose a category:", categories, index=None, placeholder="Select a category to begin...")
+    choice = st.selectbox("Choose a category:", categories, index=None, placeholder="Select a category...")
 
     if not choice:
-        st.info("👆 Please choose a category to begin.")
+        st.info("👆 Please select a category to begin.")
         return
 
     uploaded_file = st.file_uploader("📂 Upload CSV or Excel file (optional):", type=["csv", "xlsx"])
@@ -287,7 +317,7 @@ def run():
             st.error(f"Error reading file: {e}")
             return
 
-    # -------- ROUTES --------
+    # ---------- ROUTES ----------
     if choice == "Qualitative":
         st.subheader("📂 Qualitative Data")
         if df_uploaded is not None:
