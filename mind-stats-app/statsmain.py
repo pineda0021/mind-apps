@@ -12,7 +12,7 @@ import chi_square_tests_tool
 import anova_tool
 import regression_analysis_tool  
 import ti84  # ✅ NEW: TI-84 embedded calculator
-
+import RStudio  # 👈 import your new module
 
 # ---------- App Configuration ----------
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
@@ -34,6 +34,7 @@ tool = st.sidebar.radio("Choose a tool:", [
     "Simple Regression",
     "Multiple Regression",
     "TI-84 Calculator"  # ✅ Added new option
+    "External Tools: RStudio & TI-84"  # 👈 add new option
 ])
 
 
@@ -73,6 +74,9 @@ elif tool == "Multiple Regression":
 
 elif tool == "TI-84 Calculator":  
     ti84.run()  # ✅ Launches embedded TI-84 calculator
+
+elif tool == "External Tools: RStudio & TI-84":
+    RStudio.run()  # 👈 this activates your new module
 
 
 # ---------- Footer ----------
