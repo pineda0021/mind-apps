@@ -1,3 +1,9 @@
+# ==========================================================
+# sample_proportion_tool.py
+# Created by Professor Edward Pineda-Castro, Los Angeles City College
+# Part of the MIND: Statistics Visualizer Suite
+# ==========================================================
+
 import streamlit as st
 import numpy as np
 import math
