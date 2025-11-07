@@ -34,12 +34,12 @@ def load_uploaded_data():
 # ---------- Main App ----------
 def run():
     st.header("🔮 Confidence Interval Calculator")
-    st.markdown("""
+       st.markdown("""
     ---
-    **Quick Reference:**
-    - \( \bar{X} \): sample mean  \( s \): sample SD  \( \sigma \): population SD  
-    - \( \hat{p} \): sample proportion  \( E \): margin of error  \( n \): sample size  
-    - \( \chi^2 \): chi-square critical values for variance/SD intervals  
+    ### 🧭 **Quick Reference**
+    - \( \\bar{X} \): sample mean  \( s \): sample SD  \( \\sigma \): population SD  
+    - \( \\hat{p} \): sample proportion  \( E \): margin of error  \( n \): sample size  
+    - \( \\chi^2 \): chi-square critical values for variance/SD intervals  
     ---
     """)
 
