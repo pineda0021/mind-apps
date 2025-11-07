@@ -113,8 +113,13 @@ def run():
         """)
 
         calc = st.selectbox("Select Probability Type:", [
-            "Exactly: P(X = x)", "At most: P(X ≤ x)", "At least: P(X ≥ x)", 
-            "Between: P(a ≤ X ≤ b)", "Show Full Table & Graph"
+            "Exactly: P(X = x)", 
+            "At most: P(X ≤ x)", 
+            "Less than: P(X < x)",
+            "At least: P(X ≥ x)", 
+            "Greater than: P(X > x)", 
+            "Between: P(a ≤ X ≤ b)", 
+            "Show Full Table & Graph"
         ])
 
         if "Between" in calc:
@@ -134,8 +139,13 @@ def run():
                 st.success(f"P(X = {x}) = **{prob:.5f}**")
             elif calc == "At most: P(X ≤ x)":
                 st.success(f"P(X ≤ {x}) = **{binom.cdf(x, n, p):.5f}**")
+            elif calc == "Less than: P(X < x)":
+                prob = binom.cdf(x - 1, n, p) if x > 0 else 0
+                st.success(f"P(X < {x}) = **{prob:.5f}**")
             elif calc == "At least: P(X ≥ x)":
                 st.success(f"P(X ≥ {x}) = **{1 - binom.cdf(x - 1, n, p):.5f}**")
+            elif calc == "Greater than: P(X > x)":
+                st.success(f"P(X > {x}) = **{1 - binom.cdf(x, n, p):.5f}**")
             elif calc == "Between: P(a ≤ X ≤ b)":
                 prob = binom.cdf(b, n, p) - (binom.cdf(a - 1, n, p) if a > 0 else 0)
                 st.success(f"P({a} ≤ X ≤ {b}) = **{prob:.5f}**")
@@ -177,8 +187,13 @@ def run():
         """)
 
         calc = st.selectbox("Select Probability Type:", [
-            "Exactly: P(X = x)", "At most: P(X ≤ x)", "At least: P(X ≥ x)",
-            "Between: P(a ≤ X ≤ b)", "Show Full Table & Graph"
+            "Exactly: P(X = x)", 
+            "At most: P(X ≤ x)", 
+            "Less than: P(X < x)", 
+            "At least: P(X ≥ x)", 
+            "Greater than: P(X > x)", 
+            "Between: P(a ≤ X ≤ b)", 
+            "Show Full Table & Graph"
         ])
 
         if "Between" in calc:
@@ -197,8 +212,13 @@ def run():
                 st.success(f"P(X = {x}) = **{poisson.pmf(x, lam):.5f}**")
             elif calc == "At most: P(X ≤ x)":
                 st.success(f"P(X ≤ {x}) = **{poisson.cdf(x, lam):.5f}**")
+            elif calc == "Less than: P(X < x)":
+                prob = poisson.cdf(x - 1, lam) if x > 0 else 0
+                st.success(f"P(X < {x}) = **{prob:.5f}**")
             elif calc == "At least: P(X ≥ x)":
                 st.success(f"P(X ≥ {x}) = **{1 - poisson.cdf(x - 1, lam):.5f}**")
+            elif calc == "Greater than: P(X > x)":
+                st.success(f"P(X > {x}) = **{1 - poisson.cdf(x, lam):.5f}**")
             elif calc == "Between: P(a ≤ X ≤ b)":
                 prob = poisson.cdf(b, lam) - (poisson.cdf(a - 1, lam) if a > 0 else 0)
                 st.success(f"P({a} ≤ X ≤ {b}) = **{prob:.5f}**")
@@ -220,3 +240,4 @@ def run():
 # ==========================================================
 if __name__ == "__main__":
     run()
+
