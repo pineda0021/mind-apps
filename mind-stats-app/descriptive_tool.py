@@ -138,11 +138,14 @@ def run_quantitative(df_uploaded=None):
         st.dataframe(freq_df, use_container_width=True)
         st.markdown(f"**Total Frequency (n):** {len(data)}")
 
+        # ✅ Corrected: Bar chart for discrete data (with gaps)
         fig, ax = plt.subplots(figsize=(8, 4))
-        ax.bar(freq_df["Value"], freq_df["Frequency"], color="skyblue", edgecolor="black")
-        ax.set_title("🎨 Discrete Data Bar Chart")
+        bar_width = 0.8  # Leave slight gaps between bars
+        ax.bar(freq_df["Value"], freq_df["Frequency"], width=bar_width, color="skyblue", edgecolor="black")
+        ax.set_title("🎨 Discrete Data Bar Chart (With Gaps)")
         ax.set_xlabel("Data Values")
         ax.set_ylabel("Frequency")
+        ax.set_xticks(freq_df["Value"])
         st.pyplot(fig)
 
     # ---------- CONTINUOUS ----------
@@ -179,15 +182,16 @@ def run_quantitative(df_uploaded=None):
         st.markdown(f"**Total Frequency (n):** {total}")
 
         plot_option = st.radio("Choose visualization:",
-                               ["Histogram", "Histogram + Ogive", "Boxplot"],
+                               ["Histogram (No Gaps)", "Histogram + Ogive", "Boxplot"],
                                horizontal=True)
 
         bins = [low for low, _ in intervals] + [intervals[-1][1]]
         fig, ax = plt.subplots(figsize=(8, 4))
 
-        if plot_option in ["Histogram", "Histogram + Ogive"]:
-            ax.hist(data, bins=bins, edgecolor="black", color="skyblue")
-            ax.set_title("📊 Frequency Histogram")
+        # ✅ Histogram for continuous data — no gaps
+        if plot_option in ["Histogram (No Gaps)", "Histogram + Ogive"]:
+            ax.hist(data, bins=bins, edgecolor="black", color="skyblue", linewidth=1)
+            ax.set_title("📊 Continuous Data Histogram (No Gaps)")
             ax.set_xlabel("Class Intervals")
             ax.set_ylabel("Frequency")
             ax.set_xticks(bins)
