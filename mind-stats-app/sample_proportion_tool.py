@@ -23,102 +23,12 @@ def parse_expression(expr):
 
 
 # ==========================================================
-# 🎲 Continuous Uniform Distribution
-# ==========================================================
-def uniform_distribution(decimal):
-    st.markdown("### 🎲 **Continuous Uniform Distribution**")
-    st.latex(r"f(x) = \frac{1}{b - a}, \quad a \le x \le b")
-    st.latex(r"E[X] = \frac{a + b}{2}, \quad Var[X] = \frac{(b - a)^2}{12}")
-
-    st.write("All values between **a** and **b** are equally likely. This distribution models uniform outcomes across an interval.")
-
-    a = st.number_input("Lower bound (a):", value=0.0)
-    b = st.number_input("Upper bound (b):", value=10.0)
-    if b <= a:
-        st.error("⚠️ Upper bound (b) must be greater than lower bound (a).")
-        return
-
-    pdf = 1 / (b - a)
-    mean = (a + b) / 2
-    variance = ((b - a) ** 2) / 12
-    sd = math.sqrt(variance)
-
-    st.write(f"**Mean = {round(mean, decimal)} | Variance = {round(variance, decimal)} | SD = {round(sd, decimal)} | f(x) = {round(pdf, decimal)}**")
-
-    calc_type = st.selectbox("Choose a calculation:", [
-        "P(X ≤ x)",
-        "P(X ≥ x)",
-        "P(a < X < b)",
-        "Inverse: Find x for given probability"
-    ])
-
-    x = np.linspace(a - (b - a)*0.2, b + (b - a)*0.2, 500)
-    y = np.where((x >= a) & (x <= b), pdf, 0)
-
-    if calc_type == "P(X ≤ x)":
-        x_val = st.number_input("Enter x value:", value=mean)
-        prob = 0 if x_val <= a else 1 if x_val >= b else (x_val - a) / (b - a)
-        st.success(f"P(X ≤ {x_val}) = {round(prob, decimal)}")
-        fig, ax = plt.subplots(figsize=(8,4))
-        ax.plot(x, y, color="blue")
-        ax.fill_between(x, 0, y, where=(x <= x_val) & (x >= a), color="skyblue", alpha=0.6)
-        ax.axvline(x_val, color="red", linestyle="--")
-        ax.set_title("Uniform Distribution")
-        st.pyplot(fig)
-
-    elif calc_type == "P(X ≥ x)":
-        x_val = st.number_input("Enter x value:", value=mean)
-        prob = 1 if x_val <= a else 0 if x_val >= b else (b - x_val) / (b - a)
-        st.success(f"P(X ≥ {x_val}) = {round(prob, decimal)}")
-        fig, ax = plt.subplots(figsize=(8,4))
-        ax.plot(x, y, color="blue")
-        ax.fill_between(x, 0, y, where=(x >= x_val) & (x <= b), color="lightgreen", alpha=0.6)
-        ax.axvline(x_val, color="red", linestyle="--")
-        ax.set_title("Uniform Distribution")
-        st.pyplot(fig)
-
-    elif calc_type == "P(a < X < b)":
-        a1 = st.number_input("Lower bound (a₁):", value=a + (b - a)/4)
-        b1 = st.number_input("Upper bound (b₁):", value=a + 3*(b - a)/4)
-        if a1 >= b1:
-            st.error("⚠️ Lower bound must be less than upper bound.")
-            return
-        prob = max(0, min((b1 - a1) / (b - a), 1))
-        st.success(f"P({a1} < X < {b1}) = {round(prob, decimal)}")
-        fig, ax = plt.subplots(figsize=(8,4))
-        ax.plot(x, y, color="blue")
-        ax.fill_between(x, 0, y, where=(x >= a1) & (x <= b1), color="orange", alpha=0.6)
-        ax.axvline(a1, color="red", linestyle="--")
-        ax.axvline(b1, color="red", linestyle="--")
-        ax.set_title("Uniform Distribution")
-        st.pyplot(fig)
-
-    elif calc_type == "Inverse: Find x for given probability":
-        p = st.number_input("Enter probability (0 < p < 1):", min_value=0.0, max_value=1.0, value=0.5)
-        direction = st.selectbox("Select tail:", ["Left tail: P(X ≤ x) = p", "Right tail: P(X ≥ x) = p"])
-        if direction == "Left tail: P(X ≤ x) = p":
-            x_val = a + p * (b - a)
-            st.success(f"x = {round(x_val, decimal)} for P(X ≤ x) = {p}")
-        else:
-            x_val = b - p * (b - a)
-            st.success(f"x = {round(x_val, decimal)} for P(X ≥ x) = {p}")
-        fig, ax = plt.subplots(figsize=(8,4))
-        ax.plot(x, y, color="blue")
-        if direction.startswith("Left"):
-            ax.fill_between(x, 0, y, where=(x <= x_val) & (x >= a), color="skyblue", alpha=0.6)
-        else:
-            ax.fill_between(x, 0, y, where=(x >= x_val) & (x <= b), color="lightgreen", alpha=0.6)
-        ax.axvline(x_val, color="red", linestyle="--")
-        ax.set_title("Uniform Distribution")
-        st.pyplot(fig)
-
-
-# ==========================================================
-# 📈 Normal Distribution
+# Normal Distribution
 # ==========================================================
 def normal_distribution(decimal):
     st.markdown("### 📈 **Normal Distribution**")
     st.latex(r"Z = \frac{X - \mu}{\sigma}")
+
     st.write("The normal distribution models continuous data that follows a bell-shaped curve, such as IQ or height.")
 
     mean = st.number_input("Population mean (μ):", value=0.0)
@@ -134,7 +44,49 @@ def normal_distribution(decimal):
     x = np.linspace(mean - 4*sd, mean + 4*sd, 500)
     y = norm.pdf(x, mean, sd)
 
-    if calc_type == "Inverse: Find x for given probability":
+    if calc_type == "P(X < x)":
+        x_val = st.number_input("Enter x value:", value=0.0)
+        prob = norm.cdf(x_val, mean, sd)
+        z = (x_val - mean) / sd
+        st.success(f"P(X < {x_val}) = {round(prob, decimal)}")
+        st.write(f"Z = ({x_val} − {mean}) / {sd} = {round(z, decimal)}")
+
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(x, y, color="blue")
+        ax.fill_between(x, 0, y, where=(x <= x_val), color="skyblue", alpha=0.6)
+        ax.axvline(x_val, color="red", linestyle="--")
+        st.pyplot(fig)
+
+    elif calc_type == "P(X > x)":
+        x_val = st.number_input("Enter x value:", value=0.0)
+        prob = 1 - norm.cdf(x_val, mean, sd)
+        z = (x_val - mean) / sd
+        st.success(f"P(X > {x_val}) = {round(prob, decimal)}")
+        st.write(f"Z = ({x_val} − {mean}) / {sd} = {round(z, decimal)}")
+
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(x, y, color="blue")
+        ax.fill_between(x, 0, y, where=(x >= x_val), color="lightgreen", alpha=0.6)
+        ax.axvline(x_val, color="red", linestyle="--")
+        st.pyplot(fig)
+
+    elif calc_type == "P(a < X < b)":
+        a = st.number_input("Lower bound (a):", value=mean - sd)
+        b = st.number_input("Upper bound (b):", value=mean + sd)
+        prob = norm.cdf(b, mean, sd) - norm.cdf(a, mean, sd)
+        z1 = (a - mean) / sd
+        z2 = (b - mean) / sd
+        st.success(f"P({a} < X < {b}) = {round(prob, decimal)}")
+        st.write(f"Z₁ = {round(z1, decimal)}, Z₂ = {round(z2, decimal)} → P(Z₁ < Z < Z₂) = {round(prob, decimal)}")
+
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(x, y, color="blue")
+        ax.fill_between(x, 0, y, where=(x >= a) & (x <= b), color="orange", alpha=0.6)
+        ax.axvline(a, color="red", linestyle="--")
+        ax.axvline(b, color="red", linestyle="--")
+        st.pyplot(fig)
+
+    elif calc_type == "Inverse: Find x for given probability":
         tail = st.selectbox("Select tail:", ["Left tail", "Right tail", "Middle area"])
         p = st.number_input("Enter probability (0 < p < 1):", min_value=0.0, max_value=1.0, value=0.95)
         if tail == "Left tail":
@@ -152,7 +104,7 @@ def normal_distribution(decimal):
             st.success(f"{p*100:.1f}% of data lies between {round(a_val, decimal)} and {round(b_val, decimal)}")
             x_val = None
 
-        fig, ax = plt.subplots(figsize=(8,4))
+        fig, ax = plt.subplots(figsize=(8, 4))
         ax.plot(x, y, color="blue")
         if tail == "Middle area":
             ax.fill_between(x, 0, y, where=(x >= a_val) & (x <= b_val), color="orange", alpha=0.6)
@@ -169,7 +121,7 @@ def normal_distribution(decimal):
 
 
 # ==========================================================
-# 📘 Sampling Distribution of the Mean
+# Sampling Distribution of the Mean
 # ==========================================================
 def sampling_mean(decimal):
     st.markdown("### 📘 **Sampling Distribution of the Mean**")
@@ -186,7 +138,7 @@ def sampling_mean(decimal):
         return
 
     se = sigma / math.sqrt(n)
-    st.write(f"**Standard Deviation (σ) =** {round(sigma, decimal)} | **Standard Error (σₓ̄) =** {round(se, decimal)}")
+    st.write(f"**Standard Error (σₓ̄) =** {round(se, decimal)}")
 
     calc_type = st.selectbox("Choose a calculation:", [
         "P(X̄ < x)",
@@ -211,7 +163,35 @@ def sampling_mean(decimal):
 
 
 # ==========================================================
-# 📗 Sampling Distribution of the Proportion
+# Uniform Distribution
+# ==========================================================
+def uniform_distribution(decimal):
+    st.markdown("### 🎲 **Uniform Distribution**")
+    st.latex(r"f(x) = \frac{1}{b - a}, \quad a \le x \le b")
+    st.latex(r"E[X] = \frac{a + b}{2}, \quad Var[X] = \frac{(b - a)^2}{12}")
+
+    a = st.number_input("Lower bound (a):", value=0.0)
+    b = st.number_input("Upper bound (b):", value=10.0)
+    if b <= a:
+        st.error("⚠️ The upper bound (b) must be greater than the lower bound (a).")
+        return
+
+    pdf = 1 / (b - a)
+    mean = (a + b) / 2
+    var = ((b - a)**2) / 12
+    st.write(f"**Mean = {round(mean, decimal)} | Variance = {round(var, decimal)} | f(x) = {round(pdf, decimal)}**")
+
+    x = np.linspace(a - (b - a)*0.2, b + (b - a)*0.2, 500)
+    y = np.where((x >= a) & (x <= b), pdf, 0)
+    fig, ax = plt.subplots(figsize=(8,4))
+    ax.plot(x, y, color="blue")
+    ax.fill_between(x, 0, y, where=(x >= a) & (x <= b), color="skyblue", alpha=0.6)
+    ax.set_title("Uniform Distribution")
+    st.pyplot(fig)
+
+
+# ==========================================================
+# Sampling Distribution of the Proportion
 # ==========================================================
 def sampling_proportion(decimal):
     st.markdown("### 📗 **Sampling Distribution of the Proportion**")
@@ -259,19 +239,19 @@ def run():
 
     dist_choice = st.radio(
         "Select Distribution Type:",
-        ["🎲 Uniform Distribution", "📈 Normal Distribution", "📘 Sampling Distribution of the Mean", "📗 Sampling Distribution of the Proportion"],
+        ["Uniform Distribution", "Normal Distribution", "Sampling Distribution of the Mean", "Sampling Distribution of the Proportion"],
         horizontal=True
     )
 
     decimal = st.number_input("Decimal places for output:", min_value=0, max_value=10, value=4, step=1)
 
-    if dist_choice == "🎲 Uniform Distribution":
+    if dist_choice == "Uniform Distribution":
         uniform_distribution(decimal)
-    elif dist_choice == "📈 Normal Distribution":
+    elif dist_choice == "Normal Distribution":
         normal_distribution(decimal)
-    elif dist_choice == "📘 Sampling Distribution of the Mean":
+    elif dist_choice == "Sampling Distribution of the Mean":
         sampling_mean(decimal)
-    elif dist_choice == "📗 Sampling Distribution of the Proportion":
+    elif dist_choice == "Sampling Distribution of the Proportion":
         sampling_proportion(decimal)
 
 
