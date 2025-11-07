@@ -126,8 +126,8 @@ def run_quantitative(df_uploaded=None):
 
     # ---------- DISCRETE ----------
     if q_type == "Discrete":
-    counts = pd.Series(data).value_counts().sort_index()
-    freq_df = pd.DataFrame({
+        counts = pd.Series(data).value_counts().sort_index()
+        freq_df = pd.DataFrame({
         "Value": counts.index,
         "Frequency": counts.values,
         "Relative Frequency": np.round(counts.values / len(data), 4)
