@@ -185,9 +185,7 @@ def run_continuous(df_uploaded=None, mode="Manual Entry"):
     min_val = np.min(numeric_data)
     max_val = np.max(numeric_data)
     n = len(numeric_data)
-
-    # Use Sturges' Rule
-    k = int(np.ceil(1 + 3.322 * np.log10(n)))
+    k = int(np.ceil(1 + 3.322 * np.log10(n)))  # Sturges' Rule
     class_width = np.ceil((max_val - min_val) / k)
 
     auto_intervals = []
@@ -210,11 +208,9 @@ def run_continuous(df_uploaded=None, mode="Manual Entry"):
     else:
         intervals = auto_intervals
 
-    # ---------- Frequency Input ----------
     freq_mode = st.radio("Would you like to enter frequencies manually?",
                          ["No (calculate automatically)", "Yes (enter manually)"], horizontal=True)
     manual_freq = None
-
     if freq_mode == "Yes (enter manually)":
         freq_input = st.text_area("Enter frequencies separated by commas:", "")
         try:
@@ -271,7 +267,6 @@ def run_summary(df_uploaded=None):
 
     st.markdown("""
     Compute **key descriptive statistics** and visualize them with a horizontal boxplot.  
-    Outliers are determined using the **IQR rule**.
     """)
 
     input_mode = st.radio("Data Input Mode:", ["Upload File", "Manual Entry"], horizontal=True)
@@ -298,21 +293,18 @@ def run_summary(df_uploaded=None):
             st.error("❌ Invalid numeric input.")
             return
 
-    # ---------- Compute Stats ----------
     stats_dict = get_summary_stats(data)
     df_summary = pd.DataFrame(stats_dict.items(), columns=["Statistic", "Value"])
     st.dataframe(df_summary, use_container_width=True)
 
-    # ---------- Boxplot ----------
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.boxplot(data, vert=False, patch_artist=True,
                boxprops=dict(facecolor='lightblue', color='black'),
                medianprops=dict(color='red'))
-    ax.set_title("📦 Horizontal Boxplot with Outliers")
+    ax.set_title("📦 Horizontal Boxplot")
     ax.set_xlabel("Values")
     ax.set_yticks([])
     st.pyplot(fig)
-
 
 # ==========================================================
 # Main App
@@ -347,7 +339,6 @@ def run():
             st.error(f"Error reading file: {e}")
             return
 
-    # ---------- ROUTING ----------
     if choice == "Quantitative (Discrete)":
         run_discrete(df_uploaded)
     elif "Quantitative (Continuous)" in choice:
@@ -361,3 +352,4 @@ def run():
 # ==========================================================
 if __name__ == "__main__":
     run()
+
