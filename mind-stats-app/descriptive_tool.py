@@ -138,7 +138,7 @@ def run_quantitative(df_uploaded=None):
         st.dataframe(freq_df, use_container_width=True)
         st.markdown(f"**Total Frequency (n):** {len(data)}")
 
-        # ✅ Histogram for discrete numeric data (no gaps)
+        # Histogram (no gaps)
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.hist(data, bins=np.arange(min(data) - 0.5, max(data) + 1.5, 1),
                 color="skyblue", edgecolor="black")
@@ -267,41 +267,97 @@ def run_qualitative(df_uploaded=None):
     st.pyplot(fig)
 
 # ==========================================================
-# Summary Statistics & Boxplot
+# Summary Statistics & Boxplot (Single or Multiple)
 # ==========================================================
 
 def run_summary(df_uploaded=None):
     st.subheader("📊 Summary Statistics & Boxplot")
 
-    input_mode = st.radio("Data Input Mode:", ["Upload File", "Manual Entry"], horizontal=True)
+    summary_mode = st.radio("Select Mode:", ["Single Dataset", "Multiple Datasets"], horizontal=True)
 
-    if input_mode == "Upload File":
-        if df_uploaded is not None:
-            numeric_cols = df_uploaded.select_dtypes(include=[np.number]).columns.tolist()
-            if not numeric_cols:
-                st.error("No numeric columns found.")
+    if summary_mode == "Single Dataset":
+        input_mode = st.radio("Data Input Mode:", ["Upload File", "Manual Entry"], horizontal=True)
+        if input_mode == "Upload File":
+            if df_uploaded is not None:
+                numeric_cols = df_uploaded.select_dtypes(include=[np.number]).columns.tolist()
+                if not numeric_cols:
+                    st.error("No numeric columns found.")
+                    return
+                col = st.selectbox("Select numeric column:", numeric_cols)
+                data = df_uploaded[col].dropna().astype(float).values
+            else:
+                st.warning("Please upload a dataset first.")
                 return
-            col = st.selectbox("Select numeric column:", numeric_cols)
-            data = df_uploaded[col].dropna().astype(float).values
         else:
-            st.warning("Please upload a dataset first.")
-            return
-    else:
-        raw_data = st.text_area("Enter comma-separated numeric values:",
-                                "56, 57, 54, 61, 63, 58, 59, 62, 55, 57")
-        data = np.array([float(x.strip()) for x in raw_data.split(",") if x.strip() != ""])
+            raw_data = st.text_area("Enter comma-separated numeric values:",
+                                    "56, 57, 54, 61, 63, 58, 59, 62, 55, 57")
+            data = np.array([float(x.strip()) for x in raw_data.split(",") if x.strip() != ""])
 
-    stats_dict = get_summary_stats(data)
-    df_summary = pd.DataFrame(stats_dict.items(), columns=["Statistic", "Value"])
-    st.dataframe(df_summary, use_container_width=True)
+        stats_dict = get_summary_stats(data)
+        df_summary = pd.DataFrame(stats_dict.items(), columns=["Statistic", "Value"])
+        st.dataframe(df_summary, use_container_width=True)
 
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.boxplot(data, vert=False, patch_artist=True,
-               boxprops=dict(facecolor='lightblue', color='black'),
-               medianprops=dict(color='red'))
-    ax.set_title("📦 Horizontal Boxplot")
-    ax.set_xlabel("Values")
-    st.pyplot(fig)
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.boxplot(data, vert=False, patch_artist=True,
+                   boxprops=dict(facecolor='lightblue', color='black'),
+                   medianprops=dict(color='red'))
+        ax.set_title("📦 Horizontal Boxplot")
+        ax.set_xlabel("Values")
+        st.pyplot(fig)
+
+    else:  # Multiple Datasets
+        input_mode = st.radio("Data Input Mode:", ["Upload File", "Manual Entry"], horizontal=True)
+        data_dict = {}
+
+        if input_mode == "Upload File":
+            if df_uploaded is not None:
+                numeric_cols = df_uploaded.select_dtypes(include=[np.number]).columns.tolist()
+                if len(numeric_cols) < 2:
+                    st.error("Please upload a file with at least two numeric columns.")
+                    return
+                selected_cols = st.multiselect("Select columns to include:", numeric_cols, default=numeric_cols[:2])
+                if not selected_cols:
+                    st.warning("Please select at least one column.")
+                    return
+                for col in selected_cols:
+                    data_dict[col] = df_uploaded[col].dropna().astype(float).values
+            else:
+                st.warning("Please upload a dataset first.")
+                return
+        else:
+            raw_input = st.text_area(
+                "Enter multiple datasets separated by semicolons ';' (e.g., 10,12,14; 8,9,7; 20,22,19)",
+                "56,57,54,61,63; 49,51,55,58,60; 65,64,68,70,69"
+            )
+            try:
+                datasets = [np.array([float(x.strip()) for x in block.split(",") if x.strip() != ""])
+                            for block in raw_input.split(";") if block.strip()]
+                for i, d in enumerate(datasets, start=1):
+                    data_dict[f"Dataset {i}"] = d
+            except:
+                st.error("❌ Invalid input format.")
+                return
+
+        # Display Summary Table
+        st.markdown("### 📋 Summary Statistics (Multiple Datasets)")
+        summary_combined = pd.DataFrame()
+        for name, d in data_dict.items():
+            stats_dict = get_summary_stats(d)
+            df_stats = pd.DataFrame(stats_dict, index=[name])
+            summary_combined = pd.concat([summary_combined, df_stats])
+        st.dataframe(summary_combined, use_container_width=True)
+
+        # Combined Boxplot
+        fig, ax = plt.subplots(figsize=(8, 4 + 0.3 * len(data_dict)))
+        ax.boxplot([d for d in data_dict.values()],
+                   labels=data_dict.keys(),
+                   vert=False,
+                   patch_artist=True,
+                   boxprops=dict(facecolor='lightblue', color='black'),
+                   medianprops=dict(color='red'))
+        ax.set_title("📦 Horizontal Boxplots (Multiple Datasets)")
+        ax.set_xlabel("Values")
+        st.pyplot(fig)
 
 # ==========================================================
 # Main App
