@@ -26,8 +26,10 @@ def parse_expression(expr):
 # Normal Distribution
 # ==========================================================
 def normal_distribution(decimal):
-    st.subheader("📈 Normal Distribution")
+    st.markdown("### 📈 **Normal Distribution**  [🔗](#)")
     st.latex(r"Z = \frac{X - \mu}{\sigma}")
+
+    st.write("The normal distribution models continuous data that follows a bell-shaped curve, such as IQ or height.")
 
     mean = st.number_input("Population mean (μ):", value=0.0)
     sd = st.number_input("Standard deviation (σ):", min_value=0.0001, value=1.0)
@@ -52,8 +54,10 @@ def normal_distribution(decimal):
 # Sampling Distribution of the Mean
 # ==========================================================
 def sampling_mean(decimal):
-    st.subheader("📘 Sampling Distribution of the Mean")
+    st.markdown("### 📘 **Sampling Distribution of the Mean**  [🔗](#)")
     st.latex(r"Z = \frac{\bar{X} - \mu}{\sigma / \sqrt{n}}")
+
+    st.write("Used when analyzing sample means from a population — shows how the mean varies with sample size.")
 
     mu_expr = st.text_input("Population mean (μ):", value="0")
     sigma_expr = st.text_input("Population SD (σ):", value="1")
@@ -87,8 +91,10 @@ def sampling_mean(decimal):
 # Sampling Distribution of the Proportion
 # ==========================================================
 def sampling_proportion(decimal):
-    st.subheader("📘 Sampling Distribution of the Proportion")
+    st.markdown("### 📗 **Sampling Distribution of the Proportion**  [🔗](#)")
     st.latex(r"Z = \frac{\hat{p} - p}{\sqrt{p(1-p)/n}}")
+
+    st.write("Used when working with proportions (percentages), such as approval ratings or survey results.")
 
     p_expr = st.text_input("Population proportion (p):", value="0.5")
     n = st.number_input("Sample size (n):", min_value=1, step=1, value=30)
@@ -122,10 +128,12 @@ def sampling_proportion(decimal):
 # Uniform Distribution
 # ==========================================================
 def uniform_distribution(decimal):
-    st.subheader("📏 Uniform Distribution")
+    st.markdown("### 🎲 **Uniform Distribution**  [🔗](#)")
     st.latex(r"f(x) = \frac{1}{b - a}, \quad a \le x \le b")
     st.latex(r"P(X < x) = P(X \le x)")
     st.latex(r"E[X] = \frac{a + b}{2}, \quad Var[X] = \frac{(b - a)^2}{12}")
+
+    st.write("Models data where all values within an interval are equally likely — like rolling a fair die.")
 
     a = st.number_input("Lower bound (a):", value=0.0)
     b = st.number_input("Upper bound (b):", value=10.0)
@@ -198,20 +206,17 @@ def uniform_distribution(decimal):
 # MAIN APP
 # ==========================================================
 def run():
-    st.header("📊 Continuous Probability Distributions")
+    st.header("🧠 MIND: Continuous Probability Distributions")
 
-    # Distribution Type Radio Buttons
     dist_choice = st.radio(
         "Select Distribution Type:",
-        ["Uniform Distribution", "Normal Distribution", 
+        ["Uniform Distribution", "Normal Distribution",
          "Sampling Distribution of the Mean", "Sampling Distribution of the Proportion"],
-        index=0,
         horizontal=True
     )
 
     decimal = st.number_input("Decimal places for output:", min_value=0, max_value=10, value=4, step=1)
 
-    # Route
     if dist_choice == "Uniform Distribution":
         uniform_distribution(decimal)
     elif dist_choice == "Normal Distribution":
