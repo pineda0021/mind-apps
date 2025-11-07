@@ -313,21 +313,6 @@ def run_summary(df_uploaded=None):
     ax.set_yticks([])
     st.pyplot(fig)
 
-    # ---------- Outlier Formula ----------
-    st.markdown("""
-    ---
-    ### 📘 Outlier Detection Formula
-    Outliers are values that fall **below the lower bound** or **above the upper bound** using the *Interquartile Range (IQR)* rule:
-    
-    \[
-    \text{Lower Bound} = Q_1 - 1.5(IQR)
-    \]
-    \[
-    \text{Upper Bound} = Q_3 + 1.5(IQR)
-    \]
-
-    Any data points outside this range are considered **outliers**.
-    """)
 
 # ==========================================================
 # Main App
