@@ -87,10 +87,10 @@ def compute_frequency_table(data, intervals, manual_freq=None):
     return df, total
 
 # ==========================================================
-# Continuous Data (Automatic Intervals + Optional Manual Edit)
+# Continuous Data Analyzer
 # ==========================================================
 
-def run_continuous(df_uploaded=None):
+def run_continuous(df_uploaded=None, mode="Manual Entry"):
     st.subheader("📂 Quantitative (Continuous) Data Analyzer")
 
     st.markdown("""
@@ -99,10 +99,9 @@ def run_continuous(df_uploaded=None):
     """)
 
     # ---------- Data Input ----------
-    input_mode = st.radio("Data Input Mode:", ["Upload File", "Manual Entry"], horizontal=True)
     numeric_data = None
 
-    if input_mode == "Upload File":
+    if mode == "Upload File":
         if df_uploaded is not None:
             numeric_cols = df_uploaded.select_dtypes(include=[np.number]).columns.tolist()
             if numeric_cols:
@@ -115,7 +114,8 @@ def run_continuous(df_uploaded=None):
         else:
             st.warning("Please upload a dataset first.")
             return
-    else:
+
+    else:  # Manual Entry
         raw_data = st.text_area(
             "Enter comma-separated numeric values:",
             "728,730,726,698,721,722,700,720,729,678,722,716,702,703,718,703,723,699,703,713,672,711,695,731,726,695,718"
@@ -206,7 +206,7 @@ def run_continuous(df_uploaded=None):
             ax2.legend(loc="upper left")
 
     elif plot_option == "Boxplot":
-        # ✅ Horizontal boxplot for improved readability
+        # ✅ Horizontal boxplot
         ax.boxplot(numeric_data, vert=False, patch_artist=True,
                    boxprops=dict(facecolor='lightblue', color='black'),
                    medianprops=dict(color='red'))
@@ -233,7 +233,8 @@ def run():
 
     categories = [
         "Quantitative (Discrete)",
-        "Quantitative (Continuous)",
+        "Quantitative (Continuous) — Upload File",
+        "Quantitative (Continuous) — Manual Entry",
         "Summary Statistics & Boxplot"
     ]
 
@@ -243,23 +244,28 @@ def run():
         st.info("👆 Please select a category to begin.")
         return
 
-    uploaded_file = st.file_uploader("📂 Upload CSV or Excel file (optional):", type=["csv", "xlsx"])
+    uploaded_file = None
     df_uploaded = None
-    if uploaded_file:
-        try:
-            if uploaded_file.name.endswith(".csv"):
-                df_uploaded = pd.read_csv(uploaded_file)
-            else:
-                df_uploaded = pd.read_excel(uploaded_file)
-            st.success("✅ File uploaded successfully!")
-            st.dataframe(df_uploaded)
-        except Exception as e:
-            st.error(f"Error reading file: {e}")
-            return
+
+    # ---------- File Upload (only if chosen) ----------
+    if "Upload File" in choice:
+        uploaded_file = st.file_uploader("📂 Upload CSV or Excel file:", type=["csv", "xlsx"])
+        if uploaded_file:
+            try:
+                if uploaded_file.name.endswith(".csv"):
+                    df_uploaded = pd.read_csv(uploaded_file)
+                else:
+                    df_uploaded = pd.read_excel(uploaded_file)
+                st.success("✅ File uploaded successfully!")
+                st.dataframe(df_uploaded)
+            except Exception as e:
+                st.error(f"Error reading file: {e}")
+                return
 
     # ---------- ROUTES ----------
-    if choice == "Quantitative (Continuous)":
-        run_continuous(df_uploaded)
+    if "Quantitative (Continuous)" in choice:
+        mode = "Upload File" if "Upload File" in choice else "Manual Entry"
+        run_continuous(df_uploaded, mode)
     else:
         st.warning("Currently, only the Continuous Data Analyzer has been optimized with auto interval detection.")
 
@@ -268,4 +274,3 @@ def run():
 # ==========================================================
 if __name__ == "__main__":
     run()
-
