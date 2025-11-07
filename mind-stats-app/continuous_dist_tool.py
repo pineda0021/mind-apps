@@ -1,6 +1,5 @@
 import streamlit as st
-import uniform_tool
-import sample_proportion_tool  # this is your combined normal & sampling module
+import continuous_dist_tool  # this is your combined normal & sampling module
 
 def run():
     st.header("📈 Continuous Probability Distributions")
