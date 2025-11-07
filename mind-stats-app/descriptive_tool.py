@@ -128,25 +128,25 @@ def run_quantitative(df_uploaded=None):
     if q_type == "Discrete":
         counts = pd.Series(data).value_counts().sort_index()
         freq_df = pd.DataFrame({
-        "Value": counts.index,
-        "Frequency": counts.values,
-        "Relative Frequency": np.round(counts.values / len(data), 4)
-    })
-    freq_df["Cumulative Frequency"] = freq_df["Frequency"].cumsum()
+            "Value": counts.index,
+            "Frequency": counts.values,
+            "Relative Frequency": np.round(counts.values / len(data), 4)
+        })
+        freq_df["Cumulative Frequency"] = freq_df["Frequency"].cumsum()
 
-    st.markdown("### 📋 Frequency Distribution Table")
-    st.dataframe(freq_df, use_container_width=True)
-    st.markdown(f"**Total Frequency (n):** {len(data)}")
+        st.markdown("### 📋 Frequency Distribution Table")
+        st.dataframe(freq_df, use_container_width=True)
+        st.markdown(f"**Total Frequency (n):** {len(data)}")
 
-    # ✅ FIXED: Histogram with no gaps for discrete numeric data
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.hist(data, bins=np.arange(min(data) - 0.5, max(data) + 1.5, 1),
-            color="skyblue", edgecolor="black")
-    ax.set_title("📊 Discrete Data Histogram (No Gaps)")
-    ax.set_xlabel("Data Values")
-    ax.set_ylabel("Frequency")
-    ax.set_xticks(sorted(freq_df["Value"]))
-    st.pyplot(fig)
+        # ✅ Histogram for discrete numeric data (no gaps)
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.hist(data, bins=np.arange(min(data) - 0.5, max(data) + 1.5, 1),
+                color="skyblue", edgecolor="black")
+        ax.set_title("📊 Discrete Data Histogram (No Gaps)")
+        ax.set_xlabel("Data Values")
+        ax.set_ylabel("Frequency")
+        ax.set_xticks(sorted(freq_df["Value"]))
+        st.pyplot(fig)
 
     # ---------- CONTINUOUS ----------
     else:
@@ -188,7 +188,6 @@ def run_quantitative(df_uploaded=None):
         bins = [low for low, _ in intervals] + [intervals[-1][1]]
         fig, ax = plt.subplots(figsize=(8, 4))
 
-        # ✅ Histogram for continuous data — no gaps
         if plot_option in ["Histogram (No Gaps)", "Histogram + Ogive"]:
             ax.hist(data, bins=bins, edgecolor="black", color="skyblue", linewidth=1)
             ax.set_title("📊 Continuous Data Histogram (No Gaps)")
