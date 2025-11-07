@@ -35,8 +35,6 @@ def normal_distribution(decimal):
     st.markdown("### 📈 **Normal Distribution**")
     st.latex(r"Z = \frac{X - \mu}{\sigma}")
 
-    st.write("The normal distribution models continuous data that follows a bell-shaped curve, such as IQ or height.")
-
     mean = st.number_input("Population mean (μ):", value=0.0)
     sd = st.number_input("Standard deviation (σ):", min_value=0.0001, value=1.0)
 
@@ -80,10 +78,7 @@ def normal_distribution(decimal):
         a = st.number_input("Lower bound (a):", value=mean - sd)
         b = st.number_input("Upper bound (b):", value=mean + sd)
         prob = norm.cdf(b, mean, sd) - norm.cdf(a, mean, sd)
-        z1 = (a - mean) / sd
-        z2 = (b - mean) / sd
         st.success(f"P({a} < X < {b}) = {round(prob, decimal)}")
-        st.write(f"Z₁ = {round(z1, decimal)}, Z₂ = {round(z2, decimal)} → P(Z₁ < Z < Z₂) = {round(prob, decimal)}")
 
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.plot(x, y, color="blue")
@@ -98,30 +93,23 @@ def normal_distribution(decimal):
         if tail == "Left tail":
             x_val = norm.ppf(p, mean, sd)
             st.success(f"x = {round(x_val, decimal)} for P(X < x) = {p}")
-            a_val, b_val = None, None
         elif tail == "Right tail":
             x_val = norm.ppf(1 - p, mean, sd)
             st.success(f"x = {round(x_val, decimal)} for P(X > x) = {p}")
-            a_val, b_val = None, None
         else:
             tail_prob = (1 - p) / 2
             a_val = norm.ppf(tail_prob, mean, sd)
             b_val = norm.ppf(1 - tail_prob, mean, sd)
             st.success(f"{p*100:.1f}% of data lies between {round(a_val, decimal)} and {round(b_val, decimal)}")
-            x_val = None
 
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.plot(x, y, color="blue")
         if tail == "Middle area":
             ax.fill_between(x, 0, y, where=(x >= a_val) & (x <= b_val), color="orange", alpha=0.6)
-            ax.axvline(a_val, color="red", linestyle="--")
-            ax.axvline(b_val, color="red", linestyle="--")
         elif tail == "Left tail":
             ax.fill_between(x, 0, y, where=(x <= x_val), color="skyblue", alpha=0.6)
-            ax.axvline(x_val, color="red", linestyle="--")
         else:
             ax.fill_between(x, 0, y, where=(x >= x_val), color="lightgreen", alpha=0.6)
-            ax.axvline(x_val, color="red", linestyle="--")
         ax.set_title("Normal Distribution")
         st.pyplot(fig)
 
@@ -131,7 +119,7 @@ def normal_distribution(decimal):
 # ==========================================================
 def sampling_mean(decimal):
     st.markdown("### 📘 **Sampling Distribution of the Mean**")
-    st.latex(r"\mu = \mu_{\bar{X}}")
+    st.latex(r"\mu_{\bar{X}} = \mu, \quad \sigma_{\bar{X}} = \frac{\sigma}{\sqrt{n}}")
     st.latex(r"Z = \frac{\bar{X} - \mu}{\sigma / \sqrt{n}}")
 
     mu_expr = st.text_input("Population mean (μ):", value="0")
@@ -201,6 +189,7 @@ def uniform_distribution(decimal):
 # ==========================================================
 def sampling_proportion(decimal):
     st.markdown("### 📗 **Sampling Distribution of the Proportion**")
+    st.latex(r"\mu_{\hat{p}} = p, \quad \sigma_{\hat{p}} = \sqrt{\frac{p(1-p)}{n}}")
     st.latex(r"Z = \frac{\hat{p} - p}{\sqrt{p(1-p)/n}}")
 
     p_expr = st.text_input("Population proportion (p):", value="0.5")
