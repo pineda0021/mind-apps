@@ -10,6 +10,7 @@ import math
 from scipy.stats import norm
 import matplotlib.pyplot as plt
 
+
 # ==========================================================
 # Helper Function
 # ==========================================================
@@ -156,14 +157,14 @@ def sampling_mean(decimal):
 
 
 # ==========================================================
-# Uniform Distribution
+# Uniform Distribution (fixed with unique keys)
 # ==========================================================
 def uniform_distribution(decimal):
     st.markdown("### 🎲 **Uniform Distribution**")
     st.latex(r"f(x) = \frac{1}{b - a}, \quad a \le x \le b")
 
-    a = st.number_input("Lower bound (a):", value=0.0)
-    b = st.number_input("Upper bound (b):", value=10.0)
+    a = st.number_input("Lower bound (a):", value=0.0, key="ua_main")
+    b = st.number_input("Upper bound (b):", value=10.0, key="ub_main")
     if b <= a:
         st.error("⚠️ The upper bound (b) must be greater than the lower bound (a).")
         return
@@ -177,14 +178,14 @@ def uniform_distribution(decimal):
         "P(X > x) = P(X ≥ x)",
         "P(a < X < b)",
         "Inverse: Find x for given probability"
-    ])
+    ], key="uniform_calc_type")
 
     x = np.linspace(a - (b - a)*0.2, b + (b - a)*0.2, 500)
     y = np.where((x >= a) & (x <= b), pdf, 0)
 
     # P(X < x) = P(X ≤ x)
     if calc_type == "P(X < x) = P(X ≤ x)":
-        x_val = st.number_input("Enter x value:", value=(a + b) / 2)
+        x_val = st.number_input("Enter x value:", value=(a + b) / 2, key="ux_less")
         if x_val <= a:
             prob = 0.0
         elif x_val >= b:
@@ -197,24 +198,21 @@ def uniform_distribution(decimal):
         ax.plot(x, y)
         ax.fill_between(x, 0, y, where=(x <= x_val) & (x >= a), alpha=0.6)
         ax.axvline(x_val, linestyle="--")
-        ax.set_title("Uniform: P(X ≤ x)")
         st.pyplot(fig)
 
     # P(X = x)
     elif calc_type == "P(X = x)":
-        x_val = st.number_input("Enter the point x:", value=(a + b) / 2)
-        prob = 0.0  # continuous uniform
-        st.success(f"P(X = {x_val}) = {prob:.{decimal}f} (Continuous distribution)")
+        x_val = st.number_input("Enter the point x:", value=(a + b) / 2, key="ux_equal")
+        st.success(f"P(X = {x_val}) = 0 (continuous distribution)")
 
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.plot(x, y)
         ax.axvline(x_val, linestyle="--")
-        ax.set_title("Uniform: P(X = x) = 0")
         st.pyplot(fig)
 
     # P(X > x) = P(X ≥ x)
     elif calc_type == "P(X > x) = P(X ≥ x)":
-        x_val = st.number_input("Enter x value:", value=(a + b) / 2)
+        x_val = st.number_input("Enter x value:", value=(a + b) / 2, key="ux_greater")
         if x_val <= a:
             prob = 1.0
         elif x_val >= b:
@@ -227,13 +225,12 @@ def uniform_distribution(decimal):
         ax.plot(x, y)
         ax.fill_between(x, 0, y, where=(x >= x_val) & (x <= b), alpha=0.6)
         ax.axvline(x_val, linestyle="--")
-        ax.set_title("Uniform: P(X ≥ x)")
         st.pyplot(fig)
 
     # P(a < X < b)
     elif calc_type == "P(a < X < b)":
-        low = st.number_input("Lower bound (a):", value=a)
-        high = st.number_input("Upper bound (b):", value=b)
+        low = st.number_input("Lower bound (a):", value=a, key="ua_inner")
+        high = st.number_input("Upper bound (b):", value=b, key="ub_inner")
         if high <= low:
             st.error("Upper bound must be greater than lower bound.")
             return
@@ -251,13 +248,12 @@ def uniform_distribution(decimal):
         ax.fill_between(x, 0, y, where=(x >= low) & (x <= high), alpha=0.6)
         ax.axvline(low, linestyle="--")
         ax.axvline(high, linestyle="--")
-        ax.set_title("Uniform: P(a < X < b)")
         st.pyplot(fig)
 
     # Inverse: Find x for given probability
     elif calc_type == "Inverse: Find x for given probability":
         p = st.number_input("Enter probability p for P(X ≤ x) = p (0 < p < 1):",
-                            min_value=0.0, max_value=1.0, value=0.5)
+                            min_value=0.0, max_value=1.0, value=0.5, key="u_inverse_p")
         x_val = a + p * (b - a)
         st.success(f"x = {round(x_val, decimal)} for P(X ≤ x) = {p}")
 
@@ -265,7 +261,6 @@ def uniform_distribution(decimal):
         ax.plot(x, y)
         ax.fill_between(x, 0, y, where=(x <= x_val) & (x >= a), alpha=0.6)
         ax.axvline(x_val, linestyle="--")
-        ax.set_title("Uniform: Inverse Probability")
         st.pyplot(fig)
 
 
