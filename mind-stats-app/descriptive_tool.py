@@ -84,19 +84,23 @@ def compute_frequency_table(data, intervals, manual_freq=None):
     return df, total
 
 # ==========================================================
-# Discrete Data Analyzer
+# Quantitative Analyzer (Discrete + Continuous)
 # ==========================================================
 
-def run_discrete(df_uploaded=None):
-    st.subheader("🎯 Quantitative (Discrete) Data Analyzer")
+def run_quantitative(df_uploaded=None):
+    st.subheader("📊 Quantitative Data Analyzer")
 
     st.markdown("""
-    This tool analyzes **discrete (countable) data** by generating a frequency table  
-    and visualizing it with a bar chart.
+    Analyze **quantitative (numeric)** data — either *discrete* or *continuous*.  
+    Generate frequency tables, visualizations, and summary insights.
     """)
 
+    q_type = st.radio("Select Data Type:", ["Discrete", "Continuous"], horizontal=True)
     input_mode = st.radio("Data Input Mode:", ["Upload File", "Manual Entry"], horizontal=True)
 
+    data = None
+
+    # ---------- Data Input ----------
     if input_mode == "Upload File":
         if df_uploaded is not None:
             numeric_cols = df_uploaded.select_dtypes(include=[np.number]).columns.tolist()
@@ -104,157 +108,158 @@ def run_discrete(df_uploaded=None):
                 st.error("No numeric columns found.")
                 return
             col = st.selectbox("Select numeric column:", numeric_cols)
-            data = df_uploaded[col].dropna().astype(int).values
+            data = df_uploaded[col].dropna().astype(float).values
+            st.success(f"✅ Loaded {len(data)} observations from '{col}'")
         else:
             st.warning("Please upload a dataset first.")
             return
     else:
-        raw_data = st.text_area("Enter comma-separated integer values:",
-                                "3, 5, 4, 4, 3, 2, 5, 5, 3, 4, 2, 5, 1, 4, 3, 3, 2, 5, 4, 3")
+        example = "3, 5, 4, 4, 3, 2, 5, 5, 3, 4" if q_type == "Discrete" else \
+                  "728,730,726,698,721,722,700,720,729,678,722,716,702"
+        raw_data = st.text_area("Enter comma-separated numeric values:", example)
         try:
-            data = np.array([int(x.strip()) for x in raw_data.split(",") if x.strip() != ""])
-        except ValueError:
-            st.error("❌ Invalid input. Please enter integers separated by commas.")
-            return
-
-    # ---------- Frequency Table ----------
-    counts = pd.Series(data).value_counts().sort_index()
-    freq_df = pd.DataFrame({
-        "Value": counts.index,
-        "Frequency": counts.values,
-        "Relative Frequency": np.round(counts.values / len(data), 4)
-    })
-    freq_df["Cumulative Frequency"] = freq_df["Frequency"].cumsum()
-
-    st.markdown("### 📋 Frequency Distribution Table")
-    st.dataframe(freq_df, use_container_width=True)
-    st.markdown(f"**Total Frequency (n):** {len(data)}")
-
-    # ---------- Visualization ----------
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.bar(freq_df["Value"], freq_df["Frequency"], color="skyblue", edgecolor="black")
-    ax.set_title("🎨 Discrete Data Bar Chart")
-    ax.set_xlabel("Data Values")
-    ax.set_ylabel("Frequency")
-    st.pyplot(fig)
-
-# ==========================================================
-# Continuous Data Analyzer
-# ==========================================================
-
-def run_continuous(df_uploaded=None, mode="Manual Entry"):
-    st.subheader("📂 Quantitative (Continuous) Data Analyzer")
-
-    st.markdown("""
-    This tool constructs **class intervals and frequency tables** from continuous data.  
-    You can also adjust intervals manually or enter frequencies yourself.
-    """)
-
-    # ---------- Data Input ----------
-    numeric_data = None
-
-    if mode == "Upload File":
-        if df_uploaded is not None:
-            numeric_cols = df_uploaded.select_dtypes(include=[np.number]).columns.tolist()
-            if numeric_cols:
-                col = st.selectbox("Select numeric column:", numeric_cols)
-                numeric_data = df_uploaded[col].dropna().astype(float).values
-                st.success(f"✅ Loaded {len(numeric_data)} observations from '{col}'")
-            else:
-                st.error("No numeric columns found.")
-                return
-        else:
-            st.warning("Please upload a dataset first.")
-            return
-
-    else:  # Manual Entry
-        raw_data = st.text_area(
-            "Enter comma-separated numeric values:",
-            "728,730,726,698,721,722,700,720,729,678,722,716,702,703,718,703,723,699,703,713,672,711,695,731,726,695,718"
-        )
-        try:
-            numeric_data = np.array([float(x.strip()) for x in raw_data.split(",") if x.strip() != ""])
-            st.success(f"✅ Loaded {len(numeric_data)} observations.")
+            data = np.array([float(x.strip()) for x in raw_data.split(",") if x.strip() != ""])
+            st.success(f"✅ Loaded {len(data)} observations.")
         except ValueError:
             st.error("❌ Invalid numeric input.")
             return
 
-    # ---------- Automatic Class Intervals ----------
-    st.markdown("### 🧮 Automatically Generated Class Intervals")
+    # ---------- DISCRETE ----------
+    if q_type == "Discrete":
+        counts = pd.Series(data).value_counts().sort_index()
+        freq_df = pd.DataFrame({
+            "Value": counts.index,
+            "Frequency": counts.values,
+            "Relative Frequency": np.round(counts.values / len(data), 4)
+        })
+        freq_df["Cumulative Frequency"] = freq_df["Frequency"].cumsum()
 
-    min_val = np.min(numeric_data)
-    max_val = np.max(numeric_data)
-    n = len(numeric_data)
-    k = int(np.ceil(1 + 3.322 * np.log10(n)))  # Sturges' Rule
-    class_width = np.ceil((max_val - min_val) / k)
+        st.markdown("### 📋 Frequency Distribution Table")
+        st.dataframe(freq_df, use_container_width=True)
+        st.markdown(f"**Total Frequency (n):** {len(data)}")
 
-    auto_intervals = []
-    start = np.floor(min_val)
-    for i in range(k):
-        low = start + i * class_width
-        high = low + class_width - 1
-        auto_intervals.append((low, high))
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.bar(freq_df["Value"], freq_df["Frequency"], color="skyblue", edgecolor="black")
+        ax.set_title("🎨 Discrete Data Bar Chart")
+        ax.set_xlabel("Data Values")
+        ax.set_ylabel("Frequency")
+        st.pyplot(fig)
 
-    default_intervals_text = ", ".join([f"[{int(l)},{int(h)}]" for l, h in auto_intervals])
-    st.info(f"✅ Generated {k} class intervals (width ≈ {int(class_width)}). You may modify them below.")
+    # ---------- CONTINUOUS ----------
+    else:
+        min_val = np.min(data)
+        max_val = np.max(data)
+        n = len(data)
+        k = int(np.ceil(1 + 3.322 * np.log10(n)))  # Sturges' Rule
+        class_width = np.ceil((max_val - min_val) / k)
 
-    edit_toggle = st.checkbox("✏️ Edit class intervals manually?", value=False)
-    if edit_toggle:
-        interval_text = st.text_area("Enter custom class intervals (optional):", default_intervals_text)
-        intervals = parse_intervals(interval_text)
-        if not intervals:
-            st.warning("⚠️ Invalid format. Use e.g., [670,679], [680,689], etc.")
+        auto_intervals = []
+        start = np.floor(min_val)
+        for i in range(k):
+            low = start + i * class_width
+            high = low + class_width - 1
+            auto_intervals.append((low, high))
+
+        default_intervals_text = ", ".join([f"[{int(l)},{int(h)}]" for l, h in auto_intervals])
+        st.info(f"✅ Generated {k} class intervals (width ≈ {int(class_width)}). You may modify them below.")
+
+        edit_toggle = st.checkbox("✏️ Edit class intervals manually?", value=False)
+        if edit_toggle:
+            interval_text = st.text_area("Enter custom class intervals (optional):", default_intervals_text)
+            intervals = parse_intervals(interval_text)
+            if not intervals:
+                st.warning("⚠️ Invalid format. Use e.g., [670,679], [680,689], etc.")
+                return
+        else:
+            intervals = auto_intervals
+
+        df_freq, total = compute_frequency_table(data, intervals)
+        st.markdown("### 📋 Frequency Distribution Table")
+        st.dataframe(df_freq, use_container_width=True)
+        st.markdown(f"**Total Frequency (n):** {total}")
+
+        plot_option = st.radio("Choose visualization:",
+                               ["Histogram", "Histogram + Ogive", "Boxplot"],
+                               horizontal=True)
+
+        bins = [low for low, _ in intervals] + [intervals[-1][1]]
+        fig, ax = plt.subplots(figsize=(8, 4))
+
+        if plot_option in ["Histogram", "Histogram + Ogive"]:
+            ax.hist(data, bins=bins, edgecolor="black", color="skyblue")
+            ax.set_title("📊 Frequency Histogram")
+            ax.set_xlabel("Class Intervals")
+            ax.set_ylabel("Frequency")
+            ax.set_xticks(bins)
+            if plot_option == "Histogram + Ogive":
+                cum_freq = df_freq["Cumulative Freq"].values
+                upper_bounds = [high for _, high in intervals]
+                ax2 = ax.twinx()
+                ax2.plot(upper_bounds, cum_freq, marker="o", color="darkred", linewidth=2)
+                ax2.set_ylabel("Cumulative Frequency", color="darkred")
+
+        elif plot_option == "Boxplot":
+            ax.boxplot(data, vert=False, patch_artist=True,
+                       boxprops=dict(facecolor='lightblue', color='black'),
+                       medianprops=dict(color='red'))
+            ax.set_title("📦 Horizontal Boxplot")
+            ax.set_xlabel("Values")
+            ax.set_yticks([])
+
+        st.pyplot(fig)
+
+# ==========================================================
+# Qualitative Analyzer
+# ==========================================================
+
+def run_qualitative(df_uploaded=None):
+    st.subheader("🎨 Qualitative (Categorical) Data Analyzer")
+
+    st.markdown("""
+    Analyze **categorical data** by generating a frequency table  
+    and visualizing it with a bar chart or pie chart.
+    """)
+
+    input_mode = st.radio("Data Input Mode:", ["Upload File", "Manual Entry"], horizontal=True)
+    data = None
+
+    if input_mode == "Upload File":
+        if df_uploaded is not None:
+            text_cols = df_uploaded.select_dtypes(include=["object"]).columns.tolist()
+            if not text_cols:
+                st.error("No categorical columns found.")
+                return
+            col = st.selectbox("Select categorical column:", text_cols)
+            data = df_uploaded[col].dropna().astype(str).values
+        else:
+            st.warning("Please upload a dataset first.")
             return
     else:
-        intervals = auto_intervals
+        raw_data = st.text_area("Enter comma-separated categories:",
+                                "Red, Blue, Red, Green, Blue, Blue, Red, Green, Yellow")
+        data = [x.strip() for x in raw_data.split(",") if x.strip() != ""]
 
-    freq_mode = st.radio("Would you like to enter frequencies manually?",
-                         ["No (calculate automatically)", "Yes (enter manually)"], horizontal=True)
-    manual_freq = None
-    if freq_mode == "Yes (enter manually)":
-        freq_input = st.text_area("Enter frequencies separated by commas:", "")
-        try:
-            manual_freq = [int(x.strip()) for x in freq_input.split(",")]
-            if len(manual_freq) != len(intervals):
-                st.error("⚠️ Number of frequencies must match number of intervals.")
-                return
-        except ValueError:
-            st.error("❌ Invalid frequency input.")
-            return
-
-    df_freq, total = compute_frequency_table(numeric_data, intervals, manual_freq)
+    counts = pd.Series(data).value_counts()
+    freq_df = pd.DataFrame({
+        "Category": counts.index,
+        "Frequency": counts.values,
+        "Relative Frequency": np.round(counts.values / len(data), 4)
+    })
     st.markdown("### 📋 Frequency Distribution Table")
-    st.dataframe(df_freq, use_container_width=True)
-    st.markdown(f"**Total Frequency (n):** {total}")
+    st.dataframe(freq_df, use_container_width=True)
+    st.markdown(f"**Total Categories:** {len(counts)}")
 
-    # ---------- Visualization ----------
-    plot_option = st.radio("Choose visualization:",
-                           ["Histogram", "Histogram + Cumulative Frequency Polygon (Ogive)", "Boxplot"],
-                           horizontal=True)
-    bins = [low for low, _ in intervals] + [intervals[-1][1]]
+    chart_type = st.radio("Choose visualization:", ["Bar Chart", "Pie Chart"], horizontal=True)
     fig, ax = plt.subplots(figsize=(8, 4))
 
-    if plot_option in ["Histogram", "Histogram + Cumulative Frequency Polygon (Ogive)"]:
-        ax.hist(numeric_data, bins=bins, edgecolor="black", color="skyblue")
-        ax.set_title("📊 Frequency Histogram")
-        ax.set_xlabel("Class Intervals")
+    if chart_type == "Bar Chart":
+        ax.bar(freq_df["Category"], freq_df["Frequency"], color="lightcoral", edgecolor="black")
+        ax.set_title("🎨 Bar Chart of Categories")
+        ax.set_xlabel("Category")
         ax.set_ylabel("Frequency")
-        ax.set_xticks(bins)
-        if plot_option == "Histogram + Cumulative Frequency Polygon (Ogive)":
-            cum_freq = df_freq["Cumulative Freq"].values
-            upper_bounds = [high for _, high in intervals]
-            ax2 = ax.twinx()
-            ax2.plot(upper_bounds, cum_freq, marker="o", color="darkred", linewidth=2, label="Cumulative Frequency")
-            ax2.set_ylabel("Cumulative Frequency", color="darkred")
-            ax2.legend(loc="upper left")
-
-    elif plot_option == "Boxplot":
-        ax.boxplot(numeric_data, vert=False, patch_artist=True,
-                   boxprops=dict(facecolor='lightblue', color='black'),
-                   medianprops=dict(color='red'))
-        ax.set_title("📦 Horizontal Boxplot")
-        ax.set_xlabel("Values")
-        ax.set_yticks([])
+    else:
+        ax.pie(freq_df["Frequency"], labels=freq_df["Category"], autopct="%1.1f%%", colors=plt.cm.Pastel1.colors)
+        ax.set_title("🥧 Pie Chart of Categories")
 
     st.pyplot(fig)
 
@@ -264,10 +269,6 @@ def run_continuous(df_uploaded=None, mode="Manual Entry"):
 
 def run_summary(df_uploaded=None):
     st.subheader("📊 Summary Statistics & Boxplot")
-
-    st.markdown("""
-    Compute **key descriptive statistics** and visualize them with a horizontal boxplot.  
-    """)
 
     input_mode = st.radio("Data Input Mode:", ["Upload File", "Manual Entry"], horizontal=True)
 
@@ -283,15 +284,9 @@ def run_summary(df_uploaded=None):
             st.warning("Please upload a dataset first.")
             return
     else:
-        raw_data = st.text_area(
-            "Enter comma-separated numeric values:",
-            "56, 57, 54, 61, 63, 58, 59, 62, 55, 57, 61, 60, 59, 58, 64"
-        )
-        try:
-            data = np.array([float(x.strip()) for x in raw_data.split(",") if x.strip() != ""])
-        except ValueError:
-            st.error("❌ Invalid numeric input.")
-            return
+        raw_data = st.text_area("Enter comma-separated numeric values:",
+                                "56, 57, 54, 61, 63, 58, 59, 62, 55, 57")
+        data = np.array([float(x.strip()) for x in raw_data.split(",") if x.strip() != ""])
 
     stats_dict = get_summary_stats(data)
     df_summary = pd.DataFrame(stats_dict.items(), columns=["Statistic", "Value"])
@@ -303,7 +298,6 @@ def run_summary(df_uploaded=None):
                medianprops=dict(color='red'))
     ax.set_title("📦 Horizontal Boxplot")
     ax.set_xlabel("Values")
-    ax.set_yticks([])
     st.pyplot(fig)
 
 # ==========================================================
@@ -311,12 +305,11 @@ def run_summary(df_uploaded=None):
 # ==========================================================
 
 def run():
-    st.header("📘 Descriptive Statistics Tool")
+    st.header("🧠 Descriptive Statistics Tool")
 
     categories = [
-        "Quantitative (Discrete)",
-        "Quantitative (Continuous) — Upload File",
-        "Quantitative (Continuous) — Manual Entry",
+        "Qualitative (Categorical)",
+        "Quantitative (Discrete or Continuous)",
         "Summary Statistics & Boxplot"
     ]
 
@@ -339,11 +332,10 @@ def run():
             st.error(f"Error reading file: {e}")
             return
 
-    if choice == "Quantitative (Discrete)":
-        run_discrete(df_uploaded)
-    elif "Quantitative (Continuous)" in choice:
-        mode = "Upload File" if "Upload File" in choice else "Manual Entry"
-        run_continuous(df_uploaded, mode)
+    if choice == "Qualitative (Categorical)":
+        run_qualitative(df_uploaded)
+    elif choice == "Quantitative (Discrete or Continuous)":
+        run_quantitative(df_uploaded)
     elif choice == "Summary Statistics & Boxplot":
         run_summary(df_uploaded)
 
@@ -352,4 +344,3 @@ def run():
 # ==========================================================
 if __name__ == "__main__":
     run()
-
