@@ -85,6 +85,7 @@ def run():
     # ----------------------------------------------------------
     if dist_type == "Regular Normal Distribution":
         st.subheader("📈 Normal Distribution (X ~ N(μ, σ))")
+        st.latex(r"Z = \frac{X - \mu}{\sigma}")
 
         mean = st.number_input("Population mean (μ):", value=0.0)
         sd = st.number_input("Standard deviation (σ):", min_value=0.0001, value=1.0)
@@ -159,6 +160,8 @@ def run():
     # ----------------------------------------------------------
     elif dist_type == "Sampling Distribution of the Mean":
         st.subheader("📘 Sampling Distribution of the Sample Mean")
+        st.latex(r"Z = \frac{\bar{X} - \mu_{\bar{X}}}{\sigma_{\bar{X}}}, \quad \text{where } \mu_{\bar{X}} = \mu, \ \sigma_{\bar{X}} = \frac{\sigma}{\sqrt{n}}")
+
         mean_expr = st.text_input("Population mean (μ):", value="0")
         sd_expr = st.text_input("Population standard deviation (σ):", value="1")
         n = st.number_input("Sample size (n):", min_value=1, step=1, value=30)
@@ -171,64 +174,15 @@ def run():
         sample_mean = mean
         sample_sd = sd / math.sqrt(n)
 
-        st.latex(r"\mu_{\bar{x}} = \mu, \quad \sigma_{\bar{x}} = \frac{\sigma}{\sqrt{n}}")
         st.write(f"**Mean:** {rp(sample_mean)}  |  **Std. Error:** {rp(sample_sd)}")
-
-        st.markdown("---")
-        st.write("Choose a calculation:")
-        option = st.selectbox("", ["P(X̄ < x)", "P(X̄ > x)", "P(a < X̄ < b)", "Inverse: Find x given probability"])
-        show_steps = st.checkbox("📖 Show Step-by-Step Solution")
-
-        if option == "P(X̄ < x)":
-            x_val = st.number_input("Enter x̄ value:", value=sample_mean)
-            if st.button("Calculate"):
-                prob = norm.cdf(x_val, sample_mean, sample_sd)
-                z = (x_val - sample_mean) / sample_sd
-                st.success(f"P(X̄ < {x_val}) = {rp(prob)}")
-                if show_steps: st.write(f"Z = ({x_val}-{sample_mean})/{sample_sd} = {rp(z)}")
-                x = np.linspace(sample_mean - 4*sample_sd, sample_mean + 4*sample_sd, 1000)
-                plot_distribution(x, norm.pdf(x, sample_mean, sample_sd), sample_mean, sample_sd,
-                                  x_val=x_val, calc_type="P(X < x)", title="Sampling Distribution of the Mean")
-
-        elif option == "P(X̄ > x)":
-            x_val = st.number_input("Enter x̄ value:", value=sample_mean)
-            if st.button("Calculate"):
-                prob = 1 - norm.cdf(x_val, sample_mean, sample_sd)
-                z = (x_val - sample_mean) / sample_sd
-                st.success(f"P(X̄ > {x_val}) = {rp(prob)}")
-                if show_steps: st.write(f"Z = {rp(z)}")
-                x = np.linspace(sample_mean - 4*sample_sd, sample_mean + 4*sample_sd, 1000)
-                plot_distribution(x, norm.pdf(x, sample_mean, sample_sd), sample_mean, sample_sd,
-                                  x_val=x_val, calc_type="P(X > x)", title="Sampling Distribution of the Mean")
-
-        elif option == "P(a < X̄ < b)":
-            a = st.number_input("Lower bound (a):", value=sample_mean - sample_sd)
-            b = st.number_input("Upper bound (b):", value=sample_mean + sample_sd)
-            if st.button("Calculate"):
-                prob = norm.cdf(b, sample_mean, sample_sd) - norm.cdf(a, sample_mean, sample_sd)
-                st.success(f"P({a} < X̄ < {b}) = {rp(prob)}")
-                if show_steps:
-                    z1 = (a - sample_mean)/sample_sd
-                    z2 = (b - sample_mean)/sample_sd
-                    st.write(f"Z₁={rp(z1)}, Z₂={rp(z2)}")
-                x = np.linspace(sample_mean - 4*sample_sd, sample_mean + 4*sample_sd, 1000)
-                plot_distribution(x, norm.pdf(x, sample_mean, sample_sd), sample_mean, sample_sd,
-                                  a_val=a, b_val=b, calc_type="P(a < X < b)", title="Sampling Distribution of the Mean")
-
-        elif option == "Inverse: Find x given probability":
-            p = st.number_input("Enter cumulative probability:", min_value=0.0, max_value=1.0, value=0.95)
-            if st.button("Calculate"):
-                x_val = norm.ppf(p, sample_mean, sample_sd)
-                st.success(f"x̄ such that P(X̄ < x̄)={p} is {rp(x_val)}")
-                x = np.linspace(sample_mean - 4*sample_sd, sample_mean + 4*sample_sd, 1000)
-                plot_distribution(x, norm.pdf(x, sample_mean, sample_sd), sample_mean, sample_sd,
-                                  x_val=x_val, calc_type="P(X < x)", title="Sampling Distribution of the Mean")
 
     # ----------------------------------------------------------
     # 3. SAMPLING DISTRIBUTION OF THE PROPORTION
     # ----------------------------------------------------------
     elif dist_type == "Sampling Distribution of the Proportion":
         st.subheader("📘 Sampling Distribution of the Sample Proportion")
+        st.latex(r"Z = \frac{\hat{p} - \mu_{\hat{p}}}{\sigma_{\hat{p}}}, \quad \text{where } \mu_{\hat{p}} = p, \ \sigma_{\hat{p}} = \sqrt{\frac{p(1-p)}{n}}")
+
         p_expr = st.text_input("Enter population proportion (p̂): e.g. 120/200 or 0.6", value="0.5")
         n = st.number_input("Sample size (n):", min_value=1, step=1, value=30)
 
@@ -242,55 +196,8 @@ def run():
         q_hat = 1 - p_hat
         sample_mean = p_hat
         sample_sd = math.sqrt((p_hat * q_hat) / n)
-        st.latex(r"\mu_{\hat{p}} = p, \quad \sigma_{\hat{p}} = \sqrt{\frac{p(1-p)}{n}}")
         st.write(f"**Mean:** {rp(sample_mean)}  |  **Std. Error:** {rp(sample_sd)}")
 
-        st.markdown("---")
-        option = st.selectbox("", ["P(p̂ < x)", "P(p̂ > x)", "P(a < p̂ < b)", "Inverse: Find x given probability"])
-        show_steps = st.checkbox("📖 Show Step-by-Step Solution")
-
-        if option == "P(p̂ < x)":
-            x_val = st.number_input("Enter p̂ value:", value=sample_mean)
-            if st.button("Calculate"):
-                prob = norm.cdf(x_val, sample_mean, sample_sd)
-                st.success(f"P(p̂ < {x_val}) = {rp(prob)}")
-                if show_steps:
-                    z = (x_val - sample_mean)/sample_sd
-                    st.write(f"Z = {rp(z)}")
-                x = np.linspace(sample_mean - 4*sample_sd, sample_mean + 4*sample_sd, 1000)
-                plot_distribution(x, norm.pdf(x, sample_mean, sample_sd), sample_mean, sample_sd,
-                                  x_val=x_val, calc_type="P(p̂ < x)", title="Sampling Distribution of the Proportion")
-
-        elif option == "P(p̂ > x)":
-            x_val = st.number_input("Enter p̂ value:", value=sample_mean)
-            if st.button("Calculate"):
-                prob = 1 - norm.cdf(x_val, sample_mean, sample_sd)
-                st.success(f"P(p̂ > {x_val}) = {rp(prob)}")
-                if show_steps:
-                    z = (x_val - sample_mean)/sample_sd
-                    st.write(f"Z = {rp(z)}")
-                x = np.linspace(sample_mean - 4*sample_sd, sample_mean + 4*sample_sd, 1000)
-                plot_distribution(x, norm.pdf(x, sample_mean, sample_sd), sample_mean, sample_sd,
-                                  x_val=x_val, calc_type="P(p̂ > x)", title="Sampling Distribution of the Proportion")
-
-        elif option == "P(a < p̂ < b)":
-            a = st.number_input("Lower bound (a):", value=sample_mean - sample_sd)
-            b = st.number_input("Upper bound (b):", value=sample_mean + sample_sd)
-            if st.button("Calculate"):
-                prob = norm.cdf(b, sample_mean, sample_sd) - norm.cdf(a, sample_mean, sample_sd)
-                st.success(f"P({a} < p̂ < {b}) = {rp(prob)}")
-                x = np.linspace(sample_mean - 4*sample_sd, sample_mean + 4*sample_sd, 1000)
-                plot_distribution(x, norm.pdf(x, sample_mean, sample_sd), sample_mean, sample_sd,
-                                  a_val=a, b_val=b, calc_type="P(a < p̂ < b)", title="Sampling Distribution of the Proportion")
-
-        elif option == "Inverse: Find x given probability":
-            p = st.number_input("Enter cumulative probability:", min_value=0.0, max_value=1.0, value=0.95)
-            if st.button("Calculate"):
-                x_val = norm.ppf(p, sample_mean, sample_sd)
-                st.success(f"p̂ such that P(p̂ < x)={p} is {rp(x_val)}")
-                x = np.linspace(sample_mean - 4*sample_sd, sample_mean + 4*sample_sd, 1000)
-                plot_distribution(x, norm.pdf(x, sample_mean, sample_sd), sample_mean, sample_sd,
-                                  x_val=x_val, calc_type="P(p̂ < x)", title="Sampling Distribution of the Proportion")
 
 if __name__ == "__main__":
     run()
