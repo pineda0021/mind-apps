@@ -119,7 +119,6 @@ def uniform_distribution(decimal):
 def normal_distribution(decimal):
     st.markdown("### 📈 **Normal Distribution**")
     st.latex(r"Z = \frac{X - \mu}{\sigma}")
-
     st.write("The normal distribution models continuous data that follows a bell-shaped curve, such as IQ or height.")
 
     mean = st.number_input("Population mean (μ):", value=0.0)
@@ -260,13 +259,13 @@ def run():
 
     dist_choice = st.radio(
         "Select Distribution Type:",
-        ["🎲 Continuous Uniform Distribution", "📈 Normal Distribution", "📘 Sampling Distribution of the Mean", "📗 Sampling Distribution of the Proportion"],
+        ["🎲 Uniform Distribution", "📈 Normal Distribution", "📘 Sampling Distribution of the Mean", "📗 Sampling Distribution of the Proportion"],
         horizontal=True
     )
 
     decimal = st.number_input("Decimal places for output:", min_value=0, max_value=10, value=4, step=1)
 
-    if dist_choice == "🎲 Continuous Uniform Distribution":
+    if dist_choice == "🎲 Uniform Distribution":
         uniform_distribution(decimal)
     elif dist_choice == "📈 Normal Distribution":
         normal_distribution(decimal)
