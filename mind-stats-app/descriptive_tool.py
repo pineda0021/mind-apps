@@ -183,25 +183,36 @@ def run_continuous(df_uploaded=None):
 
     # ---------- Visualization ----------
     plot_option = st.radio("Choose visualization:",
-                           ["Histogram", "Histogram + Cumulative Frequency Polygon (Ogive)"],
+                           ["Histogram", "Histogram + Cumulative Frequency Polygon (Ogive)", "Boxplot"],
                            horizontal=True)
 
     bins = [low for low, _ in intervals] + [intervals[-1][1]]
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.hist(numeric_data, bins=bins, edgecolor="black", color="skyblue")
-    ax.set_title("📊 Frequency Histogram")
-    ax.set_xlabel("Class Intervals")
-    ax.set_ylabel("Frequency")
-    ax.set_xticks(bins)
 
-    if plot_option == "Histogram + Cumulative Frequency Polygon (Ogive)":
-        cum_freq = df_freq["Cumulative Freq"].values
-        upper_bounds = [high for _, high in intervals]
-        ax2 = ax.twinx()
-        ax2.plot(upper_bounds, cum_freq, marker="o", color="darkred", linewidth=2, label="Cumulative Frequency")
-        ax2.set_ylabel("Cumulative Frequency", color="darkred")
-        ax2.tick_params(axis="y", labelcolor="darkred")
-        ax2.legend(loc="upper left")
+    if plot_option in ["Histogram", "Histogram + Cumulative Frequency Polygon (Ogive)"]:
+        ax.hist(numeric_data, bins=bins, edgecolor="black", color="skyblue")
+        ax.set_title("📊 Frequency Histogram")
+        ax.set_xlabel("Class Intervals")
+        ax.set_ylabel("Frequency")
+        ax.set_xticks(bins)
+
+        if plot_option == "Histogram + Cumulative Frequency Polygon (Ogive)":
+            cum_freq = df_freq["Cumulative Freq"].values
+            upper_bounds = [high for _, high in intervals]
+            ax2 = ax.twinx()
+            ax2.plot(upper_bounds, cum_freq, marker="o", color="darkred", linewidth=2, label="Cumulative Frequency")
+            ax2.set_ylabel("Cumulative Frequency", color="darkred")
+            ax2.tick_params(axis="y", labelcolor="darkred")
+            ax2.legend(loc="upper left")
+
+    elif plot_option == "Boxplot":
+        # ✅ Horizontal boxplot for improved readability
+        ax.boxplot(numeric_data, vert=False, patch_artist=True,
+                   boxprops=dict(facecolor='lightblue', color='black'),
+                   medianprops=dict(color='red'))
+        ax.set_title("📦 Horizontal Boxplot")
+        ax.set_xlabel("Values")
+        ax.set_yticks([])
 
     st.pyplot(fig)
 
@@ -221,7 +232,6 @@ def run():
     st.header("📘 Descriptive Statistics Tool")
 
     categories = [
-        "Qualitative",
         "Quantitative (Discrete)",
         "Quantitative (Continuous)",
         "Summary Statistics & Boxplot"
@@ -258,3 +268,4 @@ def run():
 # ==========================================================
 if __name__ == "__main__":
     run()
+
