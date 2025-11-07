@@ -56,9 +56,9 @@ def normal_distribution(decimal):
         st.write(f"Z = ({x_val} − {mean}) / {sd} = {round(z, decimal)}")
 
         fig, ax = plt.subplots(figsize=(8, 4))
-        ax.plot(x, y, color="blue")
-        ax.fill_between(x, 0, y, where=(x <= x_val), color="skyblue", alpha=0.6)
-        ax.axvline(x_val, color="red", linestyle="--")
+        ax.plot(x, y)
+        ax.fill_between(x, 0, y, where=(x <= x_val), alpha=0.6)
+        ax.axvline(x_val, linestyle="--")
         st.pyplot(fig)
 
     elif calc_type == "P(X > x)":
@@ -69,9 +69,9 @@ def normal_distribution(decimal):
         st.write(f"Z = ({x_val} − {mean}) / {sd} = {round(z, decimal)}")
 
         fig, ax = plt.subplots(figsize=(8, 4))
-        ax.plot(x, y, color="blue")
-        ax.fill_between(x, 0, y, where=(x >= x_val), color="lightgreen", alpha=0.6)
-        ax.axvline(x_val, color="red", linestyle="--")
+        ax.plot(x, y)
+        ax.fill_between(x, 0, y, where=(x >= x_val), alpha=0.6)
+        ax.axvline(x_val, linestyle="--")
         st.pyplot(fig)
 
     elif calc_type == "P(a < X < b)":
@@ -81,10 +81,10 @@ def normal_distribution(decimal):
         st.success(f"P({a} < X < {b}) = {round(prob, decimal)}")
 
         fig, ax = plt.subplots(figsize=(8, 4))
-        ax.plot(x, y, color="blue")
-        ax.fill_between(x, 0, y, where=(x >= a) & (x <= b), color="orange", alpha=0.6)
-        ax.axvline(a, color="red", linestyle="--")
-        ax.axvline(b, color="red", linestyle="--")
+        ax.plot(x, y)
+        ax.fill_between(x, 0, y, where=(x >= a) & (x <= b), alpha=0.6)
+        ax.axvline(a, linestyle="--")
+        ax.axvline(b, linestyle="--")
         st.pyplot(fig)
 
     elif calc_type == "Inverse: Find x for given probability":
@@ -103,14 +103,13 @@ def normal_distribution(decimal):
             st.success(f"{p*100:.1f}% of data lies between {round(a_val, decimal)} and {round(b_val, decimal)}")
 
         fig, ax = plt.subplots(figsize=(8, 4))
-        ax.plot(x, y, color="blue")
+        ax.plot(x, y)
         if tail == "Middle area":
-            ax.fill_between(x, 0, y, where=(x >= a_val) & (x <= b_val), color="orange", alpha=0.6)
+            ax.fill_between(x, 0, y, where=(x >= a_val) & (x <= b_val), alpha=0.6)
         elif tail == "Left tail":
-            ax.fill_between(x, 0, y, where=(x <= x_val), color="skyblue", alpha=0.6)
+            ax.fill_between(x, 0, y, where=(x <= x_val), alpha=0.6)
         else:
-            ax.fill_between(x, 0, y, where=(x >= x_val), color="lightgreen", alpha=0.6)
-        ax.set_title("Normal Distribution")
+            ax.fill_between(x, 0, y, where=(x >= x_val), alpha=0.6)
         st.pyplot(fig)
 
 
@@ -150,9 +149,9 @@ def sampling_mean(decimal):
         st.success(f"x̄ = {round(x_val, decimal)} for P(X̄ < x̄) = {p}")
 
         fig, ax = plt.subplots(figsize=(8,4))
-        ax.plot(x, y, color="blue")
-        ax.fill_between(x, 0, y, where=(x <= x_val), color="skyblue", alpha=0.6)
-        ax.axvline(x_val, color="red", linestyle="--")
+        ax.plot(x, y)
+        ax.fill_between(x, 0, y, where=(x <= x_val), alpha=0.6)
+        ax.axvline(x_val, linestyle="--")
         st.pyplot(fig)
 
 
@@ -173,8 +172,9 @@ def uniform_distribution(decimal):
     st.write(f"**Constant PDF:** f(x) = {round(pdf, decimal)} for {a} ≤ x ≤ {b}")
 
     calc_type = st.selectbox("Choose a calculation:", [
-        "P(X < x)",
-        "P(X > x)",
+        "P(X < x) = P(X ≤ x)",
+        "P(X = x)",
+        "P(X > x) = P(X ≥ x)",
         "P(a < X < b)",
         "Inverse: Find x for given probability"
     ])
@@ -182,40 +182,52 @@ def uniform_distribution(decimal):
     x = np.linspace(a - (b - a)*0.2, b + (b - a)*0.2, 500)
     y = np.where((x >= a) & (x <= b), pdf, 0)
 
-    # P(X < x)
-    if calc_type == "P(X < x)":
+    # P(X < x) = P(X ≤ x)
+    if calc_type == "P(X < x) = P(X ≤ x)":
         x_val = st.number_input("Enter x value:", value=(a + b) / 2)
         if x_val <= a:
-            prob = 0
+            prob = 0.0
         elif x_val >= b:
-            prob = 1
+            prob = 1.0
         else:
             prob = (x_val - a) / (b - a)
         st.success(f"P(X ≤ {x_val}) = {round(prob, decimal)}")
 
         fig, ax = plt.subplots(figsize=(8, 4))
-        ax.plot(x, y, color="blue")
-        ax.fill_between(x, 0, y, where=(x <= x_val) & (x >= a), color="skyblue", alpha=0.6)
-        ax.axvline(x_val, color="red", linestyle="--")
-        ax.set_title("Uniform Distribution: P(X ≤ x)")
+        ax.plot(x, y)
+        ax.fill_between(x, 0, y, where=(x <= x_val) & (x >= a), alpha=0.6)
+        ax.axvline(x_val, linestyle="--")
+        ax.set_title("Uniform: P(X ≤ x)")
         st.pyplot(fig)
 
-    # P(X > x)
-    elif calc_type == "P(X > x)":
+    # P(X = x)
+    elif calc_type == "P(X = x)":
+        x_val = st.number_input("Enter the point x:", value=(a + b) / 2)
+        prob = 0.0  # continuous uniform
+        st.success(f"P(X = {x_val}) = {prob:.{decimal}f} (Continuous distribution)")
+
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(x, y)
+        ax.axvline(x_val, linestyle="--")
+        ax.set_title("Uniform: P(X = x) = 0")
+        st.pyplot(fig)
+
+    # P(X > x) = P(X ≥ x)
+    elif calc_type == "P(X > x) = P(X ≥ x)":
         x_val = st.number_input("Enter x value:", value=(a + b) / 2)
         if x_val <= a:
-            prob = 1
+            prob = 1.0
         elif x_val >= b:
-            prob = 0
+            prob = 0.0
         else:
             prob = (b - x_val) / (b - a)
         st.success(f"P(X ≥ {x_val}) = {round(prob, decimal)}")
 
         fig, ax = plt.subplots(figsize=(8, 4))
-        ax.plot(x, y, color="blue")
-        ax.fill_between(x, 0, y, where=(x >= x_val) & (x <= b), color="lightgreen", alpha=0.6)
-        ax.axvline(x_val, color="red", linestyle="--")
-        ax.set_title("Uniform Distribution: P(X ≥ x)")
+        ax.plot(x, y)
+        ax.fill_between(x, 0, y, where=(x >= x_val) & (x <= b), alpha=0.6)
+        ax.axvline(x_val, linestyle="--")
+        ax.set_title("Uniform: P(X ≥ x)")
         st.pyplot(fig)
 
     # P(a < X < b)
@@ -227,7 +239,7 @@ def uniform_distribution(decimal):
             return
 
         if high < a or low > b:
-            prob = 0
+            prob = 0.0
         else:
             lower = max(low, a)
             upper = min(high, b)
@@ -235,24 +247,25 @@ def uniform_distribution(decimal):
         st.success(f"P({low} < X < {high}) = {round(prob, decimal)}")
 
         fig, ax = plt.subplots(figsize=(8, 4))
-        ax.plot(x, y, color="blue")
-        ax.fill_between(x, 0, y, where=(x >= low) & (x <= high), color="orange", alpha=0.6)
-        ax.axvline(low, color="red", linestyle="--")
-        ax.axvline(high, color="red", linestyle="--")
-        ax.set_title("Uniform Distribution: P(a < X < b)")
+        ax.plot(x, y)
+        ax.fill_between(x, 0, y, where=(x >= low) & (x <= high), alpha=0.6)
+        ax.axvline(low, linestyle="--")
+        ax.axvline(high, linestyle="--")
+        ax.set_title("Uniform: P(a < X < b)")
         st.pyplot(fig)
 
     # Inverse: Find x for given probability
     elif calc_type == "Inverse: Find x for given probability":
-        p = st.number_input("Enter probability (0 < p < 1):", min_value=0.0, max_value=1.0, value=0.5)
+        p = st.number_input("Enter probability p for P(X ≤ x) = p (0 < p < 1):",
+                            min_value=0.0, max_value=1.0, value=0.5)
         x_val = a + p * (b - a)
         st.success(f"x = {round(x_val, decimal)} for P(X ≤ x) = {p}")
 
         fig, ax = plt.subplots(figsize=(8, 4))
-        ax.plot(x, y, color="blue")
-        ax.fill_between(x, 0, y, where=(x <= x_val) & (x >= a), color="skyblue", alpha=0.6)
-        ax.axvline(x_val, color="red", linestyle="--")
-        ax.set_title("Uniform Distribution: Inverse Probability")
+        ax.plot(x, y)
+        ax.fill_between(x, 0, y, where=(x <= x_val) & (x >= a), alpha=0.6)
+        ax.axvline(x_val, linestyle="--")
+        ax.set_title("Uniform: Inverse Probability")
         st.pyplot(fig)
 
 
@@ -292,9 +305,9 @@ def sampling_proportion(decimal):
         st.success(f"p̂ = {round(x_val, decimal)} for P(p̂ < x) = {p_val}")
 
         fig, ax = plt.subplots(figsize=(8,4))
-        ax.plot(x, y, color="blue")
-        ax.fill_between(x, 0, y, where=(x <= x_val), color="skyblue", alpha=0.6)
-        ax.axvline(x_val, color="red", linestyle="--")
+        ax.plot(x, y)
+        ax.fill_between(x, 0, y, where=(x <= x_val), alpha=0.6)
+        ax.axvline(x_val, linestyle="--")
         st.pyplot(fig)
 
 
@@ -327,4 +340,3 @@ def run():
 # ==========================================================
 if __name__ == "__main__":
     run()
-
