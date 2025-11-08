@@ -1,5 +1,5 @@
 # ==========================================================
-# chi_square_tool.py
+# chi_square_tests_tool.py
 # Created by Professor Edward Pineda-Castro, Los Angeles City College
 # Part of the MIND: Statistics Visualizer Suite
 # ==========================================================
@@ -18,6 +18,7 @@ def round_value(value, decimals=4):
     except Exception:
         return value
 
+
 def parse_matrix(input_text):
     """Parse text input into a numeric 2D matrix."""
     try:
@@ -26,6 +27,7 @@ def parse_matrix(input_text):
         return np.array(matrix)
     except Exception:
         raise ValueError("Matrix input must contain only numbers separated by spaces or commas.")
+
 
 def step_box(text):
     """Stylized step display box."""
@@ -38,6 +40,7 @@ def step_box(text):
         """, unsafe_allow_html=True
     )
 
+
 def print_report(title, chi2_stat, p_value, critical_value, df, expected_matrix, alpha, decimals):
     """Display results in a uniform report format."""
     st.markdown(f"## {title}")
@@ -45,7 +48,6 @@ def print_report(title, chi2_stat, p_value, critical_value, df, expected_matrix,
 
     step_box("**Step 1:** Compute the Chi-Squared Test Statistic")
     st.latex(r"\chi^2 = \sum \frac{(O - E)^2}{E}")
-
     st.write(f"Computed value: **χ² = {round_value(chi2_stat, decimals)}**")
 
     step_box("**Step 2:** Determine the Degrees of Freedom")
@@ -56,9 +58,7 @@ def print_report(title, chi2_stat, p_value, critical_value, df, expected_matrix,
     st.write(f"P-Value: **{round_value(p_value, decimals)}**")
 
     step_box("**Step 4:** Decision Rule")
-    st.markdown(
-        rf"If **p ≤ α = {alpha}**, reject H₀. Otherwise, fail to reject H₀."
-    )
+    st.markdown(rf"If **p ≤ α = {alpha}**, reject H₀. Otherwise, fail to reject H₀.")
 
     reject = p_value <= alpha
     decision = "✅ **Reject the null hypothesis.**" if reject else "❌ **Do not reject the null hypothesis.**"
@@ -93,7 +93,10 @@ def chi_squared_gof(observed, expected_perc, alpha, decimals):
     df = len(observed) - 1
     p_value = 1 - chi2.cdf(chi2_stat, df)
     critical_value = chi2.ppf(1 - alpha, df)
-    print_report("📊 Chi-Squared Goodness-of-Fit Test (Non-Uniform)", chi2_stat, p_value, critical_value, df, expected, alpha, decimals)
+    print_report(
+        "📊 Chi-Squared Goodness-of-Fit Test (Non-Uniform)",
+        chi2_stat, p_value, critical_value, df, expected, alpha, decimals
+    )
 
 
 def chi_squared_uniform(observed, alpha, decimals):
@@ -104,7 +107,10 @@ def chi_squared_uniform(observed, alpha, decimals):
     df = k - 1
     p_value = 1 - chi2.cdf(chi2_stat, df)
     critical_value = chi2.ppf(1 - alpha, df)
-    print_report("📈 Chi-Squared Goodness-of-Fit Test (Uniform)", chi2_stat, p_value, critical_value, df, expected, alpha, decimals)
+    print_report(
+        "📈 Chi-Squared Goodness-of-Fit Test (Uniform)",
+        chi2_stat, p_value, critical_value, df, expected, alpha, decimals
+    )
 
 
 def chi_squared_independence(matrix, alpha, decimals):
@@ -117,7 +123,10 @@ def chi_squared_independence(matrix, alpha, decimals):
     df = (observed.shape[0] - 1) * (observed.shape[1] - 1)
     p_value = 1 - chi2.cdf(chi2_stat, df)
     critical_value = chi2.ppf(1 - alpha, df)
-    print_report("🔢 Chi-Squared Test of Independence / Homogeneity", chi2_stat, p_value, critical_value, df, expected, alpha, decimals)
+    print_report(
+        "🔢 Chi-Squared Test of Independence / Homogeneity",
+        chi2_stat, p_value, critical_value, df, expected, alpha, decimals
+    )
 
 
 # ==========================================================
@@ -144,12 +153,20 @@ def run():
     alpha = st.number_input("Significance level (α)", min_value=0.001, max_value=0.5, value=0.05)
     decimals = st.number_input("Decimal places for rounding", 1, 10, 4)
 
+    st.markdown(
+        """
+        ⚠️ **Reminder:** Enter data separated by **spaces or commas**.
+        For matrices, use **new lines** for rows.
+        """
+    )
+
     # ----------------------------------------------------------
     if test_choice == "Goodness-of-Fit Test (with expected percentages)":
         st.subheader("📊 Input Data for Non-Uniform Distribution")
-        st.caption("Enter observed frequencies and expected **percentages** that sum to 1.0.")
-        obs = st.text_area("Observed frequencies", placeholder="50 30 20")
-        exp = st.text_area("Expected percentages", placeholder="0.5 0.3 0.2")
+        st.caption("Enter observed frequencies and expected **percentages** (which must sum to 1.0).")
+
+        obs = st.text_area("Observed frequencies", placeholder="50, 30, 20")
+        exp = st.text_area("Expected percentages", placeholder="0.5, 0.3, 0.2")
 
         if st.button("▶️ Run GOF (Non-Uniform)"):
             try:
@@ -165,7 +182,8 @@ def run():
     # ----------------------------------------------------------
     elif test_choice == "Goodness-of-Fit Test (uniform distribution)":
         st.subheader("📈 Input Data for Uniform Distribution")
-        obs = st.text_area("Observed frequencies", placeholder="10 15 20 5")
+        st.caption("Enter observed frequencies separated by spaces or commas.")
+        obs = st.text_area("Observed frequencies", placeholder="10, 15, 20, 5")
 
         if st.button("▶️ Run GOF (Uniform)"):
             try:
@@ -177,8 +195,11 @@ def run():
     # ----------------------------------------------------------
     elif test_choice == "Chi-Square Test of Independence / Homogeneity":
         st.subheader("🔢 Input Contingency Table Data")
-        st.caption("Each row represents a category; separate rows by newlines.")
-        mat = st.text_area("Example:\n10 20 30\n15 25 35")
+        st.caption(
+            "Enter your **observed frequency matrix**.\n"
+            "Each row represents a category; separate numbers with commas or spaces, and rows with newlines."
+        )
+        mat = st.text_area("Example:\n10, 20, 30\n15, 25, 35")
 
         if st.button("▶️ Run Test of Independence"):
             try:
@@ -189,10 +210,10 @@ def run():
 
 
 # ==========================================================
-# Run Script
+# Run Script (with backward compatibility)
 # ==========================================================
 if __name__ == "__main__":
     run()
 
-
-    
+# ✅ Allow both old and new function names
+run_chi_square_tool = run
