@@ -126,10 +126,10 @@ Interpretation:
 
         if st.button("👨‍💻 Calculate"):
             z = stats.norm.ppf((1 + conf) / 2)
-            n_req = (z**2 * p_est * (1 - p_est)) / (E**2)
+            n_req = (p_est * (1 - p_est) *z**2) / (E**2)
             n_ceiled = int(np.ceil(n_req))
 
-            st.latex(r"n \;=\; \frac{z_{\alpha/2}^2\,\hat{p}(1-\hat{p})}{E^2}")
+            st.latex(r"n \;=\; \frac{\hat{p}(1-\hat{p},\alpha/2}^2\)}{E^2}")
             st.text(f"""
 =====================
 Sample Size for Proportion
