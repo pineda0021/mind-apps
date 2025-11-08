@@ -232,7 +232,7 @@ Interpretation:
     # ==========================================================
     # 5. Confidence Interval for Mean (With Raw Data)
     # ==========================================================
-    elif choice == categories[4]]:
+    elif choice == categories[4]:
         st.subheader("📊 Confidence Interval for Mean (Using Raw Data)")
         data = load_uploaded_data()
         raw_input = st.text_area("Or enter comma-separated values:")
@@ -298,7 +298,7 @@ Interpretation:
     # ==========================================================
     # 6. Sample Size for Mean
     # ==========================================================
-    elif choice == categories[5]]:
+    elif choice == categories[5]:
         conf = st.number_input("Confidence level", value=0.95, format="%.3f")
         sigma = st.number_input("Population SD (σ)", min_value=0.0, format="%.4f")
         E = st.number_input("Margin of error (E)", min_value=0.000001, value=0.05, step=0.001, format="%.6f")
@@ -329,7 +329,7 @@ Interpretation:
 """)
 
     # ==========================================================
-    # 7–10. Variance and SD Confidence Intervals (with step-by-step)
+    # 7–10. Variance and SD Confidence Intervals (step-by-step)
     # ==========================================================
     else:
         st.subheader(f"📈 {choice}")
@@ -357,7 +357,6 @@ Interpretation:
         chi2_lower = float(stats.chi2.ppf((1 - conf)/2, df))
         chi2_upper = float(stats.chi2.ppf(1 - (1 - conf)/2, df))
 
-        # Teaching formulas
         st.latex(r"""
 \text{Variance CI: } 
 \left(\frac{(n-1)s^2}{\chi^2_{(1-\alpha/2),\,df}},\;
@@ -422,3 +421,6 @@ Interpretation:
 # ==========================================================
 if __name__ == "__main__":
     run()
+
+
+       
