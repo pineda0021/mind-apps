@@ -37,7 +37,8 @@ def step_box(text):
         border-left:5px solid #007acc;margin-bottom:10px;">
         <b>{text}</b>
         </div>
-        """, unsafe_allow_html=True
+        """,
+        unsafe_allow_html=True,
     )
 
 
@@ -49,7 +50,6 @@ def print_report(title, chi2_stat, p_value, critical_value, df, expected_matrix,
     st.markdown(f"## {title}")
     st.markdown("---")
 
-    # -----------------------------
     step_box("**Step 1:** Compute the Chi-Squared Test Statistic")
     st.latex(r"\chi^2 = \sum \frac{(O - E)^2}{E}")
     st.write(f"Computed value: **χ² = {round_value(chi2_stat, decimals)}**")
@@ -86,23 +86,6 @@ def print_report(title, chi2_stat, p_value, critical_value, df, expected_matrix,
         )
     st.success(interpretation)
 
-    # ===============================================
-    # 📘 Summary Table
-    # ===============================================
-    st.markdown("### 📘 Summary Table")
-    summary_data = {
-        "Statistic": [f"χ² = {round_value(chi2_stat, decimals)}"],
-        "df": [df],
-        "Critical Value": [round_value(critical_value, decimals)],
-        "P-Value": [round_value(p_value, decimals)],
-        "α": [alpha],
-        "Decision": ["✅ Reject H₀" if reject else "❌ Fail to Reject H₀"],
-        "Conclusion": [
-            "Evidence of difference/association" if reject else "No evidence of difference/association"
-        ],
-    }
-    st.table(summary_data)
-
 
 # ==========================================================
 # Core Chi-Square Test Functions
@@ -116,7 +99,13 @@ def chi_squared_gof(observed, expected_perc, alpha, decimals):
     critical_value = chi2.ppf(1 - alpha, df)
     print_report(
         "📊 Chi-Squared Goodness-of-Fit Test (Non-Uniform)",
-        chi2_stat, p_value, critical_value, df, expected, alpha, decimals
+        chi2_stat,
+        p_value,
+        critical_value,
+        df,
+        expected,
+        alpha,
+        decimals,
     )
 
 
@@ -130,7 +119,13 @@ def chi_squared_uniform(observed, alpha, decimals):
     critical_value = chi2.ppf(1 - alpha, df)
     print_report(
         "📈 Chi-Squared Goodness-of-Fit Test (Uniform)",
-        chi2_stat, p_value, critical_value, df, expected, alpha, decimals
+        chi2_stat,
+        p_value,
+        critical_value,
+        df,
+        expected,
+        alpha,
+        decimals,
     )
 
 
@@ -146,7 +141,13 @@ def chi_squared_independence(matrix, alpha, decimals):
     critical_value = chi2.ppf(1 - alpha, df)
     print_report(
         "🔢 Chi-Squared Test of Independence / Homogeneity",
-        chi2_stat, p_value, critical_value, df, expected, alpha, decimals
+        chi2_stat,
+        p_value,
+        critical_value,
+        df,
+        expected,
+        alpha,
+        decimals,
     )
 
 
@@ -161,10 +162,10 @@ def run():
         [
             "Goodness-of-Fit Test (with expected percentages)",
             "Goodness-of-Fit Test (uniform distribution)",
-            "Chi-Square Test of Independence / Homogeneity"
+            "Chi-Square Test of Independence / Homogeneity",
         ],
         index=None,
-        placeholder="Select a Chi-Squared Test to begin..."
+        placeholder="Select a Chi-Squared Test to begin...",
     )
 
     if not test_choice:
@@ -217,10 +218,48 @@ def run():
     elif test_choice == "Chi-Square Test of Independence / Homogeneity":
         st.subheader("🔢 Input Contingency Table Data")
         st.caption(
-            "Enter your **observed frequency matrix**.\n"
-            "Each row represents a category; separate numbers with commas or spaces, and rows with newlines."
+            "Each row represents a category or group. "
+            "Separate values by **commas or spaces**, and separate rows by **newlines**."
         )
-        mat = st.text_area("Example:\n10, 20, 30\n15, 25, 35")
+
+        # 📘 Collapsible Example Section
+        with st.expander("📘 Example Input Guide"):
+            st.markdown(
+                """
+                **Example 1 – 2×3 Table (Gender vs Course Preference)**  
+                ```
+                10, 20, 30
+                15, 25, 35
+                ```
+                or
+                ```
+                10 20 30
+                15 25 35
+                ```
+
+                **Example 2 – 3×2 Table (School vs Pass/Fail)**  
+                ```
+                30, 10
+                25, 15
+                40, 5
+                ```
+
+                **Example 3 – 3×3 Table (Region vs Income Category)**  
+                ```
+                25, 35, 40
+                20, 30, 50
+                15, 40, 45
+                ```
+
+                ---
+                ✅ **The app automatically:**
+                - Splits rows by **newlines**
+                - Splits values in each row by **commas or spaces**
+                - Calculates all totals, expected values, χ², df, and p-value automatically
+                """
+            )
+
+        mat = st.text_area("Enter your contingency table:", placeholder="10, 20, 30\n15, 25, 35")
 
         if st.button("▶️ Run Test of Independence"):
             try:
@@ -238,3 +277,4 @@ if __name__ == "__main__":
 
 # ✅ Allow both old and new function names for compatibility
 run_chi_square_tool = run
+
