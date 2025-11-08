@@ -9,7 +9,6 @@ import pandas as pd
 import numpy as np
 import scipy.stats as stats
 
-
 # ==========================================================
 # Helper Functions
 # ==========================================================
@@ -341,8 +340,7 @@ to estimate μ with a margin of error of <b>{E}</b>.
             st.write(f"n={int(n)}, df={df}, s²={s2:.{decimal}f}, s={s:.{decimal}f}")
 
             st.markdown("**Step 2:** χ² critical values")
-            st.latex(fr"χ²_{{lower}} = {chi2_lower:.{decimal}f}, \quad χ²_{{upper}} = {chi2_upper}
-            :.{decimal}f}")
+            st.latex(fr"χ²_{{lower}} = {chi2_lower:.{decimal}f}, \quad χ²_{{upper}} = {chi2_upper:.{decimal}f}")
 
             st.markdown("**Step 3:** Variance Interval")
             st.latex(fr"\text{{Variance CI}} = \left(\dfrac{{(n-1)s^2}}{{χ²_{{upper}}}}, \dfrac{{(n-1)s^2}}{{χ²_{{lower}}}}\right) = ({var_lower:.{decimal}f}, {var_upper:.{decimal}f})")
@@ -421,4 +419,5 @@ We are <b>{conf*100:.1f}% confident</b> that the population variance lies betwee
 # ==========================================================
 if __name__ == "__main__":
     run()
+
 
