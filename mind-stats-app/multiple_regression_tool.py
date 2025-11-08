@@ -33,23 +33,8 @@ def step_box(text):
     )
 
 
-def parse_matrix(input_text):
-    """Parse user-entered matrix data."""
-    try:
-        rows = [r for r in input_text.strip().split("\n") if r.strip()]
-        data = [list(map(float, r.replace(",", " ").split())) for r in rows]
-        data = np.array(data, dtype=float)
-        if data.shape[1] < 2:
-            raise ValueError("Each row must include at least one predictor variable (x).")
-        X = data[:, 1:]
-        y = data[:, 0]
-        return X, y
-    except Exception:
-        raise ValueError("Invalid format: please check commas, spaces, and newlines.")
-
-
 # ==========================================================
-# Regression Report
+# Regression Summary & Plots
 # ==========================================================
 def print_regression_summary(model, decimals):
     st.subheader("📄 Regression Summary")
@@ -95,77 +80,118 @@ def plot_residuals(model):
 def run():
     st.header("👨‍🏫 Multiple Regression Analysis")
 
-    st.markdown(
-        """
-        ### 📘 Data Input Instructions
-        Each **row** represents one observation (student, case, or trial).  
-        **Format rules:**
-        - The **first value** in each row is the dependent variable *(y)*.  
-        - The **remaining values** are the independent variables *(x₁, x₂, …, xₖ)*.  
-        - Separate values with **commas or spaces**.  
-        - Press **Enter** (new line) after each observation.
-        
-        **Example:** Predict exam score (y) using hours studied (x₁) and quiz average (x₂):
-        ```
-        85, 10, 90
-        78, 8, 85
-        92, 12, 95
-        70, 5, 75
-        ```
-        **Here:**
-        - y = exam score (dependent variable)
-        - x₁ = hours studied
-        - x₂ = quiz average
-        
-        ---
-        📏 **Format summary:**
-        ```
-        y, x₁, x₂, …, xₖ   ← order of variables per row
-        k = number of predictors (independent variables)
-        ```
-        """
-    )
+    st.markdown("""
+    This tool estimates the best-fitting line  
+    \\[
+    \\hat{y} = b_0 + b_1x_1 + b_2x_2 + \\dots + b_kx_k
+    \\]
+    using the **Ordinary Least Squares (OLS)** method.
+    """)
+
+    # --- Data Input Options ---
+    st.subheader("📘 Data Input")
 
     uploaded_file = st.file_uploader("📂 Upload CSV or Excel file (optional)", type=["csv", "xlsx"])
-    raw_data = st.text_area(
-        "Or manually enter your data below (follow the format above):",
-        placeholder="85, 10, 90\n78, 8, 85\n92, 12, 95\n70, 5, 75",
-        height=200,
-    )
+    st.markdown("Or enter data manually below:")
+
+    c1, c2 = st.columns(2)
+    with c1:
+        y_input = st.text_area(
+            "Dependent variable (y) values (comma-separated):",
+            placeholder="85, 78, 92, 70",
+            height=100,
+        )
+    with c2:
+        x_input = st.text_area(
+            "Independent variable(s) (x) values (each row = observation, values separated by commas):",
+            placeholder="10, 90\n8, 85\n12, 95\n5, 75",
+            height=100,
+        )
 
     decimals = st.number_input("Decimal places for rounding", min_value=1, max_value=10, value=4, step=1)
 
-    if st.button("👨‍💻 Run Multiple Regression"):
+    # ======================================================
+    # Case 1: Upload File
+    # ======================================================
+    if uploaded_file:
         try:
-            if uploaded_file:
-                if uploaded_file.name.endswith(".csv"):
-                    df = pd.read_csv(uploaded_file)
-                else:
-                    df = pd.read_excel(uploaded_file)
-                st.dataframe(df.head())
+            if uploaded_file.name.endswith(".csv"):
+                df = pd.read_csv(uploaded_file)
+            else:
+                df = pd.read_excel(uploaded_file)
 
-                num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-                if len(num_cols) < 2:
-                    st.error("File must contain at least two numeric columns (y + predictors).")
+            st.write("📊 Data Preview:")
+            st.dataframe(df.head())
+
+            num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+            if len(num_cols) < 2:
+                st.error("File must contain at least two numeric columns (y and predictors).")
+                return
+
+            st.markdown("### 🧩 Variable Selection")
+            y_col = st.selectbox("Select the dependent variable (y):", num_cols, index=0)
+            X_cols = st.multiselect("Select one or more independent variables (x):", [c for c in num_cols if c != y_col])
+
+            if st.button("👨‍💻 Run Regression (from uploaded data)"):
+                if not X_cols:
+                    st.error("Please select at least one independent variable.")
                     return
 
-                y_col = st.selectbox("Select Dependent Variable (y)", num_cols, index=0)
-                X_cols = [c for c in num_cols if c != y_col]
-                X = df[X_cols].dropna().to_numpy(dtype=float)
-                y = df.loc[X.index, y_col].to_numpy(dtype=float)
-            else:
-                X, y = parse_matrix(raw_data)
+                data = df.dropna(subset=[y_col] + X_cols)
+                y = data[y_col].to_numpy(dtype=float)
+                X = data[X_cols].to_numpy(dtype=float)
+                X = sm.add_constant(X)
+                model = sm.OLS(y, X).fit()
+
+                step_box("**Step 1:** Fit the multiple regression model")
+                st.latex(r"y = \beta_0 + \beta_1x_1 + \beta_2x_2 + \dots + \beta_kx_k + \varepsilon")
+
+                step_box("**Step 2:** Review Model Summary and Fit Statistics")
+                print_regression_summary(model, decimals)
+
+                step_box("**Step 3:** Analyze Residuals for Randomness and Normality")
+                plot_residuals(model)
+
+                step_box("**Step 4:** Predict New Values")
+                st.caption("Enter predictor values (x₁, x₂, …, xₖ) separated by commas:")
+                new_x_input = st.text_input("Example: 9, 87  → 9 hours studied, 87 quiz average")
+                if new_x_input.strip():
+                    try:
+                        new_x = np.array(list(map(float, new_x_input.replace(",", " ").split())))
+                        if len(new_x) != len(X_cols):
+                            st.error(f"Please enter {len(X_cols)} predictor values.")
+                        else:
+                            y_hat = model.predict([np.insert(new_x, 0, 1)])[0]
+                            st.success(f"Predicted y = **{round_value(y_hat, decimals)}**")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+
+        except Exception as e:
+            st.error(f"❌ Error reading file: {e}")
+
+    # ======================================================
+    # Case 2: Manual Entry
+    # ======================================================
+    elif y_input.strip() and x_input.strip() and st.button("👨‍💻 Run Regression (manual data)"):
+        try:
+            y = np.array(list(map(float, y_input.replace(",", " ").split())))
+            x_rows = [list(map(float, r.replace(",", " ").split())) for r in x_input.strip().split("\n")]
+            X = np.array(x_rows, dtype=float)
+
+            if len(y) != X.shape[0]:
+                st.error("Number of y values must match number of x rows.")
+                return
 
             X = sm.add_constant(X)
             model = sm.OLS(y, X).fit()
 
-            step_box("**Step 1:** Compute regression model using OLS")
-            st.latex(r"y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \dots + \beta_k x_k + \varepsilon")
+            step_box("**Step 1:** Fit the multiple regression model")
+            st.latex(r"y = \beta_0 + \beta_1x_1 + \beta_2x_2 + \dots + \beta_kx_k + \varepsilon")
 
             step_box("**Step 2:** Review Model Summary and Fit Statistics")
             print_regression_summary(model, decimals)
 
-            step_box("**Step 3:** Examine Residuals for Randomness and Normality")
+            step_box("**Step 3:** Analyze Residuals for Randomness and Normality")
             plot_residuals(model)
 
             step_box("**Step 4:** Predict New Values")
@@ -181,9 +207,11 @@ def run():
                         st.success(f"Predicted y = **{round_value(y_hat, decimals)}**")
                 except Exception as e:
                     st.error(f"Error: {e}")
-
         except Exception as e:
             st.error(f"❌ Error: {e}")
+
+    else:
+        st.info("👆 Upload a dataset or enter data manually to begin.")
 
 
 # ==========================================================
@@ -192,6 +220,6 @@ def run():
 if __name__ == "__main__":
     run()
 
-# ✅ Compatibility alias for main suite integration
+# ✅ Compatibility alias for integration with the main suite
 run_multiple_regression_tool = run
 
