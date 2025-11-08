@@ -77,7 +77,6 @@ def run():
     if choice == categories[0]:
         x = st.number_input("Number of successes (x)", min_value=0, step=1)
         n = st.number_input("Sample size (n)", min_value=max(1, int(x)), step=1)
-        # enforce x ≤ n by clamping after change
         if x > n:
             st.warning("⚠️ Adjusted: successes x cannot exceed sample size n. Setting x = n.")
             x = n
@@ -102,19 +101,19 @@ def run():
 =====================
 Confidence Interval for Proportion
 =====================
-Formula (LaTeX):
-  p̂ ± z_(α/2) * sqrt( p̂(1 - p̂) / n )
+1) Inputs:
+   x = {int(x)}, n = {int(n)}, p̂ = x/n = {p_hat:.{decimal}f}, confidence = {conf:.3f}
+2) Critical value:
+   z_(α/2) = {z:.{decimal}f}
+3) Standard error:
+   SE = sqrt( p̂(1-p̂) / n ) = sqrt( {p_hat:.{decimal}f}(1-{p_hat:.{decimal}f}) / {int(n)} ) = {se:.{decimal}f}
+4) Margin of error:
+   E = z * SE = {z:.{decimal}f} * {se:.{decimal}f} = {moe:.{decimal}f}
+5) Interval:
+   p̂ ± E = {p_hat:.{decimal}f} ± {moe:.{decimal}f} → ({lower:.{decimal}f}, {upper:.{decimal}f})
 
-Given:
-  x (successes)     = {int(x)}
-  n (sample size)   = {int(n)}
-  p̂                = {p_hat:.{decimal}f}
-  z_(α/2)           = {z:.{decimal}f}
-  Standard Error    = {se:.{decimal}f}
-  Margin of Error E = {moe:.{decimal}f}
-
-Result:
-  {conf*100:.1f}% CI = ({lower:.{decimal}f}, {upper:.{decimal}f})
+Interpretation:
+  We are {conf*100:.1f}% confident that the true population proportion lies between {lower:.{decimal}f} and {upper:.{decimal}f}.
 """)
 
     # ==========================================================
@@ -128,23 +127,24 @@ Result:
         if st.button("👨‍💻 Calculate"):
             z = stats.norm.ppf((1 + conf) / 2)
             n_req = (z**2 * p_est * (1 - p_est)) / (E**2)
+            n_ceiled = int(np.ceil(n_req))
 
             st.latex(r"n \;=\; \frac{z_{\alpha/2}^2\,\hat{p}(1-\hat{p})}{E^2}")
             st.text(f"""
 =====================
 Sample Size for Proportion
 =====================
-Formula (LaTeX):
-  n = ( z_(α/2)^2 * p̂(1 - p̂) ) / E^2
+1) Inputs:
+   confidence = {conf:.3f}, z_(α/2) = {z:.{decimal}f}, p̂ = {p_est:.{decimal}f}, E = {E}
+2) Compute:
+   n = ( z^2 * p̂(1-p̂) ) / E^2
+     = ( {z:.{decimal}f}^2 * {p_est:.{decimal}f}(1-{p_est:.{decimal}f}) ) / {E}^2
+     = {n_req:.{decimal}f}
+3) Round up:
+   n (required) = {n_ceiled}
 
-Given:
-  Confidence Level = {conf*100:.1f}%
-  z_(α/2)          = {z:.{decimal}f}
-  p̂ (estimate)     = {p_est:.{decimal}f}
-  Margin of Error E = {E}
-
-Result:
-  Required Sample Size (n) = {np.ceil(n_req):.0f}
+Interpretation:
+  A sample of at least {n_ceiled} is required to estimate the proportion with margin of error {E} at {conf*100:.1f}% confidence.
 """)
 
     # ==========================================================
@@ -174,19 +174,19 @@ Result:
 =====================
 Confidence Interval for Mean (Known SD)
 =====================
-Formula (LaTeX):
-  x̄ ± z_(α/2) * (σ / √n)
+1) Inputs:
+   x̄ = {mean:.{decimal}f}, σ = {sigma:.{decimal}f}, n = {int(n)}, confidence = {conf:.3f}
+2) Critical value:
+   z_(α/2) = {z:.{decimal}f}
+3) Standard error:
+   SE = σ/√n = {sigma:.{decimal}f}/√{int(n)} = {se:.{decimal}f}
+4) Margin of error:
+   E = z * SE = {z:.{decimal}f} * {se:.{decimal}f} = {moe:.{decimal}f}
+5) Interval:
+   x̄ ± E = {mean:.{decimal}f} ± {moe:.{decimal}f} → ({lower:.{decimal}f}, {upper:.{decimal}f})
 
-Given:
-  x̄ (sample mean)   = {mean:.{decimal}f}
-  σ (pop. SD)        = {sigma:.{decimal}f}
-  n (sample size)    = {int(n)}
-  z_(α/2)            = {z:.{decimal}f}
-  Standard Error     = {se:.{decimal}f}
-  Margin of Error E  = {moe:.{decimal}f}
-
-Result:
-  {conf*100:.1f}% CI = ({lower:.{decimal}f}, {upper:.{decimal}f})
+Interpretation:
+  We are {conf*100:.1f}% confident that the true population mean lies between {lower:.{decimal}f} and {upper:.{decimal}f}.
 """)
 
     # ==========================================================
@@ -214,26 +214,25 @@ Result:
 =====================
 Confidence Interval for Mean (Given Sample SD)
 =====================
-Formula (LaTeX):
-  x̄ ± t_(α/2, n-1) * (s / √n)
+1) Inputs:
+   x̄ = {mean:.{decimal}f}, s = {s:.{decimal}f}, n = {int(n)}, df = {df}, confidence = {conf:.3f}
+2) Critical value:
+   t_(α/2, df) = {t_crit:.{decimal}f}
+3) Standard error:
+   SE = s/√n = {s:.{decimal}f}/√{int(n)} = {se:.{decimal}f}
+4) Margin of error:
+   E = t * SE = {t_crit:.{decimal}f} * {se:.{decimal}f} = {moe:.{decimal}f}
+5) Interval:
+   x̄ ± E = {mean:.{decimal}f} ± {moe:.{decimal}f} → ({lower:.{decimal}f}, {upper:.{decimal}f})
 
-Given:
-  x̄ (sample mean)   = {mean:.{decimal}f}
-  s (sample SD)      = {s:.{decimal}f}
-  n (sample size)    = {int(n)}
-  df                 = {df}
-  t_(α/2, df)        = {t_crit:.{decimal}f}
-  Standard Error     = {se:.{decimal}f}
-  Margin of Error E  = {moe:.{decimal}f}
-
-Result:
-  {conf*100:.1f}% CI = ({lower:.{decimal}f}, {upper:.{decimal}f})
+Interpretation:
+  We are {conf*100:.1f}% confident that the true population mean lies between {lower:.{decimal}f} and {upper:.{decimal}f}.
 """)
 
     # ==========================================================
     # 5. Confidence Interval for Mean (With Raw Data)
     # ==========================================================
-    elif choice == categories[4]:
+    elif choice == categories[4]]:
         st.subheader("📊 Confidence Interval for Mean (Using Raw Data)")
         data = load_uploaded_data()
         raw_input = st.text_area("Or enter comma-separated values:")
@@ -266,20 +265,19 @@ Result:
 =====================
 Confidence Interval for Mean (With Data)
 =====================
-Formula (LaTeX):
-  x̄ ± t_(α/2, n-1) * (s / √n)
+1) Inputs (from data):
+   n = {int(n)}, df = {df}, x̄ = {mean:.{decimal}f}, s = {s:.{decimal}f}, confidence = {conf:.3f}
+2) Critical value:
+   t_(α/2, df) = {t_crit:.{decimal}f}
+3) Standard error:
+   SE = s/√n = {s:.{decimal}f}/√{int(n)} = {se:.{decimal}f}
+4) Margin of error:
+   E = t * SE = {t_crit:.{decimal}f} * {se:.{decimal}f} = {moe:.{decimal}f}
+5) Interval:
+   x̄ ± E = {mean:.{decimal}f} ± {moe:.{decimal}f} → ({lower:.{decimal}f}, {upper:.{decimal}f})
 
-Given (from data):
-  n (sample size)    = {int(n)}
-  df                 = {df}
-  x̄ (sample mean)   = {mean:.{decimal}f}
-  s (sample SD)      = {s:.{decimal}f}
-  Standard Error     = {se:.{decimal}f}
-  t_(α/2, df)        = {t_crit:.{decimal}f}
-  Margin of Error E  = {moe:.{decimal}f}
-
-Result:
-  {conf*100:.1f}% CI = ({lower:.{decimal}f}, {upper:.{decimal}f})
+Interpretation:
+  We are {conf*100:.1f}% confident that the true population mean lies between {lower:.{decimal}f} and {upper:.{decimal}f}.
 =====================
 """)
 
@@ -298,7 +296,40 @@ Result:
             st.dataframe(summary, use_container_width=True)
 
     # ==========================================================
-    # 6–10. Variance and SD Confidence Intervals (with step-by-step)
+    # 6. Sample Size for Mean
+    # ==========================================================
+    elif choice == categories[5]]:
+        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
+        sigma = st.number_input("Population SD (σ)", min_value=0.0, format="%.4f")
+        E = st.number_input("Margin of error (E)", min_value=0.000001, value=0.05, step=0.001, format="%.6f")
+
+        if st.button("👨‍💻 Calculate"):
+            if sigma < 0:
+                st.error("❌ σ must be ≥ 0.")
+                st.stop()
+
+            z = stats.norm.ppf((1 + conf)/2)
+            n_req = (z * sigma / E)**2
+            n_ceiled = int(np.ceil(n_req))
+
+            st.latex(r"n \;=\; \left(\frac{z_{\alpha/2}\,\sigma}{E}\right)^2")
+            st.text(f"""
+=====================
+Sample Size for Mean
+=====================
+1) Inputs:
+   confidence = {conf:.3f}, z_(α/2) = {z:.{decimal}f}, σ = {sigma}, E = {E}
+2) Compute:
+   n = ( z*σ/E )^2 = ( {z:.{decimal}f} * {sigma} / {E} )^2 = {n_req:.{decimal}f}
+3) Round up:
+   n (required) = {n_ceiled}
+
+Interpretation:
+  A sample of at least {n_ceiled} is required to estimate the mean with margin of error {E} at {conf*100:.1f}% confidence.
+""")
+
+    # ==========================================================
+    # 7–10. Variance and SD Confidence Intervals (with step-by-step)
     # ==========================================================
     else:
         st.subheader(f"📈 {choice}")
@@ -326,7 +357,7 @@ Result:
         chi2_lower = float(stats.chi2.ppf((1 - conf)/2, df))
         chi2_upper = float(stats.chi2.ppf(1 - (1 - conf)/2, df))
 
-        # Always show the formulas above the button for teaching value
+        # Teaching formulas
         st.latex(r"""
 \text{Variance CI: } 
 \left(\frac{(n-1)s^2}{\chi^2_{(1-\alpha/2),\,df}},\;
@@ -338,7 +369,6 @@ Result:
 """)
 
         if st.button("👨‍💻 Calculate"):
-            # Step-by-step components
             numer = df * s2
             var_lower = numer / chi2_upper
             var_upper = numer / chi2_lower
@@ -348,30 +378,27 @@ Result:
 =====================
 {choice}
 =====================
-Step-by-Step (Variance):
-  1) df = n - 1 = {df}
-  2) (n - 1) * s² = {df} * {s2:.{decimal}f} = {numer:.{decimal}f}
-  3) χ²_(1 - α/2, df) = {chi2_upper:.{decimal}f}
-     χ²_(α/2, df)     = {chi2_lower:.{decimal}f}
-  4) Lower Variance Bound = ((n - 1)s²) / χ²_(1 - α/2, df)
-                          = {numer:.{decimal}f} / {chi2_upper:.{decimal}f}
-                          = {var_lower:.{decimal}f}
-  5) Upper Variance Bound = ((n - 1)s²) / χ²_(α/2, df)
-                          = {numer:.{decimal}f} / {chi2_lower:.{decimal}f}
-                          = {var_upper:.{decimal}f}
-
-Step-by-Step (Standard Deviation):
-  6) Lower SD Bound = sqrt(Lower Variance Bound)
-                    = sqrt({var_lower:.{decimal}f})
-                    = {sd_lower:.{decimal}f}
-  7) Upper SD Bound = sqrt(Upper Variance Bound)
-                    = sqrt({var_upper:.{decimal}f})
-                    = {sd_upper:.{decimal}f}
+1) Inputs:
+   n = {int(n)}, df = {df}, s² = {s2:.{decimal}f}, s = {s:.{decimal}f}, confidence = {conf:.3f}
+2) Chi-square critical values:
+   χ²_(1-α/2, df) = {chi2_upper:.{decimal}f}
+   χ²_(α/2, df)   = {chi2_lower:.{decimal}f}
+3) Compute (n-1)s²:
+   df * s² = {df} * {s2:.{decimal}f} = {numer:.{decimal}f}
+4) Variance bounds:
+   Lower = {numer:.{decimal}f} / {chi2_upper:.{decimal}f} = {var_lower:.{decimal}f}
+   Upper = {numer:.{decimal}f} / {chi2_lower:.{decimal}f} = {var_upper:.{decimal}f}
+5) SD bounds:
+   Lower = sqrt({var_lower:.{decimal}f}) = {sd_lower:.{decimal}f}
+   Upper = sqrt({var_upper:.{decimal}f}) = {sd_upper:.{decimal}f}
 
 Results:
   {conf*100:.1f}% CI for Variance = ({var_lower:.{decimal}f}, {var_upper:.{decimal}f})
   {conf*100:.1f}% CI for SD       = ({sd_lower:.{decimal}f}, {sd_upper:.{decimal}f})
-=====================
+
+Interpretation:
+  We are {conf*100:.1f}% confident that the true population variance lies between {var_lower:.{decimal}f} and {var_upper:.{decimal}f},
+  and the true population standard deviation lies between {sd_lower:.{decimal}f} and {sd_upper:.{decimal}f}.
 """)
 
             st.dataframe(pd.DataFrame({
