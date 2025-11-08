@@ -1,168 +1,139 @@
 # ==========================================================
-# confidence_intervals_tool.py
-# Created by Professor Edward Pineda-Castro, Los Angeles City College
-# Part of the MIND: Statistics Visualizer Suite
+# Uniform Distribution (Text-based explanation + interpretation tips)
 # ==========================================================
+def uniform_distribution(decimal):
+    st.markdown("### 🎲 **Uniform Distribution**")
+    st.latex(r"f(x) = \frac{1}{b - a}, \quad a \le x \le b")
 
-import streamlit as st
-import numpy as np
-import pandas as pd
-import math
-from scipy.stats import t, chi2
+    a = st.number_input("Lower bound (a):", value=0.0, key="ua_main")
+    b = st.number_input("Upper bound (b):", value=10.0, key="ub_main")
+    if b <= a:
+        st.error("⚠️ Upper bound (b) must be greater than lower bound (a).")
+        return
 
-# ==========================================================
-# Helper Functions
-# ==========================================================
-def load_data_upload():
-    """Uploads and extracts numeric column data"""
-    uploaded_file = st.file_uploader(
-        "📂 Upload CSV or Excel file (single column of numeric data)",
-        type=["csv", "xlsx"]
-    )
-    if uploaded_file:
-        try:
-            if uploaded_file.name.endswith(".csv"):
-                df = pd.read_csv(uploaded_file)
-            else:
-                df = pd.read_excel(uploaded_file)
-            for col in df.columns:
-                if pd.api.types.is_numeric_dtype(df[col]):
-                    return df[col].dropna().to_numpy()
-            st.error("⚠️ No numeric column found in file.")
-        except Exception as e:
-            st.error(f"Error reading file: {e}")
-    return None
+    pdf = 1 / (b - a)
+    st.write(f"**Constant PDF:** f(x) = {round(pdf, decimal)} for {a} ≤ x ≤ {b}")
 
+    calc_type = st.selectbox("Choose a calculation:", [
+        "P(X < x) = P(X ≤ x)",
+        "P(X = x)",
+        "P(X > x) = P(X ≥ x)",
+        "P(a < X < b)",
+        "Inverse: Find x for given probability"
+    ], key="uniform_calc_type")
 
-# ==========================================================
-# Confidence Interval for the Mean (σ unknown)
-# ==========================================================
-def confidence_interval_mean(decimal):
-    st.markdown("### 📏 **Confidence Interval for the Mean (σ unknown)**")
-    st.info("Uses Student's *t*-distribution when population σ is unknown.")
-    st.latex(r"\bar{X} \pm t_{\alpha/2,\,n-1}\left(\frac{s}{\sqrt{n}}\right)")
+    x = np.linspace(a - (b - a)*0.2, b + (b - a)*0.2, 500)
+    y = np.where((x >= a) & (x <= b), pdf, 0)
 
-    input_mode = st.radio(
-        "Select input method:",
-        ["Enter summary statistics", "Upload raw data"],
-        horizontal=True
-    )
-
-    if input_mode == "Enter summary statistics":
-        xbar = st.number_input("Sample mean (x̄):", value=50.0)
-        s = st.number_input("Sample SD (s):", value=10.0, min_value=0.0001)
-        n = st.number_input("Sample size (n):", min_value=2, value=30)
-    else:
-        data = load_data_upload()
-        if data is not None:
-            xbar = np.mean(data)
-            s = np.std(data, ddof=1)
-            n = len(data)
-            st.success(f"✅ Data loaded: n={n}, x̄={xbar:.{decimal}f}, s={s:.{decimal}f}")
+    # --- Case 1: P(X < x) = P(X ≤ x)
+    if calc_type == "P(X < x) = P(X ≤ x)":
+        x_val = st.number_input("Enter x value:", value=(a + b) / 2, key="ux_less")
+        if x_val <= a:
+            prob = 0.0
+        elif x_val >= b:
+            prob = 1.0
         else:
-            st.stop()
+            prob = (x_val - a) / (b - a)
 
-    conf_level = st.slider("Select confidence level:", 0.80, 0.99, 0.95, 0.01)
-    alpha = 1 - conf_level
-    df = n - 1
-    t_crit = t.ppf(1 - alpha / 2, df)
-    E = t_crit * s / math.sqrt(n)
-    lower = xbar - E
-    upper = xbar + E
+        st.markdown(f"""
+        **🧮 Step-by-step:**
+        1. P(X ≤ x) = (x − a) / (b − a)  
+        2. P(X ≤ {x_val}) = ({x_val} − {a}) / ({b} − {a}) = {round(prob, decimal)}  
+        3. **Final Answer:** P(X ≤ {x_val}) = {round(prob, decimal)}  
+        """)
+        st.info("📘 Interpretation Tip: This represents the proportion of outcomes where X is less than or equal to the chosen value.")
 
-    st.latex(rf"""
-    \text{{🧮 Step-by-step}} \\[6pt]
-    t_{{\alpha/2,\,{df}}} = {t_crit:.4f} \\[4pt]
-    E = t_{{\alpha/2}} \cdot \frac{{s}}{{\sqrt{{n}}}} = {t_crit:.4f} \cdot \frac{{{s:.4f}}}{{\sqrt{{{n}}}}} = {E:.4f} \\[6pt]
-    \boxed{{{conf_level*100:.0f}\% \text{{ CI: }} ({lower:.4f},\, {upper:.4f})}}
-    """)
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(x, y, color="blue")
+        ax.fill_between(x, 0, y, where=(x >= a) & (x <= x_val), color="skyblue", alpha=0.6)
+        ax.axvline(x_val, color="red", linestyle="--")
+        st.pyplot(fig)
 
+    # --- Case 2: P(X = x)
+    elif calc_type == "P(X = x)":
+        x_val = st.number_input("Enter x value:", value=(a + b) / 2, key="ux_equal")
+        st.markdown(f"""
+        **🧮 Step-by-step:**
+        1. In a continuous distribution, P(X = x) = 0  
+        2. **Final Answer:** P(X = {x_val}) = 0  
+        """)
+        st.info("📘 Interpretation Tip: In continuous distributions, exact values have zero probability, but intervals have measurable probabilities.")
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(x, y, color="blue")
+        ax.axvline(x_val, color="red", linestyle="--")
+        st.pyplot(fig)
 
-# ==========================================================
-# Confidence Interval for Variance / Standard Deviation
-# ==========================================================
-def confidence_interval_chi2(decimal):
-    st.markdown("### 📊 **Confidence Interval for Variance / Standard Deviation (χ²)**")
-    st.info("Uses the Chi-Square distribution formulas:")
-    st.latex(r"""
-    \text{Variance CI: } \left(\frac{(n-1)s^2}{\chi^2_R}, \frac{(n-1)s^2}{\chi^2_L}\right),
-    \quad
-    \text{SD CI: } \left(\sqrt{\frac{(n-1)s^2}{\chi^2_R}}, \sqrt{\frac{(n-1)s^2}{\chi^2_L}}\right)
-    """)
-
-    input_mode = st.radio(
-        "Select input method:",
-        ["Enter summary statistics", "Upload raw data"],
-        horizontal=True
-    )
-
-    if input_mode == "Enter summary statistics":
-        s = st.number_input("Sample SD (s):", value=10.0, min_value=0.0001)
-        n = st.number_input("Sample size (n):", min_value=2, value=30)
-    else:
-        data = load_data_upload()
-        if data is not None:
-            s = np.std(data, ddof=1)
-            n = len(data)
-            st.success(f"✅ Data loaded: n={n}, s={s:.{decimal}f}")
+    # --- Case 3: P(X > x) = P(X ≥ x)
+    elif calc_type == "P(X > x) = P(X ≥ x)":
+        x_val = st.number_input("Enter x value:", value=(a + b) / 2, key="ux_greater")
+        if x_val <= a:
+            prob = 1.0
+        elif x_val >= b:
+            prob = 0.0
         else:
-            st.stop()
+            prob = (b - x_val) / (b - a)
 
-    conf_level = st.slider("Select confidence level:", 0.80, 0.99, 0.95, 0.01)
-    alpha = 1 - conf_level
-    df = n - 1
+        st.markdown(f"""
+        **🧮 Step-by-step:**
+        1. P(X ≥ x) = (b − x) / (b − a)  
+        2. P(X ≥ {x_val}) = ({b} − {x_val}) / ({b} − {a}) = {round(prob, decimal)}  
+        3. **Final Answer:** P(X ≥ {x_val}) = {round(prob, decimal)}  
+        """)
+        st.info("📘 Interpretation Tip: This represents the proportion of outcomes where X is greater than or equal to the chosen value.")
 
-    chi2_L = chi2.ppf(alpha / 2, df)
-    chi2_R = chi2.ppf(1 - alpha / 2, df)
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(x, y, color="blue")
+        ax.fill_between(x, 0, y, where=(x >= x_val) & (x <= b), color="lightgreen", alpha=0.6)
+        ax.axvline(x_val, color="red", linestyle="--")
+        st.pyplot(fig)
 
-    var_lower = (df * s**2) / chi2_R
-    var_upper = (df * s**2) / chi2_L
-    sd_lower = math.sqrt(var_lower)
-    sd_upper = math.sqrt(var_upper)
+    # --- Case 4: P(a < X < b)
+    elif calc_type == "P(a < X < b)":
+        low = st.number_input("Lower bound (a):", value=a, key="ua_inner")
+        high = st.number_input("Upper bound (b):", value=b, key="ub_inner")
+        if high <= low:
+            st.error("⚠️ Upper bound must be greater than lower bound.")
+            return
 
-    st.latex(rf"""
-    \text{{🧮 Step-by-step}} \\[6pt]
-    \chi^2_L = {chi2_L:.4f}, \quad \chi^2_R = {chi2_R:.4f}, \quad df = {df} \\[6pt]
-    \text{{Variance CI}} = ({var_lower:.4f},\, {var_upper:.4f}) \\[6pt]
-    \text{{SD CI}} = ({sd_lower:.4f},\, {sd_upper:.4f}) \\[6pt]
-    \boxed{{{conf_level*100:.0f}\% \text{{ CI for σ: }} ({sd_lower:.4f},\, {sd_upper:.4f})}}
-    """)
+        if high < a or low > b:
+            prob = 0.0
+        else:
+            lower = max(low, a)
+            upper = min(high, b)
+            prob = (upper - lower) / (b - a)
 
+        st.markdown(f"""
+        **🧮 Step-by-step:**
+        1. P(a < X < b) = (b − a) / (B − A)  
+        2. P({low} < X < {high}) = ({high} − {low}) / ({b} − {a}) = {round(prob, decimal)}  
+        3. **Final Answer:** P({low} < X < {high}) = {round(prob, decimal)}  
+        """)
+        st.info("📘 Interpretation Tip: This gives the probability that X lies between two specific values within the uniform range.")
 
-# ==========================================================
-# MAIN APP
-# ==========================================================
-def run():
-    st.header("🧠 MIND: Confidence Interval Tools")
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(x, y, color="blue")
+        ax.fill_between(x, 0, y, where=(x >= low) & (x <= high), color="orange", alpha=0.6)
+        ax.axvline(low, color="red", linestyle="--")
+        ax.axvline(high, color="red", linestyle="--")
+        st.pyplot(fig)
 
-    st.markdown("""
-    ---
-    ### 📘 Quick Reference:
-    - $\\bar{X}$ : sample mean  $s$ : sample SD  $\\sigma$ : population SD  
-    - $\\hat{p}$ : sample proportion  $E$ : margin of error  $n$ : sample size  
-    - $\\chi^2$ : chi-square critical values for variance/SD intervals  
-    ---
-    """)
+    # --- Case 5: Inverse: Find x for given probability
+    elif calc_type == "Inverse: Find x for given probability":
+        p = st.number_input("Enter probability p for P(X ≤ x) = p (0 < p < 1):",
+                            min_value=0.0, max_value=1.0, value=0.5, key="u_inverse_p")
+        x_val = a + p * (b - a)
 
-    tool = st.radio(
-        "Select a concept:",
-        [
-            "Confidence Interval for Mean (σ unknown, given s or data)",
-            "Confidence Interval for Variance / Standard Deviation (χ²)"
-        ],
-        horizontal=True
-    )
+        st.markdown(f"""
+        **🧮 Step-by-step:**
+        1. P(X ≤ x) = (x − a) / (b − a)  
+        2. Solve for x → x = a + p(b − a)  
+        3. x = {a} + {p}({b} − {a}) = {round(x_val, decimal)}  
+        4. **Final Answer:** x = {round(x_val, decimal)} for P(X ≤ x) = {p}  
+        """)
+        st.info("📘 Interpretation Tip: This finds the cutoff x below which a given proportion (p) of values in the uniform distribution fall.")
 
-    decimal = st.number_input("Decimal places for output:", min_value=0, max_value=6, value=4, step=1)
-
-    if tool.startswith("Confidence Interval for Mean"):
-        confidence_interval_mean(decimal)
-    elif tool.startswith("Confidence Interval for Variance"):
-        confidence_interval_chi2(decimal)
-
-
-# ==========================================================
-# Run app directly
-# ==========================================================
-if __name__ == "__main__":
-    run()
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(x, y, color="blue")
+        ax.fill_between(x, 0, y, where=(x >= a) & (x <= x_val), color="skyblue", alpha=0.6)
+        ax.axvline(x_val, color="red", linestyle="--")
+        st.pyplot(fig)
