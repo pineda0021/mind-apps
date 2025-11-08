@@ -88,30 +88,32 @@ def run():
     using the **Ordinary Least Squares (OLS)** method.
     """)
 
-    # --- Data Input Options ---
+    # --- File upload section ---
     st.subheader("📘 Data Input")
-
     uploaded_file = st.file_uploader("📂 Upload CSV or Excel file (optional)", type=["csv", "xlsx"])
-    st.markdown("Or enter data manually below:")
 
-    c1, c2 = st.columns(2)
-    with c1:
-        y_input = st.text_area(
-            "Dependent variable (y) values (comma-separated):",
-            placeholder="85, 78, 92, 70",
-            height=100,
-        )
-    with c2:
-        x_input = st.text_area(
-            "Independent variable(s) (x) values (each row = observation, values separated by commas):",
-            placeholder="10, 90\n8, 85\n12, 95\n5, 75",
-            height=100,
-        )
+    st.markdown("### ✏️ Or enter data manually")
+    st.caption("""
+    Each row represents **one observation (student, case, or trial)**.  
+    - The **first value** in each row is the dependent variable *(y)*  
+    - The remaining values are the independent variables *(x₁, x₂, …, xₖ)*  
+    - Separate values with **commas**, and press **Enter** for each new row.
+
+    Example (predicting exam score `y` using hours studied `x₁` and quiz average `x₂`):
+    ```
+    85, 10, 90
+    78, 8, 85
+    92, 12, 95
+    70, 5, 75
+    ```
+    """)
+
+    raw_data = st.text_area("Enter your data below:", height=200, placeholder="y, x₁, x₂ ...")
 
     decimals = st.number_input("Decimal places for rounding", min_value=1, max_value=10, value=4, step=1)
 
     # ======================================================
-    # Case 1: Upload File
+    # Case 1: File upload
     # ======================================================
     if uploaded_file:
         try:
@@ -129,10 +131,10 @@ def run():
                 return
 
             st.markdown("### 🧩 Variable Selection")
-            y_col = st.selectbox("Select the dependent variable (y):", num_cols, index=0)
-            X_cols = st.multiselect("Select one or more independent variables (x):", [c for c in num_cols if c != y_col])
+            y_col = st.selectbox("Select dependent variable (y):", num_cols, index=0)
+            X_cols = st.multiselect("Select independent variable(s) (x):", [c for c in num_cols if c != y_col])
 
-            if st.button("👨‍💻 Run Regression (from uploaded data)"):
+            if st.button("👨‍💻 Run Regression (Uploaded Data)"):
                 if not X_cols:
                     st.error("Please select at least one independent variable.")
                     return
@@ -149,12 +151,11 @@ def run():
                 step_box("**Step 2:** Review Model Summary and Fit Statistics")
                 print_regression_summary(model, decimals)
 
-                step_box("**Step 3:** Analyze Residuals for Randomness and Normality")
+                step_box("**Step 3:** Examine Residuals")
                 plot_residuals(model)
 
                 step_box("**Step 4:** Predict New Values")
-                st.caption("Enter predictor values (x₁, x₂, …, xₖ) separated by commas:")
-                new_x_input = st.text_input("Example: 9, 87  → 9 hours studied, 87 quiz average")
+                new_x_input = st.text_input("Enter predictor values (x₁, x₂, …, xₖ):", placeholder="9, 87")
                 if new_x_input.strip():
                     try:
                         new_x = np.array(list(map(float, new_x_input.replace(",", " ").split())))
@@ -170,19 +171,25 @@ def run():
             st.error(f"❌ Error reading file: {e}")
 
     # ======================================================
-    # Case 2: Manual Entry
+    # Case 2: Manual Data Entry
     # ======================================================
-    elif y_input.strip() and x_input.strip() and st.button("👨‍💻 Run Regression (manual data)"):
+    elif raw_data.strip() and st.button("👨‍💻 Run Regression (Manual Entry)"):
         try:
-            y = np.array(list(map(float, y_input.replace(",", " ").split())))
-            x_rows = [list(map(float, r.replace(",", " ").split())) for r in x_input.strip().split("\n")]
-            X = np.array(x_rows, dtype=float)
+            rows = [r.strip() for r in raw_data.strip().split("\n") if r.strip()]
+            data = [list(map(float, r.replace(",", " ").split())) for r in rows]
+            data = np.array(data)
 
-            if len(y) != X.shape[0]:
-                st.error("Number of y values must match number of x rows.")
+            if data.shape[1] < 2:
+                st.error("Each row must include at least one predictor variable (x).")
                 return
 
+            y = data[:, 0]
+            X = data[:, 1:]
             X = sm.add_constant(X)
+            k = X.shape[1] - 1
+
+            st.success(f"✅ Data entered successfully: {len(y)} observations and {k} predictor(s).")
+
             model = sm.OLS(y, X).fit()
 
             step_box("**Step 1:** Fit the multiple regression model")
@@ -191,22 +198,22 @@ def run():
             step_box("**Step 2:** Review Model Summary and Fit Statistics")
             print_regression_summary(model, decimals)
 
-            step_box("**Step 3:** Analyze Residuals for Randomness and Normality")
+            step_box("**Step 3:** Examine Residuals")
             plot_residuals(model)
 
             step_box("**Step 4:** Predict New Values")
-            st.caption("Enter predictor values (x₁, x₂, …, xₖ) separated by commas:")
-            new_x_input = st.text_input("Example: 9, 87  → 9 hours studied, 87 quiz average")
+            new_x_input = st.text_input(f"Enter {k} predictor value(s) (x₁, …, xₖ):", placeholder="10, 90")
             if new_x_input.strip():
                 try:
                     new_x = np.array(list(map(float, new_x_input.replace(",", " ").split())))
-                    if len(new_x) != X.shape[1] - 1:
-                        st.error(f"Please enter {X.shape[1]-1} predictor values.")
+                    if len(new_x) != k:
+                        st.error(f"Please enter {k} predictor values.")
                     else:
                         y_hat = model.predict([np.insert(new_x, 0, 1)])[0]
                         st.success(f"Predicted y = **{round_value(y_hat, decimals)}**")
                 except Exception as e:
                     st.error(f"Error: {e}")
+
         except Exception as e:
             st.error(f"❌ Error: {e}")
 
