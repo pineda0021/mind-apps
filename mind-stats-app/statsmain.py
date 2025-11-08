@@ -18,6 +18,7 @@ import inferences_two_sample_tool
 import chi_square_tests_tool
 import anova_tool
 import regression_analysis_tool
+import multiple_regression_advanced_tool
 import ti84                # ✅ TI-84 embedded calculator
 import RStudio              # ✅ New RStudio module
 
