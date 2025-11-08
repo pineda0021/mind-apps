@@ -80,45 +80,49 @@ def run():
     st.header("👨‍🏫 Multiple Regression Analysis")
 
     st.markdown("""
-    This tool estimates the best-fitting line  
-    \\[
-    \\hat{y} = b_0 + b_1x_1 + b_2x_2 + \\dots + b_kx_k
-    \\]
-    using the **Ordinary Least Squares (OLS)** method.
+    This tool estimates a multiple regression model using the **Ordinary Least Squares (OLS)** method.
+    \[
+    \hat{y} = b_0 + b_1x_1 + b_2x_2 + \dots + b_kx_k
+    \]
     """)
 
-    st.subheader("📘 Data Input")
-    uploaded_file = st.file_uploader("📂 Upload CSV or Excel file (optional)", type=["csv", "xlsx"])
+    # -----------------------------
+    # Option 1: Upload a dataset
+    # -----------------------------
+    st.subheader("📂 Upload CSV or Excel file (optional)")
+    uploaded_file = st.file_uploader("", type=["csv", "xlsx"])
 
-    st.markdown("### ✏️ Or enter data manually (guided mode)")
+    st.divider()
+
+    # -----------------------------
+    # Option 2: Guided Manual Input
+    # -----------------------------
+    st.subheader("✏️ Enter Data Manually (Guided Mode)")
     st.caption("""
     **Step 1:** Enter your dependent variable (y) values separated by commas.  
-    Example: `10, 15, 20, 25`  
+    Example: `10, 15, 20, 25`
 
     **Step 2:** Choose how many independent variables (x’s) you want to include.  
-    You’ll then be prompted to enter values for each \(x_i\).
+    Then you’ll be prompted to enter values for each \(x_i\).
     """)
 
-    # ======================================================
-    # Guided Manual Input Mode
-    # ======================================================
     y_input = st.text_area("Dependent variable (y):", placeholder="10, 15, 20, 25", height=80)
-    n_x = st.number_input("How many independent variables (x’s)?", min_value=1, max_value=10, value=1, step=1)
+    n_x = st.number_input("Number of independent variables (x’s):", min_value=1, max_value=10, value=1, step=1)
 
     x_inputs = []
     for i in range(n_x):
         x_val = st.text_area(
-            f"Independent variable x{i+1} values (comma-separated):",
-            placeholder=f"{', '.join(str(v) for v in range(1, 5))}",
-            height=80,
+            f"Independent variable x{i+1} (comma-separated):",
+            placeholder="1, 2, 3, 4",
+            height=70,
             key=f"x_input_{i}"
         )
         x_inputs.append(x_val)
 
-    decimals = st.number_input("Decimal places for rounding", min_value=1, max_value=10, value=4, step=1)
+    decimals = st.number_input("Decimal places for output", min_value=1, max_value=10, value=4, step=1)
 
     # ======================================================
-    # CASE 1: Uploaded Data
+    # If user uploaded a dataset
     # ======================================================
     if uploaded_file:
         try:
@@ -132,12 +136,12 @@ def run():
 
             num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
             if len(num_cols) < 2:
-                st.error("File must contain at least two numeric columns (y and predictors).")
+                st.error("The file must contain at least two numeric columns.")
                 return
 
             st.markdown("### 🧩 Variable Selection")
             y_col = st.selectbox("Select dependent variable (y):", num_cols, index=0)
-            X_cols = st.multiselect("Select independent variable(s) (x):", [c for c in num_cols if c != y_col])
+            X_cols = st.multiselect("Select independent variable(s):", [c for c in num_cols if c != y_col])
 
             if st.button("👨‍💻 Run Regression (Uploaded Data)"):
                 if not X_cols:
@@ -163,14 +167,12 @@ def run():
             st.error(f"❌ Error reading file: {e}")
 
     # ======================================================
-    # CASE 2: Manual Input Guided Mode
+    # If user entered data manually
     # ======================================================
     elif (y_input.strip() and any(x.strip() for x in x_inputs)) and st.button("👨‍💻 Run Regression (Manual Data)"):
         try:
-            # Parse y
             y = np.array(list(map(float, y_input.replace(",", " ").split())))
 
-            # Parse X for each entered predictor
             X_data = []
             for i, x_str in enumerate(x_inputs):
                 if not x_str.strip():
@@ -199,17 +201,14 @@ def run():
             plot_residuals(model)
 
             step_box("**Step 4:** Predict New Values")
-            new_x_input = st.text_input(f"Enter {k} predictor value(s) (x₁, …, xₖ):", placeholder=", ".join(str(i+1) for i in range(k)))
+            new_x_input = st.text_input(f"Enter {k} predictor value(s) (x₁, …, xₖ):", placeholder="2, 1")
             if new_x_input.strip():
-                try:
-                    new_x = np.array(list(map(float, new_x_input.replace(",", " ").split())))
-                    if len(new_x) != k:
-                        st.error(f"Please enter {k} predictor values.")
-                    else:
-                        y_hat = model.predict([np.insert(new_x, 0, 1)])[0]
-                        st.success(f"Predicted y = **{round_value(y_hat, decimals)}**")
-                except Exception as e:
-                    st.error(f"Error: {e}")
+                new_x = np.array(list(map(float, new_x_input.replace(",", " ").split())))
+                if len(new_x) != k:
+                    st.error(f"Please enter {k} predictor values.")
+                else:
+                    y_hat = model.predict([np.insert(new_x, 0, 1)])[0]
+                    st.success(f"Predicted y = **{round_value(y_hat, decimals)}**")
 
         except Exception as e:
             st.error(f"❌ Error: {e}")
@@ -224,6 +223,7 @@ def run():
 if __name__ == "__main__":
     run()
 
-# ✅ Compatibility alias for integration with MIND Suite
+# ✅ Compatibility alias for integration with main suite
 run_multiple_regression_tool = run
+
 
