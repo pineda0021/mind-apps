@@ -41,11 +41,15 @@ def step_box(text):
     )
 
 
+# ==========================================================
+# Report Generator
+# ==========================================================
 def print_report(title, chi2_stat, p_value, critical_value, df, expected_matrix, alpha, decimals):
-    """Display results in a uniform report format."""
+    """Display results in a uniform, step-by-step format."""
     st.markdown(f"## {title}")
     st.markdown("---")
 
+    # -----------------------------
     step_box("**Step 1:** Compute the Chi-Squared Test Statistic")
     st.latex(r"\chi^2 = \sum \frac{(O - E)^2}{E}")
     st.write(f"Computed value: **χ² = {round_value(chi2_stat, decimals)}**")
@@ -82,9 +86,26 @@ def print_report(title, chi2_stat, p_value, critical_value, df, expected_matrix,
         )
     st.success(interpretation)
 
+    # ===============================================
+    # 📘 Summary Table
+    # ===============================================
+    st.markdown("### 📘 Summary Table")
+    summary_data = {
+        "Statistic": [f"χ² = {round_value(chi2_stat, decimals)}"],
+        "df": [df],
+        "Critical Value": [round_value(critical_value, decimals)],
+        "P-Value": [round_value(p_value, decimals)],
+        "α": [alpha],
+        "Decision": ["✅ Reject H₀" if reject else "❌ Fail to Reject H₀"],
+        "Conclusion": [
+            "Evidence of difference/association" if reject else "No evidence of difference/association"
+        ],
+    }
+    st.table(summary_data)
+
 
 # ==========================================================
-# Core Chi-Square Tests
+# Core Chi-Square Test Functions
 # ==========================================================
 def chi_squared_gof(observed, expected_perc, alpha, decimals):
     observed = np.array(observed)
@@ -155,8 +176,8 @@ def run():
 
     st.markdown(
         """
-        ⚠️ **Reminder:** Enter data separated by **spaces or commas**.
-        For matrices, use **new lines** for rows.
+        ⚠️ **Reminder:** Enter data separated by **spaces or commas**.  
+        For matrices, use **new lines** to separate rows.
         """
     )
 
@@ -215,5 +236,5 @@ def run():
 if __name__ == "__main__":
     run()
 
-# ✅ Allow both old and new function names
+# ✅ Allow both old and new function names for compatibility
 run_chi_square_tool = run
