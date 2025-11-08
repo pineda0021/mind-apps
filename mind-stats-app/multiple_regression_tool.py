@@ -1,197 +1,197 @@
 # ==========================================================
 # multiple_regression_tool.py
-# Professor Edward Pineda-Castro, Los Angeles City College
-# Part of the MIND: Statistics Visualizer Suite (CLI Edition)
+# Created by Professor Edward Pineda-Castro, Los Angeles City College
+# Part of the MIND: Statistics Visualizer Suite
 # ==========================================================
 
+import streamlit as st
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
 # ==========================================================
-# Helper — Get User Data
+# Helper Functions
 # ==========================================================
-def get_user_data():
-    """Collect multiple regression data from user with clear guidance."""
-    print("\n📘 HOW TO ENTER YOUR DATA FOR MULTIPLE REGRESSION")
-    print("-----------------------------------------------------------")
-    print("👉 Each row represents ONE observation (student, case, or trial).")
-    print("👉 Separate each value in a row with commas (,).")
-    print("👉 Separate each row with semicolons (;).")
-    print("-----------------------------------------------------------")
-    print("Example: Predicting students’ final exam scores (y)")
-    print("from hours studied (x₁) and quiz average (x₂):")
-    print("\n    85,10,90; 78,8,85; 92,12,95; 70,5,75")
-    print("\nHere:")
-    print(" - 85,78,92,70 → Exam scores (y)")
-    print(" - 10,8,12,5   → Hours studied (x₁)")
-    print(" - 90,85,95,75 → Quiz averages (x₂)")
-    print("-----------------------------------------------------------")
-    print("📏 Order of columns must be:  y, x₁, x₂, x₃, ...")
-    print("-----------------------------------------------------------")
-
-    raw_input_str = input("✏️  Enter your data below: ").strip()
-
+def round_value(value, decimals=4):
     try:
-        data_rows = raw_input_str.split(';')
-        data_matrix = [list(map(float, row.strip().split(','))) for row in data_rows]
-        data_array = np.array(data_matrix)
+        return round(float(value), decimals)
+    except Exception:
+        return value
 
-        if data_array.shape[1] < 2:
+
+def step_box(text):
+    """Stylized step display box."""
+    st.markdown(
+        f"""
+        <div style="background-color:#f0f6ff;padding:10px;border-radius:10px;
+        border-left:5px solid #007acc;margin-bottom:10px;">
+        <b>{text}</b>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def parse_matrix(input_text):
+    """Parse user-entered matrix data."""
+    try:
+        rows = [r for r in input_text.strip().split("\n") if r.strip()]
+        data = [list(map(float, r.replace(",", " ").split())) for r in rows]
+        data = np.array(data, dtype=float)
+        if data.shape[1] < 2:
             raise ValueError("Each row must include at least one predictor variable (x).")
-
-        y = data_array[:, 0]
-        X = data_array[:, 1:]
-        print(f"\n✅ Data successfully entered: {len(y)} observations, {X.shape[1]} predictors.")
+        X = data[:, 1:]
+        y = data[:, 0]
         return X, y
-
-    except Exception as e:
-        print(f"❌ Error reading data: {e}")
-        return None, None
+    except Exception:
+        raise ValueError("Invalid format: please check commas, spaces, and newlines.")
 
 
 # ==========================================================
-# Regression Summary
+# Regression Report
 # ==========================================================
-def multiple_regression_summary(X, y):
-    """Compute regression, display summary, and print key statistics."""
-    X_with_const = sm.add_constant(X)
-    model = sm.OLS(y, X_with_const).fit()
+def print_regression_summary(model, decimals):
+    st.subheader("📄 Regression Summary")
+    st.text(model.summary())
 
-    print("\n📊 MULTIPLE REGRESSION SUMMARY")
-    print("-----------------------------------------------------------")
-    print(model.summary())
-    print("-----------------------------------------------------------")
+    st.markdown("### 📈 Model Fit Statistics")
+    st.write(f"**R² (Coefficient of Determination):** {round_value(model.rsquared, decimals)}")
+    st.write(f"**Adjusted R²:** {round_value(model.rsquared_adj, decimals)}")
+    st.write(f"**F-statistic:** {round_value(model.fvalue, decimals)}")
+    st.write(f"**p-value (F-test):** {round_value(model.f_pvalue, decimals)}")
 
-    print("📈 MODEL FIT STATISTICS")
-    print(f"R-squared (R²): {model.rsquared:.4f}")
-    print(f"Adjusted R²   : {model.rsquared_adj:.4f}")
-    print(f"F-statistic   : {model.fvalue:.4f}")
-    print(f"Prob (F-stat) : {model.f_pvalue:.4e}")
-    print("-----------------------------------------------------------")
-
-    # Coefficients table (β, SE, t, p)
+    st.markdown("### 📄 Coefficients Table")
     coef_table = model.summary2().tables[1]
-    print("📄 COEFFICIENT ESTIMATES")
-    print(coef_table.to_string(float_format=lambda x: f"{x:8.4f}"))
-
-    # Residual stats
-    print("\n📉 RESIDUAL ANALYSIS")
-    print(f"Mean of residuals: {np.mean(model.resid):.4f}")
-    print(f"Std. deviation    : {np.std(model.resid):.4f}")
-    print("-----------------------------------------------------------")
-
-    return model
+    st.dataframe(np.round(coef_table, decimals))
 
 
-# ==========================================================
-# Prediction
-# ==========================================================
-def predict_value(model, X_columns):
-    """Predict new y value from user-supplied x values."""
-    print("\n🔮 PREDICTION MODE")
-    print("-----------------------------------------------------------")
-    var_labels = [f"x{i+1}" for i in range(X_columns)]
-    print(f"Variable order: {', '.join(var_labels)}")
-    new_input = input(f"Enter {X_columns} values (comma-separated): ")
-
-    try:
-        new_x = np.array([float(v) for v in new_input.strip().split(',')])
-        if len(new_x) != X_columns:
-            print("❌ Number of values does not match number of predictors.")
-            return
-        pred_y = model.predict([1, *new_x])[0]
-        print(f"\n✅ Predicted y = {pred_y:.4f}")
-    except Exception as e:
-        print(f"❌ Error: {e}")
-
-
-# ==========================================================
-# Residual Plot
-# ==========================================================
-def residual_plot(model, X, y):
-    """Plot residual scatter and histogram."""
+def plot_residuals(model):
     residuals = model.resid
-    fitted_vals = model.fittedvalues
+    fitted = model.fittedvalues
 
-    # Scatterplot
-    plt.figure(figsize=(8, 5))
-    plt.scatter(fitted_vals, residuals, color='purple', edgecolor='k', s=60)
-    plt.axhline(y=0, color='gray', linestyle='--')
-    plt.title("Residuals vs Fitted Values")
-    plt.xlabel("Fitted Values (ŷ)")
-    plt.ylabel("Residuals (y - ŷ)")
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+    st.markdown("### 📉 Residual Diagnostics")
 
-    # Histogram
-    plt.figure(figsize=(7, 4))
-    plt.hist(residuals, bins=10, color='lightblue', edgecolor='black')
-    plt.title("Histogram of Residuals")
-    plt.xlabel("Residual")
-    plt.ylabel("Frequency")
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    plt.tight_layout()
-    plt.show()
+    fig1, ax1 = plt.subplots()
+    ax1.scatter(fitted, residuals, color="#007acc", edgecolor="black")
+    ax1.axhline(y=0, color="gray", linestyle="--")
+    ax1.set_xlabel("Fitted Values (ŷ)")
+    ax1.set_ylabel("Residuals (y - ŷ)")
+    ax1.set_title("Residuals vs. Fitted Values")
+    ax1.grid(True)
+    st.pyplot(fig1)
+
+    fig2, ax2 = plt.subplots()
+    ax2.hist(residuals, bins=10, color="#72bcd4", edgecolor="black")
+    ax2.set_xlabel("Residual")
+    ax2.set_ylabel("Frequency")
+    ax2.set_title("Histogram of Residuals")
+    st.pyplot(fig2)
 
 
 # ==========================================================
-# Main Menu Controller
+# Main App
 # ==========================================================
-def run_multiple_regression_tool():
-    """Interactive CLI for Multiple Regression Analysis."""
-    print("==========================================================")
-    print("👨‍🏫 MIND: Multiple Regression Analysis Tool (CLI Edition)")
-    print("Professor Edward Pineda-Castro — Los Angeles City College")
-    print("==========================================================")
+def run():
+    st.header("👨‍🏫 Multiple Regression Analysis")
 
-    X = y = model = None
+    st.markdown(
+        """
+        ### 📘 Data Input Instructions
+        Each **row** represents one observation (student, case, or trial).  
+        **Format rules:**
+        - The **first value** in each row is the dependent variable *(y)*.  
+        - The **remaining values** are the independent variables *(x₁, x₂, …, xₖ)*.  
+        - Separate values with **commas or spaces**.  
+        - Press **Enter** (new line) after each observation.
+        
+        **Example:** Predict exam score (y) using hours studied (x₁) and quiz average (x₂):
+        ```
+        85, 10, 90
+        78, 8, 85
+        92, 12, 95
+        70, 5, 75
+        ```
+        **Here:**
+        - y = exam score (dependent variable)
+        - x₁ = hours studied
+        - x₂ = quiz average
+        
+        ---
+        📏 **Format summary:**
+        ```
+        y, x₁, x₂, …, xₖ   ← order of variables per row
+        k = number of predictors (independent variables)
+        ```
+        """
+    )
 
-    while True:
-        print("\nMENU OPTIONS")
-        print("1️⃣  Enter Data")
-        print("2️⃣  Show Regression Summary")
-        print("3️⃣  Predict New Value")
-        print("4️⃣  Plot Residuals & Histogram")
-        print("5️⃣  Exit Program")
-        print("-----------------------------------------------------------")
+    uploaded_file = st.file_uploader("📂 Upload CSV or Excel file (optional)", type=["csv", "xlsx"])
+    raw_data = st.text_area(
+        "Or manually enter your data below (follow the format above):",
+        placeholder="85, 10, 90\n78, 8, 85\n92, 12, 95\n70, 5, 75",
+        height=200,
+    )
 
-        choice = input("Enter your choice (1–5): ").strip()
+    decimals = st.number_input("Decimal places for rounding", min_value=1, max_value=10, value=4, step=1)
 
-        if choice == "1":
-            X, y = get_user_data()
-            if X is not None:
-                model = multiple_regression_summary(X, y)
+    if st.button("👨‍💻 Run Multiple Regression"):
+        try:
+            if uploaded_file:
+                if uploaded_file.name.endswith(".csv"):
+                    df = pd.read_csv(uploaded_file)
+                else:
+                    df = pd.read_excel(uploaded_file)
+                st.dataframe(df.head())
 
-        elif choice == "2":
-            if model is None:
-                print("⚠️ Please enter data first (Option 1).")
+                num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+                if len(num_cols) < 2:
+                    st.error("File must contain at least two numeric columns (y + predictors).")
+                    return
+
+                y_col = st.selectbox("Select Dependent Variable (y)", num_cols, index=0)
+                X_cols = [c for c in num_cols if c != y_col]
+                X = df[X_cols].dropna().to_numpy(dtype=float)
+                y = df.loc[X.index, y_col].to_numpy(dtype=float)
             else:
-                multiple_regression_summary(X, y)
+                X, y = parse_matrix(raw_data)
 
-        elif choice == "3":
-            if model is None:
-                print("⚠️ Please enter data first (Option 1).")
-            else:
-                predict_value(model, X.shape[1])
+            X = sm.add_constant(X)
+            model = sm.OLS(y, X).fit()
 
-        elif choice == "4":
-            if model is None:
-                print("⚠️ Please enter data first (Option 1).")
-            else:
-                residual_plot(model, X, y)
+            step_box("**Step 1:** Compute regression model using OLS")
+            st.latex(r"y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \dots + \beta_k x_k + \varepsilon")
 
-        elif choice == "5":
-            print("\n👋 Exiting program. Goodbye!")
-            break
+            step_box("**Step 2:** Review Model Summary and Fit Statistics")
+            print_regression_summary(model, decimals)
 
-        else:
-            print("❌ Invalid choice. Please select 1–5.")
+            step_box("**Step 3:** Examine Residuals for Randomness and Normality")
+            plot_residuals(model)
+
+            step_box("**Step 4:** Predict New Values")
+            st.caption("Enter predictor values (x₁, x₂, …, xₖ) separated by commas:")
+            new_x_input = st.text_input("Example: 9, 87  → 9 hours studied, 87 quiz average")
+            if new_x_input.strip():
+                try:
+                    new_x = np.array(list(map(float, new_x_input.replace(",", " ").split())))
+                    if len(new_x) != X.shape[1] - 1:
+                        st.error(f"Please enter {X.shape[1]-1} predictor values.")
+                    else:
+                        y_hat = model.predict([np.insert(new_x, 0, 1)])[0]
+                        st.success(f"Predicted y = **{round_value(y_hat, decimals)}**")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+        except Exception as e:
+            st.error(f"❌ Error: {e}")
 
 
 # ==========================================================
 # Run Script
 # ==========================================================
 if __name__ == "__main__":
-    run_multiple_regression_tool()
+    run()
+
+# ✅ Compatibility alias for main suite integration
+run_multiple_regression_tool = run
+
