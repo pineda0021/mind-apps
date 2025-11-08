@@ -12,7 +12,7 @@ from scipy import stats
 import statsmodels.api as sm
 
 # ==========================================================
-# Helper Functions
+# Helper Function
 # ==========================================================
 def step_box(text):
     """Stylized explanation box for clarity."""
@@ -35,14 +35,11 @@ def run_simple_regression_tool():
     if "simple_reg" not in st.session_state:
         st.session_state.simple_reg = {}
 
-    st.markdown("""
-    This tool estimates the best-fitting line  
-    \\[
-    \\hat{y} = b_0 + b_1x
-    \\]
-    using the **Ordinary Least Squares (OLS)** method.
-    """)
+    # --- Introduction
+    st.markdown("This tool estimates the best-fitting line using the **Ordinary Least Squares (OLS)** method.")
+    st.latex(r"\hat{y} = b_0 + b_1x")
 
+    # --- Data input
     uploaded_file = st.file_uploader("📂 Upload CSV or Excel file (optional)", type=["csv", "xlsx"])
     y_input = st.text_area("Or enter dependent variable (y) values (comma-separated):")
     x_input = st.text_area("Or enter independent variable (x) values (comma-separated):")
@@ -51,7 +48,7 @@ def run_simple_regression_tool():
     df = None
     x_col = y_col = None
 
-    # File upload handling
+    # --- File upload handling
     if uploaded_file is not None:
         try:
             df = pd.read_csv(uploaded_file) if uploaded_file.name.endswith(".csv") else pd.read_excel(uploaded_file)
@@ -65,14 +62,14 @@ def run_simple_regression_tool():
 
             c1, c2 = st.columns(2)
             with c1:
-                x_col = st.selectbox("Select X (independent) variable", num_cols)
+                x_col = st.selectbox("Select X (independent variable)", num_cols)
             with c2:
-                y_col = st.selectbox("Select Y (dependent) variable", num_cols, index=1 if len(num_cols) > 1 else 0)
+                y_col = st.selectbox("Select Y (dependent variable)", num_cols, index=1 if len(num_cols) > 1 else 0)
         except Exception as e:
             st.error(f"⚠️ File error: {e}")
             return
 
-    # Fit regression model
+    # --- Run regression
     if st.button("👨‍💻 Run Simple Regression"):
         try:
             if df is not None and x_col and y_col:
@@ -84,7 +81,7 @@ def run_simple_regression_tool():
                 x = np.array(list(map(float, x_input.replace(",", " ").split())))
 
             if len(x) != len(y) or len(x) == 0:
-                st.error("x and y must have the same length and contain data.")
+                st.error("x and y must have the same length and contain valid numeric data.")
                 return
 
             X = sm.add_constant(x)
@@ -108,7 +105,7 @@ def run_simple_regression_tool():
             st.error(f"Error fitting model: {e}")
             return
 
-    # If fitted, show results
+    # --- Display results
     if st.session_state.simple_reg.get("fitted"):
         x = st.session_state.simple_reg["x"]
         y = st.session_state.simple_reg["y"]
@@ -123,11 +120,11 @@ def run_simple_regression_tool():
         st.latex(r"H_0: \beta_1 = 0 \quad\text{(no linear relationship)}")
         st.latex(r"H_a: \beta_1 \neq 0 \quad\text{(linear relationship exists)}")
 
-        # Step 1: Correlation analysis
-        step_box("**Step 1:** Compute correlation and check linear relationship")
+        # Step 1: Correlation
+        step_box("**Step 1:** Compute correlation and assess linearity")
         corr_coef, p_val = stats.pearsonr(x, y)
         r2 = corr_coef ** 2
-        corr_summary = pd.DataFrame({
+        summary_df = pd.DataFrame({
             "Statistic": ["r", "r²", "p-value", "Slope (b₁)", "Intercept (b₀)"],
             "Value": [
                 round(corr_coef, decimals),
@@ -137,13 +134,12 @@ def run_simple_regression_tool():
                 round(intercept, decimals)
             ]
         })
-        st.dataframe(corr_summary)
+        st.dataframe(summary_df)
 
-        # Step 2: Regression summary
-        step_box("**Step 2:** Estimate the regression equation")
-        st.caption("Regression Equation:")
+        # Step 2: Regression Equation
+        step_box("**Step 2:** Compute regression coefficients")
         st.latex(r"\hat{y} = b_0 + b_1x")
-        st.write(f"**ŷ = {round(intercept, decimals)} + {round(slope, decimals)}·x**")
+        st.write(f"**Estimated model:** ŷ = {round(intercept, decimals)} + {round(slope, decimals)}·x")
         st.text(st.session_state.simple_reg["summary"])
 
         # Step 3: Scatter plot
@@ -159,7 +155,7 @@ def run_simple_regression_tool():
         st.pyplot(fig)
 
         # Step 4: Residual plot
-        step_box("**Step 4:** Examine residuals")
+        step_box("**Step 4:** Analyze residuals for randomness")
         fig2, ax2 = plt.subplots()
         ax2.scatter(st.session_state.simple_reg["fitted_vals"], residuals, color="#007acc")
         ax2.axhline(y=0, linestyle="--", color="red")
@@ -169,8 +165,11 @@ def run_simple_regression_tool():
         st.pyplot(fig2)
 
         # Step 5: Prediction
-        step_box("**Step 5:** Prediction and Interpretation")
-        st.caption(f"Use the model to predict new Y for a given X.")
+        step_box("**Step 5:** Make predictions and interpret results")
+        st.caption("Regression equation for prediction:")
+        st.latex(r"\hat{y} = b_0 + b_1x")
+        st.write(f"**ŷ = {round(intercept, decimals)} + {round(slope, decimals)}·x**")
+
         new_x = st.number_input("Enter a new x value:", value=0.0, format="%.4f")
         y_hat = intercept + slope * new_x
         st.success(f"Predicted ŷ = **{round(y_hat, decimals)}**")
@@ -192,13 +191,8 @@ def run_simple_regression_tool():
 def run_multiple_regression_tool():
     st.header("👨‍🏫 Multiple Linear Regression")
 
-    st.markdown("""
-    This tool estimates a linear model of the form  
-    \\[
-    \hat{y} = b_0 + b_1x_1 + b_2x_2 + \dots + b_kx_k
-    \\]
-    using **Ordinary Least Squares (OLS)**.
-    """)
+    st.markdown("This tool estimates a multiple regression model using the **Ordinary Least Squares (OLS)** method.")
+    st.latex(r"\hat{y} = b_0 + b_1x_1 + b_2x_2 + \dots + b_kx_k")
 
     uploaded_file = st.file_uploader("📂 Upload CSV or Excel file (optional)", type=["csv", "xlsx"])
     raw_matrix = st.text_area(
@@ -238,7 +232,7 @@ def run_multiple_regression_tool():
             st.subheader("📄 Regression Summary")
             st.text(model.summary())
 
-            st.subheader("📉 Residual Plot")
+            st.subheader("📉 Residual Plot (Residuals vs Fitted Values)")
             residuals = model.resid
             fitted = model.fittedvalues
             fig, ax = plt.subplots()
@@ -255,4 +249,5 @@ def run_multiple_regression_tool():
 # ==========================================================
 # End of Module
 # ==========================================================
+
 
