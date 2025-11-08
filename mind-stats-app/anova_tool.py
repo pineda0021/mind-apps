@@ -36,6 +36,46 @@ def parse_groups(input_text):
         return None
 
 
+def load_uploaded_data():
+    """Upload CSV or Excel and extract groups for ANOVA."""
+    uploaded_file = st.file_uploader(
+        "📂 Upload CSV or Excel file (wide or long format)",
+        type=["csv", "xlsx"]
+    )
+    if not uploaded_file:
+        return None
+
+    try:
+        if uploaded_file.name.endswith(".csv"):
+            df = pd.read_csv(uploaded_file)
+        else:
+            df = pd.read_excel(uploaded_file)
+
+        st.write("### 📄 Preview of Uploaded Data")
+        st.dataframe(df.head())
+
+        # Detect format type
+        if df.shape[1] == 2 and set(df.columns.str.lower()) >= {"group", "value"}:
+            # Long format: one column = group names, one column = values
+            groups = [group["value"].dropna().tolist() for _, group in df.groupby(df.columns[0])]
+            st.success("✅ Detected long format with 'Group' and 'Value' columns.")
+            return groups
+
+        elif df.shape[1] >= 2:
+            # Wide format: each column = one group
+            groups = [df[col].dropna().tolist() for col in df.columns]
+            st.success("✅ Detected wide format (each column = one group).")
+            return groups
+
+        else:
+            st.error("⚠️ File must contain at least two numeric columns or a 'Group'-'Value' pair.")
+            return None
+
+    except Exception as e:
+        st.error(f"Error reading file: {e}")
+        return None
+
+
 # ==========================================================
 # One-Way ANOVA Calculation
 # ==========================================================
@@ -109,7 +149,9 @@ def one_way_anova(groups, alpha, decimals):
         + f" than α = {alpha}, "
         + ("we reject" if p_value <= alpha else "we fail to reject")
         + " the null hypothesis. "
-        + ("At least one mean differs significantly." if p_value <= alpha else "We conclude the group means are not significantly different.")
+        + ("At least one mean differs significantly."
+           if p_value <= alpha
+           else "We conclude the group means are not significantly different.")
     )
     st.write(interpretation)
 
@@ -123,35 +165,44 @@ def run():
     st.markdown("""
     This tool tests whether **three or more group means are equal** using the F-test.
     ---
-    **Reminder:**  
-    - Separate values within each group by commas.  
-    - Separate groups by semicolons (;).  
-    - Example: `12,15,18; 25,28,29; 10,12,14`
+    **Input Options:**  
+    - 🧮 Manual entry of group data  
+    - 📁 Upload CSV or Excel file (wide or long format)
     """)
 
     input_method = st.radio(
         "Choose data input method:",
         [
-            "Enter all group data in one line (semicolon-separated)",
-            "Enter number of groups and input each group separately"
+            "📋 Manual Entry",
+            "📂 Upload CSV/Excel File"
         ]
     )
 
     groups = []
-    if input_method == "Enter all group data in one line (semicolon-separated)":
-        input_text = st.text_area("Enter group data:", placeholder="12,15,18; 25,28,29; 10,12,14")
-        if input_text:
-            groups = parse_groups(input_text)
+    if input_method == "📋 Manual Entry":
+        mode = st.radio(
+            "Manual Entry Method:",
+            [
+                "Enter all group data in one line (semicolon-separated)",
+                "Enter number of groups and input each group separately"
+            ]
+        )
+        if mode == "Enter all group data in one line (semicolon-separated)":
+            input_text = st.text_area("Enter group data:", placeholder="12,15,18; 25,28,29; 10,12,14")
+            if input_text:
+                groups = parse_groups(input_text)
+        else:
+            num_groups = st.number_input("Number of groups", min_value=2, step=1)
+            for i in range(num_groups):
+                group_text = st.text_input(f"Group {i+1} data (comma-separated)", key=f"group_{i}")
+                if group_text:
+                    try:
+                        groups.append(list(map(float, group_text.strip().split(','))))
+                    except Exception:
+                        st.error(f"⚠️ Invalid input in Group {i+1}. Use commas to separate values (e.g., 10,12,14).")
 
-    elif input_method == "Enter number of groups and input each group separately":
-        num_groups = st.number_input("Number of groups", min_value=2, step=1)
-        for i in range(num_groups):
-            group_text = st.text_input(f"Group {i+1} data (comma-separated)", key=f"group_{i}")
-            if group_text:
-                try:
-                    groups.append(list(map(float, group_text.strip().split(','))))
-                except Exception:
-                    st.error(f"⚠️ Invalid input in Group {i+1}. Use commas to separate values (e.g., 10,12,14).")
+    elif input_method == "📂 Upload CSV/Excel File":
+        groups = load_uploaded_data()
 
     alpha = st.number_input("Significance level (α)", min_value=0.001, max_value=0.5, value=0.05)
     decimals = st.number_input("Decimal places for rounding", 1, 10, 4)
@@ -171,4 +222,5 @@ if __name__ == "__main__":
 
 # ✅ Compatibility for main app
 run_anova_tool = run
+
 
