@@ -129,7 +129,7 @@ Interpretation:
             n_req = (p_est * (1 - p_est) *z**2) / (E**2)
             n_ceiled = int(np.ceil(n_req))
 
-            st.latex(r"n \;=\; \frac{\hat{p}(1-\hat{p},\alpha/2}^2\)}{E^2}")
+            st.latex(r"\hat{p} \;\pm\; z_{\alpha/2} \sqrt{\dfrac{\hat{p}(1-\hat{p})}{n}}")
             st.text(f"""
 =====================
 Sample Size for Proportion
