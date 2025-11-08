@@ -21,7 +21,7 @@ def round_value(value, decimals=4):
 
 
 def step_box(text):
-    """Stylized step display box."""
+    """Stylized blue step display box."""
     st.markdown(
         f"""
         <div style="background-color:#f0f6ff;padding:10px;border-radius:10px;
@@ -34,7 +34,7 @@ def step_box(text):
 
 
 def print_regression_summary(model, decimals):
-    """Display key regression results."""
+    """Display model summary and fit stats."""
     st.subheader("📄 Regression Summary")
     st.text(model.summary())
 
@@ -50,7 +50,7 @@ def print_regression_summary(model, decimals):
 
 
 def plot_residuals(model):
-    """Plot residual diagnostics."""
+    """Residuals diagnostics."""
     residuals = model.resid
     fitted = model.fittedvalues
 
@@ -88,35 +88,37 @@ def run():
     """)
 
     st.subheader("📘 Data Input")
-
     uploaded_file = st.file_uploader("📂 Upload CSV or Excel file (optional)", type=["csv", "xlsx"])
 
-    st.markdown("### ✏️ Or enter data manually")
+    st.markdown("### ✏️ Or enter data manually (guided mode)")
     st.caption("""
-    **Format instructions:**
-    - Enter **y** values separated by commas.  
-    - Enter **x** values as rows separated by semicolons (each row = one independent variable).  
-    - Each variable must have the same number of observations as y.  
+    **Step 1:** Enter your dependent variable (y) values separated by commas.  
+    Example: `10, 15, 20, 25`  
 
-    **Example:**
-    ```
-    y: 1, 2, 3, 5
-    x: 2, 3, 4, 5; 1, 2, 3, 5
-    ```
-    Here:
-    - y = dependent variable (outcome)
-    - first row of x = x₁
-    - second row of x = x₂
+    **Step 2:** Choose how many independent variables (x’s) you want to include.  
+    You’ll then be prompted to enter values for each \(x_i\).
     """)
 
-    # Manual entry boxes
-    y_input = st.text_area("Or enter dependent variable (y) values (comma-separated):", placeholder="1, 2, 3, 5", height=80)
-    x_input = st.text_area("Or enter independent variable (x) values (semicolon-separated rows):", placeholder="2, 3, 4, 5; 1, 2, 3, 5", height=80)
+    # ======================================================
+    # Guided Manual Input Mode
+    # ======================================================
+    y_input = st.text_area("Dependent variable (y):", placeholder="10, 15, 20, 25", height=80)
+    n_x = st.number_input("How many independent variables (x’s)?", min_value=1, max_value=10, value=1, step=1)
+
+    x_inputs = []
+    for i in range(n_x):
+        x_val = st.text_area(
+            f"Independent variable x{i+1} values (comma-separated):",
+            placeholder=f"{', '.join(str(v) for v in range(1, 5))}",
+            height=80,
+            key=f"x_input_{i}"
+        )
+        x_inputs.append(x_val)
 
     decimals = st.number_input("Decimal places for rounding", min_value=1, max_value=10, value=4, step=1)
 
     # ======================================================
-    # CASE 1: File Upload Mode
+    # CASE 1: Uploaded Data
     # ======================================================
     if uploaded_file:
         try:
@@ -161,28 +163,30 @@ def run():
             st.error(f"❌ Error reading file: {e}")
 
     # ======================================================
-    # CASE 2: Manual Input Mode
+    # CASE 2: Manual Input Guided Mode
     # ======================================================
-    elif (y_input.strip() and x_input.strip()) and st.button("👨‍💻 Run Regression (Manual Data)"):
+    elif (y_input.strip() and any(x.strip() for x in x_inputs)) and st.button("👨‍💻 Run Regression (Manual Data)"):
         try:
             # Parse y
             y = np.array(list(map(float, y_input.replace(",", " ").split())))
 
-            # Parse X (rows = predictors)
-            x_rows = [r.strip() for r in x_input.strip().split(";") if r.strip()]
-            X = np.array([list(map(float, r.replace(",", " ").split())) for r in x_rows])
+            # Parse X for each entered predictor
+            X_data = []
+            for i, x_str in enumerate(x_inputs):
+                if not x_str.strip():
+                    st.error(f"Please enter values for x{i+1}.")
+                    return
+                x_vals = np.array(list(map(float, x_str.replace(",", " ").split())))
+                if len(x_vals) != len(y):
+                    st.error(f"x{i+1} must have the same number of observations as y ({len(y)}).")
+                    return
+                X_data.append(x_vals)
 
-            # Transpose X so columns = predictors, rows = observations
-            X = X.T
-
-            if len(y) != X.shape[0]:
-                st.error(f"Number of y values ({len(y)}) must match number of X observations ({X.shape[0]}).")
-                return
-
-            k = X.shape[1]
+            X = np.column_stack(X_data)
+            X = sm.add_constant(X)
+            k = X.shape[1] - 1
             st.success(f"✅ Data entered successfully: {len(y)} observations and {k} predictor(s).")
 
-            X = sm.add_constant(X)
             model = sm.OLS(y, X).fit()
 
             step_box("**Step 1:** Fit the multiple regression model")
@@ -195,7 +199,7 @@ def run():
             plot_residuals(model)
 
             step_box("**Step 4:** Predict New Values")
-            new_x_input = st.text_input(f"Enter {k} predictor value(s) (x₁, …, xₖ):", placeholder="2, 1")
+            new_x_input = st.text_input(f"Enter {k} predictor value(s) (x₁, …, xₖ):", placeholder=", ".join(str(i+1) for i in range(k)))
             if new_x_input.strip():
                 try:
                     new_x = np.array(list(map(float, new_x_input.replace(",", " ").split())))
@@ -211,7 +215,7 @@ def run():
             st.error(f"❌ Error: {e}")
 
     else:
-        st.info("👆 Upload a dataset or enter y and X manually to begin.")
+        st.info("👆 Upload a dataset or enter y and x values manually to begin.")
 
 
 # ==========================================================
@@ -220,5 +224,6 @@ def run():
 if __name__ == "__main__":
     run()
 
-# ✅ Compatibility alias for main suite integration
+# ✅ Compatibility alias for integration with MIND Suite
 run_multiple_regression_tool = run
+
