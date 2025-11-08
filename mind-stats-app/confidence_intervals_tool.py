@@ -72,11 +72,15 @@ def run():
     decimal = st.number_input("Decimal places for output", min_value=0, max_value=10, value=4)
 
     # ==========================================================
-    # 1. Confidence Interval for Proportion
+    # 1. Confidence Interval for Proportion (reordered inputs)
     # ==========================================================
     if choice == categories[0]:
-        n = st.number_input("Sample size (n)", min_value=1, step=1)
-        x = st.number_input("Number of successes (x)", min_value=0, max_value=n, step=1)
+        x = st.number_input("Number of successes (x)", min_value=0, step=1)
+        n = st.number_input("Sample size (n)", min_value=max(1, int(x)), step=1)
+        # enforce x ≤ n by clamping after change
+        if x > n:
+            st.warning("⚠️ Adjusted: successes x cannot exceed sample size n. Setting x = n.")
+            x = n
         conf = st.number_input("Confidence level (0–1)", value=0.95, format="%.3f")
 
         if st.button("👨‍💻 Calculate"):
@@ -102,8 +106,8 @@ Formula (LaTeX):
   p̂ ± z_(α/2) * sqrt( p̂(1 - p̂) / n )
 
 Given:
-  x (successes)     = {x}
-  n (sample size)   = {n}
+  x (successes)     = {int(x)}
+  n (sample size)   = {int(n)}
   p̂                = {p_hat:.{decimal}f}
   z_(α/2)           = {z:.{decimal}f}
   Standard Error    = {se:.{decimal}f}
@@ -176,7 +180,7 @@ Formula (LaTeX):
 Given:
   x̄ (sample mean)   = {mean:.{decimal}f}
   σ (pop. SD)        = {sigma:.{decimal}f}
-  n (sample size)    = {n}
+  n (sample size)    = {int(n)}
   z_(α/2)            = {z:.{decimal}f}
   Standard Error     = {se:.{decimal}f}
   Margin of Error E  = {moe:.{decimal}f}
@@ -199,7 +203,7 @@ Result:
                 st.error("❌ n must be at least 2 for a t-interval.")
                 st.stop()
 
-            df = n - 1
+            df = int(n - 1)
             t_crit = stats.t.ppf((1 + conf) / 2, df)
             se = s / np.sqrt(n)
             moe = t_crit * se
@@ -216,7 +220,7 @@ Formula (LaTeX):
 Given:
   x̄ (sample mean)   = {mean:.{decimal}f}
   s (sample SD)      = {s:.{decimal}f}
-  n (sample size)    = {n}
+  n (sample size)    = {int(n)}
   df                 = {df}
   t_(α/2, df)        = {t_crit:.{decimal}f}
   Standard Error     = {se:.{decimal}f}
@@ -251,7 +255,7 @@ Result:
             n = len(data)
             mean = float(np.mean(data))
             s = float(np.std(data, ddof=1))
-            df = n - 1
+            df = int(n - 1)
             t_crit = float(stats.t.ppf((1 + conf) / 2, df))
             se = s / np.sqrt(n)
             moe = t_crit * se
@@ -266,7 +270,7 @@ Formula (LaTeX):
   x̄ ± t_(α/2, n-1) * (s / √n)
 
 Given (from data):
-  n (sample size)    = {n}
+  n (sample size)    = {int(n)}
   df                 = {df}
   x̄ (sample mean)   = {mean:.{decimal}f}
   s (sample SD)      = {s:.{decimal}f}
@@ -286,7 +290,7 @@ Result:
                     "t Critical", "Margin of Error", "CI Lower", "CI Upper"
                 ],
                 "Value": [
-                    n, round_value(mean, decimal), round_value(s, decimal),
+                    int(n), round_value(mean, decimal), round_value(s, decimal),
                     round_value(se, decimal), round_value(t_crit, decimal),
                     round_value(moe, decimal), round_value(lower, decimal), round_value(upper, decimal)
                 ]
@@ -294,41 +298,7 @@ Result:
             st.dataframe(summary, use_container_width=True)
 
     # ==========================================================
-    # 6. Sample Size for Mean
-    # ==========================================================
-    elif choice == categories[5]:
-        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
-        sigma = st.number_input("Population SD (σ)", min_value=0.0, format="%.4f")
-        E = st.number_input("Margin of error (E)", min_value=0.000001, value=0.05, step=0.001, format="%.6f")
-
-        if st.button("👨‍💻 Calculate"):
-            if sigma < 0:
-                st.error("❌ σ must be ≥ 0.")
-                st.stop()
-
-            z = stats.norm.ppf((1 + conf)/2)
-            n_req = (z * sigma / E)**2
-
-            st.latex(r"n \;=\; \left(\frac{z_{\alpha/2}\,\sigma}{E}\right)^2")
-            st.text(f"""
-=====================
-Sample Size for Mean
-=====================
-Formula (LaTeX):
-  n = ( z_(α/2) * σ / E )^2
-
-Given:
-  Confidence Level  = {conf*100:.1f}%
-  z_(α/2)           = {z:.{decimal}f}
-  σ (pop. SD)       = {sigma}
-  Margin of Error E = {E}
-
-Result:
-  Required Sample Size (n) = {np.ceil(n_req):.0f}
-""")
-
-    # ==========================================================
-    # 7–10. Variance and SD Confidence Intervals
+    # 6–10. Variance and SD Confidence Intervals (with step-by-step)
     # ==========================================================
     else:
         st.subheader(f"📈 {choice}")
@@ -337,8 +307,8 @@ Result:
             data = load_uploaded_data()
             if data is not None:
                 n = len(data)
-                s2 = np.var(data, ddof=1)
-                s = np.sqrt(s2)
+                s2 = float(np.var(data, ddof=1))
+                s = float(np.sqrt(s2))
             else:
                 st.warning("⚠️ Please upload data to proceed.")
                 return
@@ -346,17 +316,17 @@ Result:
             n = st.number_input("Sample size (n)", min_value=2, step=1)
             if "Variance" in choice:
                 s2 = st.number_input("Sample variance (s²)", min_value=0.0, format="%.6f")
-                s = np.sqrt(s2)
+                s = float(np.sqrt(s2))
             else:
                 s = st.number_input("Sample SD (s)", min_value=0.0, format="%.6f")
-                s2 = s**2
+                s2 = float(s**2)
 
         conf = st.number_input("Confidence level", value=0.95, format="%.3f")
-        df = n - 1
-        chi2_lower = stats.chi2.ppf((1 - conf)/2, df)
-        chi2_upper = stats.chi2.ppf(1 - (1 - conf)/2, df)
+        df = int(n - 1)
+        chi2_lower = float(stats.chi2.ppf((1 - conf)/2, df))
+        chi2_upper = float(stats.chi2.ppf(1 - (1 - conf)/2, df))
 
-        # LaTeX formulas (shown regardless of button for teaching value)
+        # Always show the formulas above the button for teaching value
         st.latex(r"""
 \text{Variance CI: } 
 \left(\frac{(n-1)s^2}{\chi^2_{(1-\alpha/2),\,df}},\;
@@ -368,27 +338,35 @@ Result:
 """)
 
         if st.button("👨‍💻 Calculate"):
-            var_lower = df * s2 / chi2_upper
-            var_upper = df * s2 / chi2_lower
-            sd_lower, sd_upper = np.sqrt(var_lower), np.sqrt(var_upper)
+            # Step-by-step components
+            numer = df * s2
+            var_lower = numer / chi2_upper
+            var_upper = numer / chi2_lower
+            sd_lower, sd_upper = float(np.sqrt(var_lower)), float(np.sqrt(var_upper))
 
             st.text(f"""
 =====================
 {choice}
 =====================
-Formulas (LaTeX):
-  Variance CI:
-    ( (df * s²) / χ²_(1-α/2, df) , (df * s²) / χ²_(α/2, df) )
-  SD CI:
-    ( sqrt( (df * s²) / χ²_(1-α/2, df) ), sqrt( (df * s²) / χ²_(α/2, df) ) )
+Step-by-Step (Variance):
+  1) df = n - 1 = {df}
+  2) (n - 1) * s² = {df} * {s2:.{decimal}f} = {numer:.{decimal}f}
+  3) χ²_(1 - α/2, df) = {chi2_upper:.{decimal}f}
+     χ²_(α/2, df)     = {chi2_lower:.{decimal}f}
+  4) Lower Variance Bound = ((n - 1)s²) / χ²_(1 - α/2, df)
+                          = {numer:.{decimal}f} / {chi2_upper:.{decimal}f}
+                          = {var_lower:.{decimal}f}
+  5) Upper Variance Bound = ((n - 1)s²) / χ²_(α/2, df)
+                          = {numer:.{decimal}f} / {chi2_lower:.{decimal}f}
+                          = {var_upper:.{decimal}f}
 
-Given:
-  n (sample size)     = {n}
-  df                  = {df}
-  s² (sample variance)= {s2:.{decimal}f}
-  s  (sample SD)      = {s:.{decimal}f}
-  χ² Lower (α/2)      = {chi2_lower:.{decimal}f}
-  χ² Upper (1-α/2)    = {chi2_upper:.{decimal}f}
+Step-by-Step (Standard Deviation):
+  6) Lower SD Bound = sqrt(Lower Variance Bound)
+                    = sqrt({var_lower:.{decimal}f})
+                    = {sd_lower:.{decimal}f}
+  7) Upper SD Bound = sqrt(Upper Variance Bound)
+                    = sqrt({var_upper:.{decimal}f})
+                    = {sd_upper:.{decimal}f}
 
 Results:
   {conf*100:.1f}% CI for Variance = ({var_lower:.{decimal}f}, {var_upper:.{decimal}f})
@@ -398,13 +376,13 @@ Results:
 
             st.dataframe(pd.DataFrame({
                 "Statistic": [
-                    "Degrees of Freedom", "Sample Variance (s²)", "Sample SD (s)",
+                    "Degrees of Freedom", "(n-1)s²",
                     "χ² Lower (α/2)", "χ² Upper (1-α/2)",
                     "Variance CI (Lower)", "Variance CI (Upper)",
                     "SD CI (Lower)", "SD CI (Upper)"
                 ],
                 "Value": [
-                    df, round_value(s2, decimal), round_value(s, decimal),
+                    df, round_value(numer, decimal),
                     round_value(chi2_lower, decimal), round_value(chi2_upper, decimal),
                     round_value(var_lower, decimal), round_value(var_upper, decimal),
                     round_value(sd_lower, decimal), round_value(sd_upper, decimal)
