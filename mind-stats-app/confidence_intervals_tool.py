@@ -39,22 +39,23 @@ def run():
     st.markdown("---")
 
     categories = [
-        "Confidence Interval for Proportion",
-        "Sample Size for Proportion",
-        "Confidence Interval for Mean (Known SD)",
-        "Confidence Interval for Mean (Given Sample SD)",
-        "Confidence Interval for Mean (With Data)",
-        "Sample Size for Mean",
-        "Confidence Interval for Variance (Without Data)",
-        "Confidence Interval for Variance (With Data)",
-        "Confidence Interval for Standard Deviation (Without Data)",
-        "Confidence Interval for Standard Deviation (With Data)"
+        "Confidence Interval for Proportion (p, z)",
+        "Sample Size for Proportion (p, z, E)",
+        "Confidence Interval for Mean (σ known, z)",
+        "Confidence Interval for Mean (s given, t)",
+        "Confidence Interval for Mean (with data, t)",
+        "Sample Size for Mean (σ known, z, E)",
+        "Confidence Interval for Variance & SD (χ²)",
+        "Confidence Interval for Variance & SD (with data, χ²)"
     ]
 
     choice = st.selectbox(
-        "Choose a category:", categories, index=None,
+        "Choose a category:",
+        categories,
+        index=None,
         placeholder="Select a confidence interval type..."
     )
+
     if not choice:
         st.info("👆 Please select a category to begin.")
         return
@@ -62,14 +63,11 @@ def run():
     decimal = st.number_input("Decimal places for output", min_value=0, max_value=10, value=4)
 
     # ==========================================================
-    # 1. Confidence Interval for Proportion
+    # 1. CI for Proportion (p, z)
     # ==========================================================
     if choice == categories[0]:
         x = st.number_input("Number of successes (x)", min_value=0, step=1)
         n = st.number_input("Sample size (n)", min_value=max(1, int(x)), step=1)
-        if x > n:
-            st.warning("⚠️ Adjusted: successes x cannot exceed sample size n. Setting x = n.")
-            x = n
         conf = st.number_input("Confidence level (0–1)", value=0.95, format="%.3f")
 
         if st.button("👨‍💻 Calculate"):
@@ -82,21 +80,20 @@ def run():
             st.latex(r"\hat{p} \;\pm\; z_{\alpha/2}\sqrt{\dfrac{\hat{p}(1-\hat{p})}{n}}")
             st.text(f"""
 =====================
-Confidence Interval for Proportion
+Confidence Interval for Proportion (p, z)
 =====================
-1) Inputs:
-   x = {int(x)}, n = {int(n)}, p̂ = {p_hat:.{decimal}f}, confidence = {conf:.3f}
-2) Critical value: z_(α/2) = {z:.{decimal}f}
-3) SE = sqrt( p̂(1-p̂)/n ) = {se:.{decimal}f}
-4) E = z * SE = {moe:.{decimal}f}
-5) CI = ({lower:.{decimal}f}, {upper:.{decimal}f})
+1) Inputs: x={int(x)}, n={int(n)}, p̂={p_hat:.{decimal}f}, confidence={conf:.3f}
+2) z_(α/2)={z:.{decimal}f}
+3) SE=sqrt[p̂(1−p̂)/n]={se:.{decimal}f}
+4) E=z*SE={moe:.{decimal}f}
+5) CI=({lower:.{decimal}f}, {upper:.{decimal}f})
 
 Interpretation:
-  We are {conf*100:.1f}% confident that the true population proportion lies between {lower:.{decimal}f} and {upper:.{decimal}f}.
+  We are {conf*100:.1f}% confident the population proportion lies between {lower:.{decimal}f} and {upper:.{decimal}f}.
 """)
 
     # ==========================================================
-    # 2. Sample Size for Proportion
+    # 2. Sample Size for Proportion (p, z, E)
     # ==========================================================
     elif choice == categories[1]:
         conf = st.number_input("Confidence level", value=0.95, format="%.3f")
@@ -110,18 +107,18 @@ Interpretation:
             st.latex(r"n \;=\; \hat{p}(1-\hat{p})\!\left(\dfrac{Z_{\alpha/2}}{E}\right)^{2}")
             st.text(f"""
 =====================
-Sample Size for Proportion
+Sample Size for Proportion (p, z, E)
 =====================
 1) Inputs: Z_(α/2)={z:.{decimal}f}, p̂={p_est:.{decimal}f}, E={E}
-2) Compute: n = p̂(1-p̂)(Z/E)^2 = {n_req:.{decimal}f}
-3) Round up: n = {n_ceiled}
+2) Compute: n=p̂(1-p̂)(Z/E)^2={n_req:.{decimal}f}
+3) Round up: n={n_ceiled}
 
 Interpretation:
   A sample of at least {n_ceiled} is required at {conf*100:.1f}% confidence.
 """)
 
     # ==========================================================
-    # 3. Confidence Interval for Mean (Known SD)
+    # 3. CI for Mean (σ known, z)
     # ==========================================================
     elif choice == categories[2]:
         mean = st.number_input("Sample mean (x̄)")
@@ -134,10 +131,11 @@ Interpretation:
             se = sigma / np.sqrt(n)
             moe = z * se
             lower, upper = mean - moe, mean + moe
+
             st.latex(r"\bar{X} \;\pm\; z_{\alpha/2}\!\left(\dfrac{\sigma}{\sqrt{n}}\right)")
             st.text(f"""
 =====================
-Confidence Interval for Mean (Known SD)
+Confidence Interval for Mean (σ known, z)
 =====================
 1) Inputs: x̄={mean:.{decimal}f}, σ={sigma:.{decimal}f}, n={int(n)}
 2) z_(α/2)={z:.{decimal}f}
@@ -146,11 +144,11 @@ Confidence Interval for Mean (Known SD)
 5) CI=({lower:.{decimal}f}, {upper:.{decimal}f})
 
 Interpretation:
-  We are {conf*100:.1f}% confident that μ lies between {lower:.{decimal}f} and {upper:.{decimal}f}.
+  We are {conf*100:.1f}% confident μ lies between {lower:.{decimal}f} and {upper:.{decimal}f}.
 """)
 
     # ==========================================================
-    # 4. Confidence Interval for Mean (Given Sample SD)
+    # 4. CI for Mean (s given, t)
     # ==========================================================
     elif choice == categories[3]:
         mean = st.number_input("Sample mean (x̄)")
@@ -167,7 +165,7 @@ Interpretation:
             st.latex(r"\bar{X} \;\pm\; t_{\alpha/2,\,n-1}\!\left(\dfrac{s}{\sqrt{n}}\right)")
             st.text(f"""
 =====================
-Confidence Interval for Mean (Given Sample SD)
+Confidence Interval for Mean (s given, t)
 =====================
 1) Inputs: x̄={mean:.{decimal}f}, s={s:.{decimal}f}, n={int(n)}, df={df}
 2) t_(α/2,df)={t_crit:.{decimal}f}
@@ -176,29 +174,27 @@ Confidence Interval for Mean (Given Sample SD)
 5) CI=({lower:.{decimal}f}, {upper:.{decimal}f})
 
 Interpretation:
-  We are {conf*100:.1f}% confident that μ lies between {lower:.{decimal}f} and {upper:.{decimal}f}.
+  We are {conf*100:.1f}% confident μ lies between {lower:.{decimal}f} and {upper:.{decimal}f}.
 """)
 
     # ==========================================================
-    # 5. Confidence Interval for Mean (With Data)
+    # 5. CI for Mean (with data, t)
     # ==========================================================
     elif choice == categories[4]:
-        st.subheader("📊 Confidence Interval for Mean (Using Raw Data)")
+        st.subheader("📊 Confidence Interval for Mean (with data, t)")
         data = load_uploaded_data()
         raw_input = st.text_area("Or enter comma-separated values:")
         if data is None and raw_input:
             try:
                 data = np.array([float(x.strip()) for x in raw_input.split(",") if x.strip()])
             except:
-                st.error("❌ Invalid input. Only numeric comma-separated values.")
+                st.error("❌ Invalid input. Use numeric comma-separated values only.")
                 return
-
         conf = st.number_input("Confidence level", value=0.95, format="%.3f")
         if st.button("👨‍💻 Calculate"):
             if data is None or len(data) < 2:
                 st.warning("⚠️ Provide at least two data points.")
                 return
-
             n, mean, s = len(data), np.mean(data), np.std(data, ddof=1)
             df = n - 1
             t_crit = stats.t.ppf((1 + conf) / 2, df)
@@ -208,7 +204,7 @@ Interpretation:
             st.latex(r"\bar{X} \;\pm\; t_{\alpha/2,\,n-1}\!\left(\dfrac{s}{\sqrt{n}}\right)")
             st.text(f"""
 =====================
-Confidence Interval for Mean (With Data)
+Confidence Interval for Mean (with data, t)
 =====================
 1) n={n}, x̄={mean:.{decimal}f}, s={s:.{decimal}f}, df={df}
 2) t_(α/2,df)={t_crit:.{decimal}f}
@@ -217,12 +213,12 @@ Confidence Interval for Mean (With Data)
 5) CI=({lower:.{decimal}f}, {upper:.{decimal}f})
 
 Interpretation:
-  We are {conf*100:.1f}% confident that μ lies between {lower:.{decimal}f} and {upper:.{decimal}f}.
+  We are {conf*100:.1f}% confident μ lies between {lower:.{decimal}f} and {upper:.{decimal}f}.
 =====================
 """)
 
     # ==========================================================
-    # 6. Sample Size for Mean
+    # 6. Sample Size for Mean (σ known, z, E)
     # ==========================================================
     elif choice == categories[5]:
         conf = st.number_input("Confidence level", value=0.95, format="%.3f")
@@ -235,7 +231,7 @@ Interpretation:
             st.latex(r"n \;=\; \left(\dfrac{z_{\alpha/2}\,\sigma}{E}\right)^{2}")
             st.text(f"""
 =====================
-Sample Size for Mean
+Sample Size for Mean (σ known, z, E)
 =====================
 1) Inputs: z_(α/2)={z:.{decimal}f}, σ={sigma}, E={E}
 2) Compute: n=(zσ/E)^2={n_req:.{decimal}f}
@@ -246,28 +242,20 @@ Interpretation:
 """)
 
     # ==========================================================
-    # 7–10. Variance / SD Confidence Intervals
+    # 7–8. CI for Variance & SD (χ²)
     # ==========================================================
     else:
-        data=None
-        if "With Data" in choice:
+        with_data = "with data" in choice
+        if with_data:
             data = load_uploaded_data()
-            if data is not None:
-                n = len(data)
-                s2 = np.var(data, ddof=1)
-                s = np.sqrt(s2)
-            else:
-                st.warning("⚠️ Please upload data.")
+            if data is None:
+                st.warning("⚠️ Upload numeric data.")
                 return
+            n = len(data)
+            s2 = np.var(data, ddof=1)
         else:
             n = st.number_input("Sample size (n)", min_value=2, step=1)
-            if "Variance" in choice:
-                s2 = st.number_input("Sample variance (s²)", min_value=0.0, format="%.6f")
-                s = np.sqrt(s2)
-            else:
-                s = st.number_input("Sample SD (s)", min_value=0.0, format="%.6f")
-                s2 = s**2
-
+            s2 = st.number_input("Sample variance (s²)", min_value=0.0, format="%.6f")
         conf = st.number_input("Confidence level", value=0.95, format="%.3f")
         df = n - 1
         chi2_lower = stats.chi2.ppf((1 - conf)/2, df)
@@ -279,12 +267,12 @@ Interpretation:
             sd_lower, sd_upper = np.sqrt(var_lower), np.sqrt(var_upper)
             st.text(f"""
 =====================
-{choice}
+Confidence Interval for Variance & SD (χ²)
 =====================
 1) Inputs: n={int(n)}, df={df}, s²={s2:.{decimal}f}
 2) χ² upper={chi2_upper:.{decimal}f}, χ² lower={chi2_lower:.{decimal}f}
-3) Variance bounds=({var_lower:.{decimal}f}, {var_upper:.{decimal}f})
-4) SD bounds=({sd_lower:.{decimal}f}, {sd_upper:.{decimal}f})
+3) Var CI=({var_lower:.{decimal}f}, {var_upper:.{decimal}f})
+4) SD CI=({sd_lower:.{decimal}f}, {sd_upper:.{decimal}f})
 
 Interpretation:
   We are {conf*100:.1f}% confident that the population variance lies between {var_lower:.{decimal}f} and {var_upper:.{decimal}f},
