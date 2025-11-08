@@ -5,17 +5,24 @@
 # ==========================================================
 
 import streamlit as st
-import numpy as np
 import pandas as pd
-import math
-from scipy.stats import t, chi2, norm
+import numpy as np
+import scipy.stats as stats
 
 # ==========================================================
 # Helper Functions
 # ==========================================================
-def load_data_upload(label="📂 Upload CSV or Excel file (single column of numeric data)"):
-    """Uploads and extracts numeric column data"""
-    uploaded_file = st.file_uploader(label, type=["csv", "xlsx"])
+def round_value(value, decimals=4):
+    """Round numeric values consistently"""
+    return round(value, decimals)
+
+
+def load_uploaded_data():
+    """Load numeric data from CSV or Excel file"""
+    uploaded_file = st.file_uploader(
+        "📂 Upload CSV or Excel file with a single column of numeric data",
+        type=["csv", "xlsx"]
+    )
     if uploaded_file:
         try:
             if uploaded_file.name.endswith(".csv"):
@@ -25,235 +32,281 @@ def load_data_upload(label="📂 Upload CSV or Excel file (single column of nume
             for col in df.columns:
                 if pd.api.types.is_numeric_dtype(df[col]):
                     return df[col].dropna().to_numpy()
-            st.error("⚠️ No numeric column found in file.")
+            st.error("❌ No numeric column found in uploaded file.")
         except Exception as e:
-            st.error(f"Error reading file: {e}")
+            st.error(f"⚠️ Error reading file: {e}")
     return None
 
 
 # ==========================================================
-# Confidence Interval for Mean (σ unknown, uses t)
-# ==========================================================
-def confidence_interval_mean(decimal):
-    st.markdown("### 📏 **Confidence Interval for the Mean (σ unknown)**")
-    st.info("Uses Student's *t*-distribution when population σ is unknown.")
-    st.latex(r"\bar{X} \pm t_{\alpha/2,\,n-1}\left(\frac{s}{\sqrt{n}}\right)")
-
-    input_mode = st.radio(
-        "Select input method:",
-        ["Enter summary statistics", "Upload raw data"],
-        horizontal=True
-    )
-
-    if input_mode == "Enter summary statistics":
-        xbar = st.number_input("Sample mean (x̄):", value=50.0)
-        s = st.number_input("Sample SD (s):", value=10.0, min_value=0.0001)
-        n = st.number_input("Sample size (n):", min_value=2, value=30)
-    else:
-        data = load_data_upload()
-        if data is not None:
-            xbar = np.mean(data)
-            s = np.std(data, ddof=1)
-            n = len(data)
-            st.success(f"✅ Data loaded: n={n}, x̄={xbar:.{decimal}f}, s={s:.{decimal}f}")
-        else:
-            st.stop()
-
-    conf_level = st.slider("Select confidence level:", 0.80, 0.99, 0.95, 0.01)
-    alpha = 1 - conf_level
-    df = n - 1
-    t_crit = t.ppf(1 - alpha / 2, df)
-    E = t_crit * s / math.sqrt(n)
-    lower = xbar - E
-    upper = xbar + E
-
-    st.latex(rf"""
-    \text{{🧮 Step-by-step}} \\[6pt]
-    t_{{\alpha/2,\,{df}}} = {t_crit:.4f} \\[4pt]
-    E = t_{{\alpha/2}} \cdot \frac{{s}}{{\sqrt{{n}}}} = {t_crit:.4f} \cdot \frac{{{s:.4f}}}{{\sqrt{{{n}}}}} = {E:.4f} \\[6pt]
-    \boxed{{{conf_level*100:.0f}\% \text{{ CI: }} ({lower:.4f},\, {upper:.4f})}}
-    """)
-
-
-# ==========================================================
-# Confidence Interval for Variance / SD (uses χ²)
-# ==========================================================
-def confidence_interval_chi2(decimal):
-    st.markdown("### 📊 **Confidence Interval for Variance / Standard Deviation (χ²)**")
-    st.info("Uses the Chi-Square distribution:")
-    st.latex(r"""
-    \text{Variance CI: } 
-    \left(\frac{(n-1)s^2}{\chi^2_R}, \frac{(n-1)s^2}{\chi^2_L}\right),
-    \quad
-    \text{SD CI: } 
-    \left(\sqrt{\frac{(n-1)s^2}{\chi^2_R}}, \sqrt{\frac{(n-1)s^2}{\chi^2_L}}\right)
-    """)
-
-    input_mode = st.radio(
-        "Select input method:",
-        ["Enter summary statistics", "Upload raw data"],
-        horizontal=True
-    )
-
-    if input_mode == "Enter summary statistics":
-        s = st.number_input("Sample SD (s):", value=10.0, min_value=0.0001)
-        n = st.number_input("Sample size (n):", min_value=2, value=30)
-    else:
-        data = load_data_upload()
-        if data is not None:
-            s = np.std(data, ddof=1)
-            n = len(data)
-            st.success(f"✅ Data loaded: n={n}, s={s:.{decimal}f}")
-        else:
-            st.stop()
-
-    conf_level = st.slider("Select confidence level:", 0.80, 0.99, 0.95, 0.01)
-    alpha = 1 - conf_level
-    df = n - 1
-    chi2_L = chi2.ppf(alpha / 2, df)
-    chi2_R = chi2.ppf(1 - alpha / 2, df)
-
-    var_lower = (df * s**2) / chi2_R
-    var_upper = (df * s**2) / chi2_L
-    sd_lower = math.sqrt(var_lower)
-    sd_upper = math.sqrt(var_upper)
-
-    st.latex(rf"""
-    \text{{🧮 Step-by-step}} \\[6pt]
-    \chi^2_L = {chi2_L:.4f}, \quad \chi^2_R = {chi2_R:.4f}, \quad df = {df} \\[6pt]
-    \text{{Variance CI}} = ({var_lower:.4f},\, {var_upper:.4f}) \\[6pt]
-    \text{{SD CI}} = ({sd_lower:.4f},\, {sd_upper:.4f}) \\[6pt]
-    \boxed{{{conf_level*100:.0f}\% \text{{ CI for σ: }} ({sd_lower:.4f},\, {sd_upper:.4f})}}
-    """)
-
-
-# ==========================================================
-# Confidence Interval for Proportion (uses z)
-# ==========================================================
-def confidence_interval_proportion(decimal):
-    st.markdown("### 📈 **Confidence Interval for a Population Proportion (z)**")
-    st.info("Formula:")
-    st.latex(r"\hat{p} \pm z_{\alpha/2}\sqrt{\frac{\hat{p}(1-\hat{p})}{n}}")
-
-    x = st.number_input("Number of successes (x):", min_value=0, value=50)
-    n = st.number_input("Sample size (n):", min_value=1, value=100)
-    p_hat = x / n
-    conf_level = st.slider("Select confidence level:", 0.80, 0.99, 0.95, 0.01)
-    alpha = 1 - conf_level
-    z_crit = norm.ppf(1 - alpha / 2)
-    E = z_crit * math.sqrt(p_hat * (1 - p_hat) / n)
-    lower = p_hat - E
-    upper = p_hat + E
-
-    st.latex(rf"""
-    \text{{🧮 Step-by-step}} \\[6pt]
-    \hat{{p}} = \frac{{x}}{{n}} = \frac{{{x}}}{{{n}}} = {p_hat:.4f} \\[6pt]
-    E = z_{{\alpha/2}} \sqrt{{\frac{{\hat{{p}}(1-\hat{{p}})}}{{n}}}} 
-      = {z_crit:.4f} \sqrt{{\frac{{{p_hat:.4f}(1-{p_hat:.4f})}}{{{n}}}}}
-      = {E:.4f} \\[6pt]
-    \boxed{{{conf_level*100:.0f}\% \text{{ CI: }} ({lower:.4f},\, {upper:.4f})}}
-    """)
-
-
-# ==========================================================
-# Confidence Interval for Two Means (independent samples)
-# ==========================================================
-def confidence_interval_two_means(decimal):
-    st.markdown("### ⚖️ **Confidence Interval for Difference of Two Means (Independent Samples)**")
-    st.info("Uses Welch’s *t*-interval (unequal variances assumed):")
-    st.latex(r"(\bar{X}_1 - \bar{X}_2) \pm t_{\alpha/2,\,df}\sqrt{\frac{s_1^2}{n_1} + \frac{s_2^2}{n_2}}")
-
-    input_mode = st.radio(
-        "Select input method:",
-        ["Enter summary statistics", "Upload two raw datasets"],
-        horizontal=True
-    )
-
-    if input_mode == "Enter summary statistics":
-        x1 = st.number_input("Sample mean 1 (x̄₁):", value=50.0)
-        s1 = st.number_input("Sample SD 1 (s₁):", value=10.0, min_value=0.0001)
-        n1 = st.number_input("Sample size 1 (n₁):", min_value=2, value=30)
-        x2 = st.number_input("Sample mean 2 (x̄₂):", value=45.0)
-        s2 = st.number_input("Sample SD 2 (s₂):", value=9.0, min_value=0.0001)
-        n2 = st.number_input("Sample size 2 (n₂):", min_value=2, value=25)
-    else:
-        st.write("Upload two datasets below:")
-        col1, col2 = st.columns(2)
-        with col1:
-            data1 = load_data_upload("📂 Upload Dataset 1")
-        with col2:
-            data2 = load_data_upload("📂 Upload Dataset 2")
-        if data1 is not None and data2 is not None:
-            x1, s1, n1 = np.mean(data1), np.std(data1, ddof=1), len(data1)
-            x2, s2, n2 = np.mean(data2), np.std(data2, ddof=1), len(data2)
-            st.success(f"✅ Data 1: n₁={n1}, x̄₁={x1:.{decimal}f}, s₁={s1:.{decimal}f}")
-            st.success(f"✅ Data 2: n₂={n2}, x̄₂={x2:.{decimal}f}, s₂={s2:.{decimal}f}")
-        else:
-            st.stop()
-
-    conf_level = st.slider("Select confidence level:", 0.80, 0.99, 0.95, 0.01)
-    alpha = 1 - conf_level
-
-    # Welch–Satterthwaite df
-    se1, se2 = s1**2 / n1, s2**2 / n2
-    se = math.sqrt(se1 + se2)
-    df = (se1 + se2)**2 / ((se1**2) / (n1 - 1) + (se2**2) / (n2 - 1))
-    t_crit = t.ppf(1 - alpha / 2, df)
-    diff = x1 - x2
-    E = t_crit * se
-    lower = diff - E
-    upper = diff + E
-
-    st.latex(rf"""
-    \text{{🧮 Step-by-step}} \\[6pt]
-    df = {df:.4f}, \quad t_{{\alpha/2,df}} = {t_crit:.4f} \\[4pt]
-    E = t_{{\alpha/2}} \sqrt{{\frac{{s_1^2}}{{n_1}} + \frac{{s_2^2}}{{n_2}}}} 
-      = {t_crit:.4f} \sqrt{{\frac{{{s1:.4f}^2}}{{{n1}}} + \frac{{{s2:.4f}^2}}{{{n2}}}}}
-      = {E:.4f} \\[6pt]
-    \boxed{{{conf_level*100:.0f}\% \text{{ CI for }} (\mu_1 - \mu_2): ({lower:.4f},\, {upper:.4f})}}
-    """)
-
-
-# ==========================================================
-# MAIN APP
+# Main App
 # ==========================================================
 def run():
-    st.header("🧠 MIND: Confidence Interval Tools")
+    st.header("🔮 MIND: Confidence Interval Calculator")
+    st.markdown("---")
 
-    st.markdown("""
-    ---
-    ### 📘 Quick Reference:
-    - $\\bar{X}$ : sample mean  $s$ : sample SD  $\\sigma$ : population SD  
-    - $\\hat{p}$ : sample proportion  $E$ : margin of error  $n$ : sample size  
-    - $\\chi^2$ : chi-square critical values for variance/SD intervals  
-    ---
-    """)
+    categories = [
+        "Confidence Interval for Proportion",
+        "Sample Size for Proportion",
+        "Confidence Interval for Mean (Known SD)",
+        "Confidence Interval for Mean (Given Sample SD)",
+        "Confidence Interval for Mean (With Data)",
+        "Sample Size for Mean",
+        "Confidence Interval for Variance (Without Data)",
+        "Confidence Interval for Variance (With Data)",
+        "Confidence Interval for Standard Deviation (Without Data)",
+        "Confidence Interval for Standard Deviation (With Data)"
+    ]
 
-    tool = st.radio(
-        "Select a concept:",
-        [
-            "Confidence Interval for Mean (σ unknown, given s or data)",
-            "Confidence Interval for Variance / Standard Deviation (χ²)",
-            "Confidence Interval for Proportion (z)",
-            "Confidence Interval for Difference of Two Means (t)"
-        ],
-        horizontal=False
+    choice = st.selectbox(
+        "Choose a category:",
+        categories,
+        index=None,
+        placeholder="Select a confidence interval type..."
     )
 
-    decimal = st.number_input("Decimal places for output:", min_value=0, max_value=6, value=4, step=1)
+    if not choice:
+        st.info("👆 Please select a category to begin.")
+        return
 
-    if tool.startswith("Confidence Interval for Mean"):
-        confidence_interval_mean(decimal)
-    elif tool.startswith("Confidence Interval for Variance"):
-        confidence_interval_chi2(decimal)
-    elif tool.startswith("Confidence Interval for Proportion"):
-        confidence_interval_proportion(decimal)
-    elif tool.startswith("Confidence Interval for Difference"):
-        confidence_interval_two_means(decimal)
+    decimal = st.number_input("Decimal places for output", min_value=0, max_value=10, value=4)
+
+    # ==========================================================
+    # 1. Confidence Interval for Proportion
+    # ==========================================================
+    if choice == categories[0]:
+        n = st.number_input("Sample size (n)", min_value=1, step=1)
+        x = st.number_input("Number of successes (x)", min_value=0, max_value=n, step=1)
+        conf = st.number_input("Confidence level (0–1)", value=0.95, format="%.3f")
+
+        if st.button("👨‍💻 Calculate"):
+            p_hat = x / n
+            z = stats.norm.ppf((1 + conf) / 2)
+            se = np.sqrt(p_hat * (1 - p_hat) / n)
+            moe = z * se
+            lower, upper = p_hat - moe, p_hat + moe
+
+            st.latex(r"\hat{p} \pm z_{\alpha/2}\sqrt{\frac{\hat{p}(1-\hat{p})}{n}}")
+            st.text(f"""
+=====================
+Confidence Interval for Proportion
+=====================
+Sample successes = {x}
+Sample size       = {n}
+p̂ (Sample Proportion) = {p_hat:.{decimal}f}
+Z Critical Value        = {z:.{decimal}f}
+Standard Error          = {se:.{decimal}f}
+Margin of Error (E)     = {moe:.{decimal}f}
+{conf*100:.1f}% CI = ({lower:.{decimal}f}, {upper:.{decimal}f})
+""")
+
+    # ==========================================================
+    # 2. Sample Size for Proportion
+    # ==========================================================
+    elif choice == categories[1]:
+        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
+        p_est = st.number_input("Estimated proportion (p̂)", value=0.5, min_value=0.0, max_value=1.0, step=0.001)
+        E = st.number_input("Margin of error (E)", value=0.05, min_value=0.000001, step=0.001)
+
+        if st.button("👨‍💻 Calculate"):
+            z = stats.norm.ppf((1 + conf) / 2)
+            n_req = (z**2 * p_est * (1 - p_est)) / (E**2)
+            st.text(f"""
+=====================
+Sample Size for Proportion
+=====================
+Confidence Level = {conf*100:.1f}%
+Estimated p̂      = {p_est:.{decimal}f}
+Z Critical Value  = {z:.{decimal}f}
+Margin of Error   = {E}
+Required Sample Size (n) = {np.ceil(n_req):.0f}
+""")
+
+    # ==========================================================
+    # 3. Confidence Interval for Mean (Known SD)
+    # ==========================================================
+    elif choice == categories[2]:
+        mean = st.number_input("Sample mean (x̄)")
+        sigma = st.number_input("Population SD (σ)", min_value=0.0, format="%.4f")
+        n = st.number_input("Sample size (n)", min_value=1, step=1)
+        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
+
+        if st.button("👨‍💻 Calculate"):
+            z = stats.norm.ppf((1 + conf) / 2)
+            se = sigma / np.sqrt(n)
+            moe = z * se
+            lower, upper = mean - moe, mean + moe
+
+            st.latex(r"\bar{X} \pm z_{\alpha/2}\left(\frac{\sigma}{\sqrt{n}}\right)")
+            st.text(f"""
+=====================
+Confidence Interval for Mean (Known SD)
+=====================
+Sample mean = {mean:.{decimal}f}
+Population SD (σ) = {sigma:.{decimal}f}
+Sample size = {n}
+Z Critical Value = {z:.{decimal}f}
+Standard Error = {se:.{decimal}f}
+Margin of Error = {moe:.{decimal}f}
+{conf*100:.1f}% CI = ({lower:.{decimal}f}, {upper:.{decimal}f})
+""")
+
+    # ==========================================================
+    # 4. Confidence Interval for Mean (Given Sample SD)
+    # ==========================================================
+    elif choice == categories[3]:
+        mean = st.number_input("Sample mean (x̄)")
+        s = st.number_input("Sample SD (s)", min_value=0.0, format="%.4f")
+        n = st.number_input("Sample size (n)", min_value=2, step=1)
+        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
+
+        if st.button("👨‍💻 Calculate"):
+            df = n - 1
+            t_crit = stats.t.ppf((1 + conf) / 2, df)
+            se = s / np.sqrt(n)
+            moe = t_crit * se
+            lower, upper = mean - moe, mean + moe
+
+            st.latex(r"\bar{X} \pm t_{\alpha/2,\,n-1}\left(\frac{s}{\sqrt{n}}\right)")
+            st.text(f"""
+=====================
+Confidence Interval for Mean (Given Sample SD)
+=====================
+Sample mean = {mean:.{decimal}f}
+Sample SD (s) = {s:.{decimal}f}
+Sample size (n) = {n}
+Degrees of freedom = {df}
+t Critical Value = {t_crit:.{decimal}f}
+Standard Error = {se:.{decimal}f}
+Margin of Error = {moe:.{decimal}f}
+{conf*100:.1f}% CI = ({lower:.{decimal}f}, {upper:.{decimal}f})
+""")
+
+    # ==========================================================
+    # 5. Confidence Interval for Mean (With Raw Data)
+    # ==========================================================
+    elif choice == categories[4]:
+        st.subheader("📊 Confidence Interval for Mean (Using Raw Data)")
+        data = load_uploaded_data()
+        raw_input = st.text_area("Or enter comma-separated values:")
+
+        if data is None and raw_input:
+            try:
+                data = np.array([float(x.strip()) for x in raw_input.split(",") if x.strip() != ""])
+            except:
+                st.error("❌ Invalid input. Please use only numeric comma-separated values.")
+                data = None
+
+        conf = st.number_input("Confidence level (e.g., 0.95)", value=0.95, format="%.3f")
+
+        if st.button("👨‍💻 Calculate"):
+            if data is None or len(data) < 2:
+                st.warning("⚠️ Please provide at least two data points.")
+                st.stop()
+
+            n = len(data)
+            mean = np.mean(data)
+            s = np.std(data, ddof=1)
+            df = n - 1
+            t_crit = stats.t.ppf((1 + conf) / 2, df)
+            se = s / np.sqrt(n)
+            moe = t_crit * se
+            lower, upper = mean - moe, mean + moe
+
+            st.text(f"""
+=====================
+Confidence Interval for Mean (With Data)
+=====================
+Sample size (n) = {n}
+Degrees of freedom = {df}
+Sample mean = {mean:.{decimal}f}
+Sample SD (s) = {s:.{decimal}f}
+Standard Error = {se:.{decimal}f}
+t Critical Value = {t_crit:.{decimal}f}
+Margin of Error = {moe:.{decimal}f}
+{conf*100:.1f}% CI = ({lower:.{decimal}f}, {upper:.{decimal}f})
+=====================
+""")
+
+            # Descriptive Table
+            summary = pd.DataFrame({
+                "Statistic": [
+                    "Count (n)", "Mean", "Standard Deviation", "Standard Error",
+                    "t Critical", "Margin of Error", "CI Lower", "CI Upper"
+                ],
+                "Value": [
+                    n, round_value(mean, decimal), round_value(s, decimal),
+                    round_value(se, decimal), round_value(t_crit, decimal),
+                    round_value(moe, decimal), round_value(lower, decimal), round_value(upper, decimal)
+                ]
+            })
+            st.dataframe(summary, use_container_width=True)
+
+    # ==========================================================
+    # 6–10. Variance and SD Confidence Intervals
+    # ==========================================================
+    else:
+        st.subheader(f"📈 {choice}")
+        data = None
+        if "With Data" in choice:
+            data = load_uploaded_data()
+            if data is not None:
+                n = len(data)
+                s2 = np.var(data, ddof=1)
+                s = np.sqrt(s2)
+            else:
+                st.warning("⚠️ Please upload data to proceed.")
+                return
+        else:
+            n = st.number_input("Sample size (n)", min_value=2, step=1)
+            if "Variance" in choice:
+                s2 = st.number_input("Sample variance (s²)", min_value=0.0, format="%.6f")
+                s = np.sqrt(s2)
+            else:
+                s = st.number_input("Sample SD (s)", min_value=0.0, format="%.6f")
+                s2 = s**2
+
+        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
+        df = n - 1
+        chi2_lower = stats.chi2.ppf((1 - conf)/2, df)
+        chi2_upper = stats.chi2.ppf(1 - (1 - conf)/2, df)
+
+        if st.button("👨‍💻 Calculate"):
+            var_lower = df * s2 / chi2_upper
+            var_upper = df * s2 / chi2_lower
+            sd_lower, sd_upper = np.sqrt(var_lower), np.sqrt(var_upper)
+
+            st.text(f"""
+=====================
+{choice}
+=====================
+Sample size = {n}
+Degrees of freedom = {df}
+Sample variance = {s2:.{decimal}f}
+Sample SD = {s:.{decimal}f}
+χ² Critical Values: Lower = {chi2_lower:.{decimal}f}, Upper = {chi2_upper:.{decimal}f}
+{conf*100:.1f}% CI for Variance = ({var_lower:.{decimal}f}, {var_upper:.{decimal}f})
+{conf*100:.1f}% CI for SD = ({sd_lower:.{decimal}f}, {sd_upper:.{decimal}f})
+=====================
+""")
+
+            st.dataframe(pd.DataFrame({
+                "Statistic": [
+                    "Degrees of Freedom", "Sample Variance", "Sample SD",
+                    "χ² Lower", "χ² Upper", "Variance CI (Lower)", "Variance CI (Upper)",
+                    "SD CI (Lower)", "SD CI (Upper)"
+                ],
+                "Value": [
+                    df, round_value(s2, decimal), round_value(s, decimal),
+                    round_value(chi2_lower, decimal), round_value(chi2_upper, decimal),
+                    round_value(var_lower, decimal), round_value(var_upper, decimal),
+                    round_value(sd_lower, decimal), round_value(sd_upper, decimal)
+                ]
+            }), use_container_width=True)
 
 
 # ==========================================================
-# Run directly
+# Run app directly
 # ==========================================================
 if __name__ == "__main__":
     run()
