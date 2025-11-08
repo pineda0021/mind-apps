@@ -1,14 +1,14 @@
 # ==========================================================
-# multiple_regression_tool.py
+# galton_regression_tool.py
 # Created by Professor Edward Pineda-Castro, Los Angeles City College
 # Part of the MIND: Statistics Visualizer Suite
 # ==========================================================
 
 import streamlit as st
-import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+import numpy as np
 import statsmodels.api as sm
+import matplotlib.pyplot as plt
 
 # ==========================================================
 # Helper Functions
@@ -19,9 +19,8 @@ def round_value(value, decimals=4):
     except Exception:
         return value
 
-
 def step_box(text):
-    """Stylized blue step display box."""
+    """Stylized step display box."""
     st.markdown(
         f"""
         <div style="background-color:#f0f6ff;padding:10px;border-radius:10px;
@@ -32,13 +31,12 @@ def step_box(text):
         unsafe_allow_html=True,
     )
 
-
-def print_regression_summary(model, decimals):
-    """Display model summary and fit stats."""
-    st.subheader("📄 Regression Summary")
+def print_summary(model, decimals=4):
+    """Display regression summary key results."""
+    st.markdown("### 📄 Regression Summary")
     st.text(model.summary())
 
-    st.markdown("### 📈 Model Fit Statistics")
+    st.markdown("### 📈 Model Statistics")
     st.write(f"**R²:** {round_value(model.rsquared, decimals)}")
     st.write(f"**Adjusted R²:** {round_value(model.rsquared_adj, decimals)}")
     st.write(f"**F-statistic:** {round_value(model.fvalue, decimals)}")
@@ -48,173 +46,172 @@ def print_regression_summary(model, decimals):
     coef_table = model.summary2().tables[1]
     st.dataframe(np.round(coef_table, decimals))
 
-
-def plot_residuals(model):
-    """Residuals diagnostics."""
-    residuals = model.resid
-    fitted = model.fittedvalues
-
-    st.markdown("### 📉 Residual Diagnostics")
-
-    fig1, ax1 = plt.subplots()
-    ax1.scatter(fitted, residuals, color="#007acc", edgecolor="black")
-    ax1.axhline(y=0, color="gray", linestyle="--")
-    ax1.set_xlabel("Fitted Values (ŷ)")
-    ax1.set_ylabel("Residuals (y - ŷ)")
-    ax1.set_title("Residuals vs. Fitted Values")
-    ax1.grid(True)
-    st.pyplot(fig1)
-
-    fig2, ax2 = plt.subplots()
-    ax2.hist(residuals, bins=10, color="#72bcd4", edgecolor="black")
-    ax2.set_xlabel("Residual")
-    ax2.set_ylabel("Frequency")
-    ax2.set_title("Histogram of Residuals")
-    st.pyplot(fig2)
-
+def plot_regression(y, y_hat, y_label="y", title="Observed vs Predicted"):
+    fig, ax = plt.subplots()
+    ax.scatter(y_hat, y, color="#007acc", edgecolor="black", alpha=0.7)
+    ax.plot([y.min(), y.max()], [y.min(), y.max()], "r--", label="Perfect Fit")
+    ax.set_xlabel("Predicted (ŷ)")
+    ax.set_ylabel(f"Observed ({y_label})")
+    ax.set_title(title)
+    ax.legend()
+    ax.grid(True)
+    st.pyplot(fig)
 
 # ==========================================================
 # Main App
 # ==========================================================
 def run():
-    st.header("👨‍🏫 Multiple Regression Analysis")
+    st.header("👨‍🏫 Galton Family Regression Analysis")
 
     st.markdown("""
-    This tool estimates a multiple regression model using the **Ordinary Least Squares (OLS)** method.
+    This tool explores **bivariate** and **multiple** regression models  
+    using the historic **Galton family dataset (19th century)**.  
+    It estimates models of the form:
+
     \[
     \hat{y} = b_0 + b_1x_1 + b_2x_2 + \dots + b_kx_k
     \]
+
+    using the **Ordinary Least Squares (OLS)** method.
     """)
 
-    # -----------------------------
-    # Option 1: Upload a dataset
-    # -----------------------------
-    st.subheader("📂 Upload CSV or Excel file (optional)")
-    uploaded_file = st.file_uploader("", type=["csv", "xlsx"])
+    st.subheader("📂 Upload or Paste Data")
+    uploaded_file = st.file_uploader("Upload CSV or Excel file", type=["csv", "xlsx"])
 
-    st.divider()
+    example_data = """son,father,mother,siblings
+70,70,65,5
+73,70,66.5,10
+71,65.5,63,3
+72,71,65.5,5
+79,70,65,6
+69.7,67,65,5
+63,65,66,3
+70.5,71.7,65.5,0
+64,68,60,6
+72,66,65.5,4
+"""
 
-    # -----------------------------
-    # Option 2: Guided Manual Input
-    # -----------------------------
-    st.subheader("✏️ Enter Data Manually (Guided Mode)")
-    st.caption("""
-    **Step 1:** Enter your dependent variable (y) values separated by commas.  
-    Example: `10, 15, 20, 25`
+    st.caption("Or paste your dataset below (comma-separated):")
+    text_data = st.text_area("Paste Data:", value=example_data, height=200)
 
-    **Step 2:** Choose how many independent variables (x’s) you want to include.  
-    Then you’ll be prompted to enter values for each \(x_i\).
-    """)
+    decimals = st.number_input("Decimal places for output", 1, 10, 4)
 
-    y_input = st.text_area("Dependent variable (y):", placeholder="10, 15, 20, 25", height=80)
-    n_x = st.number_input("Number of independent variables (x’s):", min_value=1, max_value=10, value=1, step=1)
-
-    x_inputs = []
-    for i in range(n_x):
-        x_val = st.text_area(
-            f"Independent variable x{i+1} (comma-separated):",
-            placeholder="1, 2, 3, 4",
-            height=70,
-            key=f"x_input_{i}"
-        )
-        x_inputs.append(x_val)
-
-    decimals = st.number_input("Decimal places for output", min_value=1, max_value=10, value=4, step=1)
-
-    # ======================================================
-    # If user uploaded a dataset
-    # ======================================================
+    # ----------------------------------------------------------
+    # Load the data
+    # ----------------------------------------------------------
     if uploaded_file:
         try:
             if uploaded_file.name.endswith(".csv"):
                 df = pd.read_csv(uploaded_file)
             else:
                 df = pd.read_excel(uploaded_file)
-
-            st.write("📊 Data Preview:")
-            st.dataframe(df.head())
-
-            num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-            if len(num_cols) < 2:
-                st.error("The file must contain at least two numeric columns.")
-                return
-
-            st.markdown("### 🧩 Variable Selection")
-            y_col = st.selectbox("Select dependent variable (y):", num_cols, index=0)
-            X_cols = st.multiselect("Select independent variable(s):", [c for c in num_cols if c != y_col])
-
-            if st.button("👨‍💻 Run Regression (Uploaded Data)"):
-                if not X_cols:
-                    st.error("Please select at least one independent variable.")
-                    return
-
-                data = df.dropna(subset=[y_col] + X_cols)
-                y = data[y_col].to_numpy(dtype=float)
-                X = data[X_cols].to_numpy(dtype=float)
-                X = sm.add_constant(X)
-                model = sm.OLS(y, X).fit()
-
-                step_box("**Step 1:** Fit the multiple regression model")
-                st.latex(r"y = \beta_0 + \beta_1x_1 + \beta_2x_2 + \dots + \beta_kx_k + \varepsilon")
-
-                step_box("**Step 2:** Review Model Summary and Fit Statistics")
-                print_regression_summary(model, decimals)
-
-                step_box("**Step 3:** Examine Residuals")
-                plot_residuals(model)
-
         except Exception as e:
-            st.error(f"❌ Error reading file: {e}")
-
-    # ======================================================
-    # If user entered data manually
-    # ======================================================
-    elif (y_input.strip() and any(x.strip() for x in x_inputs)) and st.button("👨‍💻 Run Regression (Manual Data)"):
+            st.error(f"❌ Error loading file: {e}")
+            return
+    else:
         try:
-            y = np.array(list(map(float, y_input.replace(",", " ").split())))
+            df = pd.read_csv(pd.io.common.StringIO(text_data))
+        except Exception as e:
+            st.error("❌ Could not parse pasted data. Make sure it's comma-separated.")
+            return
 
-            X_data = []
-            for i, x_str in enumerate(x_inputs):
-                if not x_str.strip():
-                    st.error(f"Please enter values for x{i+1}.")
-                    return
-                x_vals = np.array(list(map(float, x_str.replace(",", " ").split())))
-                if len(x_vals) != len(y):
-                    st.error(f"x{i+1} must have the same number of observations as y ({len(y)}).")
-                    return
-                X_data.append(x_vals)
+    st.markdown("### 📊 Data Preview")
+    st.dataframe(df.head())
 
-            X = np.column_stack(X_data)
-            X = sm.add_constant(X)
-            k = X.shape[1] - 1
-            st.success(f"✅ Data entered successfully: {len(y)} observations and {k} predictor(s).")
+    # ----------------------------------------------------------
+    # Variable Selection
+    # ----------------------------------------------------------
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    if len(numeric_cols) < 2:
+        st.error("Dataset must have at least two numeric columns.")
+        return
 
+    st.markdown("### 🧩 Variable Selection")
+    y_col = st.selectbox("Select dependent variable (y):", numeric_cols, index=0)
+    X_cols = st.multiselect("Select independent variable(s) (x):", [c for c in numeric_cols if c != y_col])
+
+    # ----------------------------------------------------------
+    # Run Bivariate Regression (first predictor only)
+    # ----------------------------------------------------------
+    if X_cols and st.button("▶️ Run Bivariate Regression (y ~ first x)"):
+        try:
+            x1 = X_cols[0]
+            X = sm.add_constant(df[x1])
+            y = df[y_col]
             model = sm.OLS(y, X).fit()
 
-            step_box("**Step 1:** Fit the multiple regression model")
-            st.latex(r"y = \beta_0 + \beta_1x_1 + \beta_2x_2 + \dots + \beta_kx_k + \varepsilon")
+            step_box(f"**Step 1:** Fit the bivariate model predicting {y_col} from {x1}")
+            st.latex(r"\hat{y} = b_0 + b_1x_1")
 
-            step_box("**Step 2:** Review Model Summary and Fit Statistics")
-            print_regression_summary(model, decimals)
+            step_box("**Step 2:** Model Summary and Fit Statistics")
+            print_summary(model, decimals)
 
-            step_box("**Step 3:** Examine Residuals")
-            plot_residuals(model)
-
-            step_box("**Step 4:** Predict New Values")
-            new_x_input = st.text_input(f"Enter {k} predictor value(s) (x₁, …, xₖ):", placeholder="2, 1")
-            if new_x_input.strip():
-                new_x = np.array(list(map(float, new_x_input.replace(",", " ").split())))
-                if len(new_x) != k:
-                    st.error(f"Please enter {k} predictor values.")
-                else:
-                    y_hat = model.predict([np.insert(new_x, 0, 1)])[0]
-                    st.success(f"Predicted y = **{round_value(y_hat, decimals)}**")
+            plot_regression(y, model.fittedvalues, y_label=y_col, title=f"{y_col} vs Predicted ({x1})")
 
         except Exception as e:
             st.error(f"❌ Error: {e}")
 
-    else:
-        st.info("👆 Upload a dataset or enter y and x values manually to begin.")
+    # ----------------------------------------------------------
+    # Run Multiple Regression
+    # ----------------------------------------------------------
+    if len(X_cols) > 1 and st.button("▶️ Run Multiple Regression (y ~ all x’s)"):
+        try:
+            X = sm.add_constant(df[X_cols])
+            y = df[y_col]
+            model = sm.OLS(y, X).fit()
+
+            step_box(f"**Step 1:** Fit the multiple regression model for {y_col}")
+            eq = " + ".join([f"b{i+1}{x}" for i, x in enumerate(X_cols)])
+            st.latex(fr"\hat{{y}} = b_0 + {eq}")
+
+            step_box("**Step 2:** Model Summary and Fit Statistics")
+            print_summary(model, decimals)
+
+            plot_regression(y, model.fittedvalues, y_label=y_col, title=f"{y_col} vs Predicted (All Predictors)")
+
+        except Exception as e:
+            st.error(f"❌ Error: {e}")
+
+    # ----------------------------------------------------------
+    # Model Comparison (Nested Models)
+    # ----------------------------------------------------------
+    if len(X_cols) > 1:
+        with st.expander("⚖️ Model Comparison (Nested F-test)"):
+            st.caption("Compare a smaller model to a larger model using the F-test (NHST).")
+
+            smaller_x = st.multiselect(
+                "Select predictors for the smaller model (nested):",
+                X_cols,
+                help="The smaller model should be a subset of the full model predictors."
+            )
+
+            if smaller_x and st.button("Run Model Comparison (F-test)"):
+                try:
+                    y = df[y_col]
+                    full_X = sm.add_constant(df[X_cols])
+                    small_X = sm.add_constant(df[smaller_x])
+
+                    full_model = sm.OLS(y, full_X).fit()
+                    small_model = sm.OLS(y, small_X).fit()
+
+                    df_num = full_model.df_model - small_model.df_model
+                    df_den = full_model.df_resid
+                    ssr_diff = small_model.ssr - full_model.ssr
+                    msr_diff = ssr_diff / df_num
+                    mse_full = full_model.ssr / df_den
+                    F_stat = msr_diff / mse_full
+                    p_val = 1 - sm.stats.f.cdf(F_stat, df_num, df_den)
+
+                    st.markdown("### 🔍 Model Comparison Results")
+                    st.write(f"F = **{round_value(F_stat, decimals)}**, df₁ = {int(df_num)}, df₂ = {int(df_den)}, p = **{round_value(p_val, decimals)}**")
+
+                    if p_val <= 0.05:
+                        st.success("✅ Reject H₀: The larger model significantly improves fit.")
+                    else:
+                        st.info("❌ Fail to reject H₀: The smaller model is sufficient.")
+
+                except Exception as e:
+                    st.error(f"❌ Error running comparison: {e}")
 
 
 # ==========================================================
@@ -223,7 +220,7 @@ def run():
 if __name__ == "__main__":
     run()
 
-# ✅ Compatibility alias for integration with main suite
+# ✅ Compatibility alias for MIND suite integration
 run_multiple_regression_tool = run
 
 
