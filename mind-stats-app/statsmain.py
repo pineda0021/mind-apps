@@ -18,7 +18,7 @@ import inferences_two_sample_tool
 import chi_square_tests_tool
 import anova_tool
 import regression_analysis_tool
-import multiple_regression_advanced_tool  # ✅ New advanced module
+import multiple_regression_advanced_tool  # ✅ Only advanced version kept
 import ti84                # ✅ TI-84 embedded calculator
 import RStudio              # ✅ New RStudio module
 
@@ -41,10 +41,9 @@ tool = st.sidebar.radio(
         "Chi-Square Tests",
         "One-Way ANOVA",
         "Simple Regression",
-        "Multiple Regression",
-        "Multiple Regression (Advanced)",  # ✅ Added advanced version
+        "Multiple Regression (Advanced)",  # ✅ Kept only the advanced version
         "TI-84 Calculator",
-        "RStudio"   # 👈 Existing RStudio option
+        "RStudio"   # 👈 RStudio option remains
     ]
 )
 
@@ -79,11 +78,8 @@ elif tool == "One-Way ANOVA":
 elif tool == "Simple Regression":
     regression_analysis_tool.run_simple_regression_tool()
 
-elif tool == "Multiple Regression":
-    regression_analysis_tool.run_multiple_regression_tool()
-
 elif tool == "Multiple Regression (Advanced)":
-    multiple_regression_advanced_tool.run()  # ✅ Runs new Galton-style tool
+    multiple_regression_advanced_tool.run()  # ✅ The only regression module now
 
 elif tool == "TI-84 Calculator":
     ti84.run()
