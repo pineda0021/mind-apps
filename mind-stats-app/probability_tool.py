@@ -37,7 +37,6 @@ def parse_probability(prob_str):
 # ==========================================================
 def run():
     st.header("🎲 Probability Tool")
-    st.caption("Created by Professor Edward Pineda-Castro, Los Angeles City College — Built with the students in MIND")
 
     st.write("""
     This tool computes:
