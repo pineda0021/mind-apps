@@ -1,3 +1,9 @@
+# ==========================================================
+# inferences_one_sample_tool.py
+# Created by Professor Edward Pineda-Castro, Los Angeles City College
+# Part of the MIND: Statistics Visualizer Suite
+# ==========================================================
+
 import streamlit as st
 import math
 import numpy as np
@@ -23,6 +29,19 @@ def load_uploaded_data():
         except Exception as e:
             st.error(f"Error reading file: {e}")
     return None
+
+
+# ---------- Step Box ----------
+def step_box(text):
+    st.markdown(
+        f"""
+        <div style="background-color:#f0f6ff;padding:10px;border-radius:10px;
+        border-left:5px solid #007acc;margin-bottom:10px;">
+        <b>{text}</b>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 # ---------- Main App ----------
@@ -60,17 +79,17 @@ def run_hypothesis_tool():
 
         if st.button("👨‍💻 Calculate"):
             p_hat = x / n
-            report = f"""
-=====================
-{test_choice}
-=====================
-Sample successes = {x}
-Sample size = {n}
-Sample proportion = {p_hat:.4f}
-Null proportion p₀ = {p0:.4f}
-"""
+
+            st.markdown("### 📘 Step-by-Step Solution")
+            step_box("**Step 1:** Compute the sample proportion:")
+            st.latex(r"\hat{p} = \frac{x}{n}")
+
+            step_box(f"**Step 2:** Substitute values →  \( \hat{{p}} = {x}/{n} = {p_hat:.4f} \)")
 
             if test_choice == "Proportion test (large sample)":
+                st.markdown("### 🧮 Large Sample Z-Test")
+                st.latex(r"z = \frac{\hat{p} - p_0}{\sqrt{p_0(1 - p_0)/n}}")
+
                 se = math.sqrt(p0 * (1 - p0) / n)
                 z_stat = (p_hat - p0) / se
 
@@ -91,10 +110,25 @@ Null proportion p₀ = {p0:.4f}
                     reject = abs(z_stat) > z_crit_right
                     crit_str = f"{z_crit_left:.4f}, {z_crit_right:.4f}"
 
-                decision = "✅ Reject the null hypothesis" if reject else "❌ Do not reject the null hypothesis"
-                report += f"Z = {z_stat:.4f}\nCritical Value(s) = {crit_str}\nP-value = {p_val:.4f}\nDecision = {decision}\n"
+                step_box("**Step 3:** Compute test statistic and compare with critical value(s).")
+                step_box(f"**Step 4:** Compute p-value = {p_val:.4f} and α = {alpha:.2f}")
 
-            else:  # small sample binomial test
+                decision = "✅ Reject H₀" if reject else "❌ Do not reject H₀"
+                st.markdown(f"""
+                **Result Summary**
+
+                - Test Statistic (z): {z_stat:.4f}  
+                - Critical Value(s): {crit_str}  
+                - P-value: {p_val:.4f}  
+                - Decision: **{decision}**
+
+                **Interpretation:**  
+                If p-value < α → Reject H₀, otherwise do not reject H₀.
+                """)
+
+            else:
+                st.markdown("### 🎯 Small Sample Binomial Test")
+                st.latex(r"P(X \le x) \text{ or } P(X \ge x) \text{ using Binomial}(n, p_0)")
                 if tails == "left":
                     p_val = binom.cdf(x, n, p0)
                 elif tails == "right":
@@ -102,10 +136,17 @@ Null proportion p₀ = {p0:.4f}
                 else:
                     p_val = 2 * min(binom.cdf(x, n, p0), 1 - binom.cdf(x - 1, n, p0))
                 reject = p_val < alpha
-                decision = "✅ Reject the null hypothesis" if reject else "❌ Do not reject the null hypothesis"
-                report += f"P-value = {p_val:.4f}\nDecision = {decision}\n"
+                decision = "✅ Reject H₀" if reject else "❌ Do not reject H₀"
+                st.markdown(f"""
+                **Result Summary**
 
-            st.text(report)
+                - P-value: {p_val:.4f}  
+                - α = {alpha:.2f}  
+                - Decision: **{decision}**
+
+                **Interpretation:**  
+                If p-value < α → Reject H₀; else, fail to reject H₀.
+                """)
 
     # ------------------- T-TESTS -------------------
     elif test_choice in ["t-test for population mean (summary stats)", "t-test for population mean (raw data)"]:
@@ -128,7 +169,7 @@ Null proportion p₀ = {p0:.4f}
                     try:
                         data = np.array([float(i.strip()) for i in raw_input.split(",")])
                     except:
-                        st.error("❌ Invalid data format. Please check your entries.")
+                        st.error("❌ Invalid data format.")
                         return
                 else:
                     st.warning("⚠️ Please upload or enter your sample data.")
@@ -140,6 +181,12 @@ Null proportion p₀ = {p0:.4f}
             se = sd / math.sqrt(n)
             t_stat = (mean - mu0) / se
             df = n - 1
+
+            st.markdown("### 📘 Step-by-Step Solution")
+            step_box("**Step 1:** Compute the test statistic")
+            st.latex(r"t = \frac{\bar{x} - \mu_0}{s / \sqrt{n}}")
+
+            step_box(f"**Step 2:** Substitute → t = ({mean:.4f} - {mu0:.4f}) / ({sd:.4f}/√{n}) = {t_stat:.4f}")
 
             if tails == "left":
                 t_crit = -abs(t.ppf(alpha, df))
@@ -158,21 +205,19 @@ Null proportion p₀ = {p0:.4f}
                 reject = abs(t_stat) > t_crit_right
                 crit_str = f"{t_crit_left:.4f}, {t_crit_right:.4f}"
 
-            decision = "✅ Reject the null hypothesis" if reject else "❌ Do not reject the null hypothesis"
-            report = f"""
-=====================
-{test_choice}
-=====================
-Sample mean = {mean:.4f}
-Sample SD = {sd:.4f}
-Sample size = {n}
-Null hypothesis mean = {mu0:.4f}
-t = {t_stat:.4f}
-Critical Value(s) = {crit_str}
-P-value = {p_val:.4f}
-Decision = {decision}
-"""
-            st.text(report)
+            decision = "✅ Reject H₀" if reject else "❌ Do not reject H₀"
+            st.markdown(f"""
+            **Result Summary**
+
+            - Degrees of Freedom: {df}  
+            - Test Statistic (t): {t_stat:.4f}  
+            - Critical Value(s): {crit_str}  
+            - P-value: {p_val:.4f}  
+            - Decision: **{decision}**
+
+            **Interpretation:**  
+            If p-value < α → Reject H₀; otherwise, do not reject H₀.
+            """)
 
     # ------------------- CHI-SQUARED TESTS -------------------
     elif test_choice in ["Chi-squared test for std dev (summary stats)", "Chi-squared test for std dev (raw data)"]:
@@ -182,7 +227,7 @@ Decision = {decision}
         else:
             st.markdown("### 📊 Provide Sample Data")
             uploaded_data = load_uploaded_data()
-            raw_input = st.text_area("Or enter comma-separated values (e.g., 1.2, 2.3, 3.1):")
+            raw_input = st.text_area("Or enter comma-separated values:")
 
         sigma0 = st.number_input("Population standard deviation (σ₀, null hypothesis)", format="%.6f")
 
@@ -194,7 +239,7 @@ Decision = {decision}
                     try:
                         data = np.array([float(i.strip()) for i in raw_input.split(",")])
                     except:
-                        st.error("❌ Invalid data format. Please check your entries.")
+                        st.error("❌ Invalid data format.")
                         return
                 else:
                     st.warning("⚠️ Please upload or enter your sample data.")
@@ -204,6 +249,12 @@ Decision = {decision}
 
             df = n - 1
             chi2_stat = (df * sd**2) / sigma0**2
+
+            st.markdown("### 📘 Step-by-Step Solution")
+            step_box("**Step 1:** Compute the test statistic")
+            st.latex(r"\chi^2 = \frac{(n - 1)s^2}{\sigma_0^2}")
+
+            step_box(f"**Step 2:** Substitute → χ² = ({df})({sd:.4f}²)/({sigma0:.4f}²) = {chi2_stat:.4f}")
 
             if tails == "left":
                 chi2_crit = chi2.ppf(alpha, df)
@@ -222,22 +273,22 @@ Decision = {decision}
                 reject = chi2_stat < chi2_crit_left or chi2_stat > chi2_crit_right
                 crit_str = f"{chi2_crit_left:.4f}, {chi2_crit_right:.4f}"
 
-            decision = "✅ Reject the null hypothesis" if reject else "❌ Do not reject the null hypothesis"
-            report = f"""
-=====================
-{test_choice}
-=====================
-Sample SD = {sd:.4f}
-Sample size = {n}
-Population SD (null) = {sigma0:.4f}
-Chi-squared = {chi2_stat:.4f}
-Critical Value(s) = {crit_str}
-P-value = {p_val:.4f}
-Decision = {decision}
-"""
-            st.text(report)
+            decision = "✅ Reject H₀" if reject else "❌ Do not reject H₀"
+            st.markdown(f"""
+            **Result Summary**
+
+            - Degrees of Freedom: {df}  
+            - Test Statistic (χ²): {chi2_stat:.4f}  
+            - Critical Value(s): {crit_str}  
+            - P-value: {p_val:.4f}  
+            - Decision: **{decision}**
+
+            **Interpretation:**  
+            If p-value < α → Reject H₀; otherwise, do not reject H₀.
+            """)
 
 
 # ---------- Run ----------
 if __name__ == "__main__":
     run_hypothesis_tool()
+
