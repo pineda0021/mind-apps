@@ -18,9 +18,10 @@ import inferences_two_sample_tool
 import chi_square_tests_tool
 import anova_tool
 import regression_analysis_tool
-import multiple_regression_advanced_tool  # ✅ Only advanced version kept
+import multiple_regression_advanced_tool  # ✅ Advanced version
 import ti84                # ✅ TI-84 embedded calculator
-import RStudio              # ✅ New RStudio module
+import RStudio              # ✅ RStudio module
+import Python               # ✅ New Python module
 
 # ---------- App Configuration ----------
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
@@ -41,9 +42,10 @@ tool = st.sidebar.radio(
         "Chi-Square Tests",
         "One-Way ANOVA",
         "Simple Regression",
-        "Multiple Regression (Advanced)",  # ✅ Kept only the advanced version
+        "Multiple Regression (Advanced)",  # ✅ Only advanced version
         "TI-84 Calculator",
-        "RStudio"   # 👈 RStudio option remains
+        "RStudio",
+        "Python"  # 👈 Added Python launcher
     ]
 )
 
@@ -79,13 +81,16 @@ elif tool == "Simple Regression":
     regression_analysis_tool.run_simple_regression_tool()
 
 elif tool == "Multiple Regression (Advanced)":
-    multiple_regression_advanced_tool.run()  # ✅ The only regression module now
+    multiple_regression_advanced_tool.run()
 
 elif tool == "TI-84 Calculator":
     ti84.run()
 
 elif tool == "RStudio":
     RStudio.run()
+
+elif tool == "Python":
+    Python.run()
 
 # ---------- Footer ----------
 st.markdown("""
