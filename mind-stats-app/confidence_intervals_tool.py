@@ -111,7 +111,7 @@ We are <b>{conf*100:.1f}% confident</b> that the true population proportion lies
     elif choice == categories[1]:
         conf = st.number_input("Confidence level", value=0.95, format="%.3f")
         p_est = st.number_input("Estimated proportion (p̂)", value=0.5, min_value=0.0, max_value=1.0)
-        E = st.number_input("Margin of error (E)", value=0.05, min_value=0.000001)
+        E = st.number_input("Margin of error (E)", value=0.05, min_value=0.000001, format="%.3f" )
 
         if st.button("👨‍💻 Calculate"):
             z = stats.norm.ppf((1 + conf) / 2)
