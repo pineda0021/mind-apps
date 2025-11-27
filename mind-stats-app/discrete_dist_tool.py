@@ -48,20 +48,25 @@ def parse_fraction(p_str):
 # Main Discrete Probability Distribution Tool
 # ==========================================================
 def run():
+
     st.markdown(f"<h1 style='color:{TEXT};'>🎲 Discrete Probability Distributions</h1>", unsafe_allow_html=True)
 
-    dist_type = st.radio(
-        "Select Distribution Type:",
+    dist_type = st.selectbox(
+        "Choose a distribution type:",
         ["Custom Discrete", "Binomial", "Poisson"],
-        horizontal=True
+        index=None
     )
+
+    # 👆 Friendly instruction
+    if not dist_type:
+        st.info("👆 Please select a category to begin.")
+        return
 
     # ======================================================
     # 1. Custom Discrete Distribution
     # ======================================================
     if dist_type == "Custom Discrete":
         st.markdown(f"<h2 style='color:{TEXT};'>🧮 Custom Discrete Distribution</h2>", unsafe_allow_html=True)
-
         st.markdown(f"<p style='color:{TEXT};'>Enter values of X and their probabilities P(X).</p>", unsafe_allow_html=True)
 
         x_input = st.text_input("Values of X (comma-separated):", "0,1,2,3")
@@ -82,6 +87,7 @@ def run():
             if len(X) != len(P):
                 st.error("⚠️ X and P(X) must have the same length.")
                 return
+
             if not np.isclose(P.sum(), 1):
                 st.error(f"⚠️ Probabilities must sum to 1. Current sum = {P.sum():.4f}")
                 return
@@ -108,7 +114,7 @@ def run():
 
             # --- Plot (Dark/Light Safe) ---
             fig = go.Figure()
-            fig.add_bar(x=X, y=P, marker=dict(color="#4da3ff"))
+            fig.add_bar(x=X, y=P, marker=dict(color=ACCENT))
 
             fig.update_layout(
                 title=dict(text="Custom Discrete Distribution", font=dict(color=TEXT)),
@@ -129,9 +135,10 @@ def run():
         st.write("A binomial experiment consists of n independent trials with probability p of success.")
         st.latex(r"P(X = x) = \binom{n}{x} p^x (1-p)^{n-x}")
 
-        n = st.number_input("Number of trials (n)", min_value=1, step=1)
-        p_str = st.text_input("Probability of success (p)", "1/2")
+        n = st.number_input("Number of trials (n):", min_value=1, step=1)
+        p_str = st.text_input("Probability of success (p):", "1/2")
         p = parse_fraction(p_str)
+
         if p is None or not (0 <= p <= 1):
             return
 
@@ -195,7 +202,7 @@ def run():
                 st.dataframe(df, use_container_width=True)
 
                 fig = go.Figure()
-                fig.add_bar(x=x_vals, y=pmf_vals, marker=dict(color="#4da3ff"))
+                fig.add_bar(x=x_vals, y=pmf_vals, marker=dict(color=ACCENT))
 
                 fig.update_layout(
                     title=dict(text=f"Binomial Distribution (n={n}, p={p})", font=dict(color=TEXT)),
@@ -216,8 +223,9 @@ def run():
         st.write("The Poisson distribution models occurrences within a fixed interval.")
         st.latex(r"P(X = x) = \frac{e^{-λ} λ^x}{x!}")
 
-        lam = st.number_input("Mean occurrences (λ)", min_value=0.0, format="%.4f")
-        x_max = st.number_input("Maximum x to display", min_value=1, step=1)
+        lam = st.number_input("Mean occurrences (λ):", min_value=0.0, format="%.4f")
+        x_max = st.number_input("Maximum x to display:", min_value=1, step=1)
+
         if lam <= 0:
             return
 
@@ -277,7 +285,7 @@ def run():
                 st.dataframe(df, use_container_width=True)
 
                 fig = go.Figure()
-                fig.add_bar(x=x_vals, y=pmf_vals, marker=dict(color="#4da3ff"))
+                fig.add_bar(x=x_vals, y=pmf_vals, marker=dict(color=ACCENT))
 
                 fig.update_layout(
                     title=dict(text=f"Poisson Distribution (λ={lam})", font=dict(color=TEXT)),
