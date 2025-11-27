@@ -2,23 +2,37 @@
 # probability_tool.py
 # Created by Professor Edward Pineda-Castro, Los Angeles City College
 # Part of the MIND: Statistics Visualizer Suite
-# Built with the students in MIND
+# Updated with Universal Readability Mode (Dark/Light Safe)
 # ==========================================================
 
 import streamlit as st
 from math import comb, perm
 
+# ---------- Dark/Light Universal Styles ----------
+BACKGROUND = "#2B2B2B"       # Neutral dark gray background
+TEXT_COLOR = "white"          # Universal readable text
+ACCENT = "#4da3ff"            # Soft blue accent for borders
+
+
 # ---------- Helper for step display ----------
 def step_box(text):
     st.markdown(
         f"""
-        <div style="background-color:#f0f6ff;padding:10px;border-radius:10px;
-        border-left:5px solid #007acc;margin-bottom:10px;">
-        <b>{text}</b>
+        <div style="
+            background-color:{BACKGROUND};
+            padding:12px;
+            border-radius:10px;
+            border-left:6px solid {ACCENT};
+            margin-bottom:12px;
+        ">
+            <p style="color:{TEXT_COLOR};margin:0;font-weight:bold;">
+                {text}
+            </p>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
 
 # ---------- Parse probability (decimal or percent) ----------
 def parse_probability(prob_str):
@@ -36,52 +50,64 @@ def parse_probability(prob_str):
 # MAIN APP
 # ==========================================================
 def run():
-    st.header("🎲 Probability Tool")
+    st.markdown(f"<h1 style='color:{TEXT_COLOR};'>🎲 Probability Tool</h1>", unsafe_allow_html=True)
 
-    st.write("""
-    This tool computes:
-    - **Combinations** \\((nCr)\\) and **Permutations** \\((nPr)\\)
-    - **Compound event probabilities** (AND, OR, NOT)
-    - **Conditional probabilities** and **Bayes’ Theorem**
-    with step-by-step explanations and LaTeX formulas.
-    """)
+    st.markdown(
+        f"""
+        <p style='color:{TEXT_COLOR};'>
+        This tool computes:
+        <ul>
+            <li><b>Combinations</b> (nCr) and <b>Permutations</b> (nPr)</li>
+            <li><b>Compound event probabilities</b> (AND, OR, NOT)</li>
+            <li><b>Conditional probabilities</b></li>
+            <li><b>Bayes’ Theorem</b></li>
+        </ul>
+        with step-by-step explanations and LaTeX formulas.
+        </p>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.markdown("---")
 
     # ==========================================================
     # 1. COMBINATIONS & PERMUTATIONS
     # ==========================================================
-    st.subheader("1️⃣ Combinations and Permutations")
+    st.markdown(f"<h3 style='color:{TEXT_COLOR};'>1️⃣ Combinations and Permutations</h3>", unsafe_allow_html=True)
 
     n = st.number_input("Enter n (total items)", min_value=0, step=1, format="%d", value=5)
     r = st.number_input("Enter r (items selected)", min_value=0, step=1, format="%d", value=3)
 
-    st.markdown("### 📘 Step-by-Step Solution")
-    step_box("**Step 1:** Identify n and r.")
+    st.markdown(f"<h4 style='color:{TEXT_COLOR};'>📘 Step-by-Step Solution</h4>", unsafe_allow_html=True)
+
+    step_box("Step 1: Identify n and r.")
     st.latex(fr"n = {n},\quad r = {r}")
 
     if r > n:
         st.error("❌ r cannot be greater than n.")
     else:
-        step_box("**Step 2:** Apply the formulas.")
-        st.latex(r"""
-        \binom{n}{r} = \frac{n!}{r!(n-r)!}, \qquad
-        P(n,r) = \frac{n!}{(n-r)!}
-        """)
+        step_box("Step 2: Apply the formulas.")
+        st.latex(
+            r"""
+            \binom{n}{r} = \frac{n!}{r!(n-r)!}, \qquad
+            P(n,r) = \frac{n!}{(n-r)!}
+            """
+        )
 
         ncr, npr = comb(n, r), perm(n, r)
-        step_box("**Step 3:** Compute and interpret.")
-        st.success(f"Combinations (nCr): **{ncr}** ways (order does not matter).")
-        st.success(f"Permutations (nPr): **{npr}** ways (order matters).")
+
+        step_box("Step 3: Compute and interpret.")
+        st.success(f"Combinations (nCr): {ncr} ways (order does not matter).")
+        st.success(f"Permutations (nPr): {npr} ways (order matters).")
 
     st.markdown("---")
 
     # ==========================================================
     # 2. BASIC PROBABILITIES
     # ==========================================================
-    st.subheader("2️⃣ Basic Probability Inputs")
+    st.markdown(f"<h3 style='color:{TEXT_COLOR};'>2️⃣ Basic Probability Inputs</h3>", unsafe_allow_html=True)
 
-    st.write("Enter probabilities as decimals or percentages (e.g., `0.4` or `40%`).")
+    st.markdown(f"<p style='color:{TEXT_COLOR};'>Enter probabilities as decimals or percentages (e.g., 0.4 or 40%).</p>", unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
     with col1:
@@ -96,6 +122,7 @@ def run():
         return
 
     st.info(f"P(A) = {P_A:.4f},  P(B) = {P_B:.4f}")
+
     independent = st.checkbox("Assume A and B are independent", value=True)
 
     st.markdown("---")
@@ -103,22 +130,23 @@ def run():
     # ==========================================================
     # 3. COMPOUND EVENTS
     # ==========================================================
-    st.subheader("3️⃣ Compound Event Probabilities")
+    st.markdown(f"<h3 style='color:{TEXT_COLOR};'>3️⃣ Compound Event Probabilities</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h4 style='color:{TEXT_COLOR};'>📘 Step-by-Step Solution</h4>", unsafe_allow_html=True)
 
-    event = st.selectbox("Select a compound event:",
-        ["P(A and B)", "P(A or B)", "P(not A)", "P(not B)"], index=0)
-
-    st.markdown("### 📘 Step-by-Step Solution")
+    event = st.selectbox(
+        "Select a compound event:",
+        ["P(A and B)", "P(A or B)", "P(not A)", "P(not B)"]
+    )
 
     # --- P(A and B) ---
     if event == "P(A and B)":
-        step_box("**Step 1:** Identify if A and B are independent.")
+        step_box("Step 1: Identify whether A and B are independent.")
+
         if independent:
             st.latex(r"P(A \cap B) = P(A)P(B)")
             P_and = P_A * P_B
-            st.latex(fr"P(A \cap B) = {P_A:.4f}\times{P_B:.4f} = {P_and:.4f}")
+            st.latex(fr"P(A \cap B) = {P_A:.4f} \times {P_B:.4f} = {P_and:.4f}")
         else:
-            st.latex(r"\text{For dependent events, } P(A \cap B) \text{ must be known.}")
             P_and_input = st.text_input("Enter P(A ∩ B)", "0.25")
             try:
                 P_and = parse_probability(P_and_input)
@@ -126,99 +154,113 @@ def run():
                 st.error("Invalid probability for P(A ∩ B).")
                 return
             st.latex(fr"P(A \cap B) = {P_and:.4f}")
-        st.success(f"**Result:** P(A and B) = {P_and:.4f}")
+
+        st.success(f"Result: P(A and B) = {P_and:.4f}")
 
     # --- P(A or B) ---
     elif event == "P(A or B)":
-        step_box("**Step 1:** Apply the addition rule.")
+        step_box("Step 1: Apply the addition rule.")
+
         if independent:
-            st.latex(r"P(A \cup B) = P(A)+P(B)-P(A)P(B)")
+            st.latex(r"P(A \cup B) = P(A) + P(B) - P(A)P(B)")
             P_or = P_A + P_B - (P_A * P_B)
         else:
-            P_and_input = st.text_input("Enter P(A ∩ B) for dependent events", "0.25")
+            P_and_input = st.text_input("Enter P(A ∩ B)", "0.25")
             try:
                 P_and = parse_probability(P_and_input)
             except Exception:
                 st.error("Invalid P(A ∩ B).")
                 return
-            st.latex(r"P(A \cup B) = P(A)+P(B)-P(A \cap B)")
+
+            st.latex(r"P(A \cup B) = P(A) + P(B) - P(A \cap B)")
             P_or = P_A + P_B - P_and
+
         st.latex(fr"P(A \cup B) = {P_or:.4f}")
-        st.success(f"**Result:** P(A or B) = {P_or:.4f}")
+        st.success(f"Result: P(A or B) = {P_or:.4f}")
 
     # --- P(not A) ---
     elif event == "P(not A)":
-        step_box("**Step 1:** Apply complement rule.")
+        step_box("Step 1: Apply complement rule.")
         st.latex(r"P(\text{not }A) = 1 - P(A)")
+
         P_notA = 1 - P_A
         st.latex(fr"P(\text{{not }}A) = 1 - {P_A:.4f} = {P_notA:.4f}")
-        st.success(f"**Result:** P(not A) = {P_notA:.4f}")
+        st.success(f"Result: P(not A) = {P_notA:.4f}")
 
     # --- P(not B) ---
     elif event == "P(not B)":
-        step_box("**Step 1:** Apply complement rule.")
+        step_box("Step 1: Apply complement rule.")
         st.latex(r"P(\text{not }B) = 1 - P(B)")
+
         P_notB = 1 - P_B
         st.latex(fr"P(\text{{not }}B) = 1 - {P_B:.4f} = {P_notB:.4f}")
-        st.success(f"**Result:** P(not B) = {P_notB:.4f}")
+        st.success(f"Result: P(not B) = {P_notB:.4f}")
 
     st.markdown("---")
 
     # ==========================================================
     # 4. CONDITIONAL PROBABILITY & BAYES’ THEOREM
     # ==========================================================
-    st.subheader("4️⃣ Conditional Probability & Bayes’ Theorem")
+    st.markdown(f"<h3 style='color:{TEXT_COLOR};'>4️⃣ Conditional Probability & Bayes’ Theorem</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h4 style='color:{TEXT_COLOR};'>📘 Step-by-Step Solution</h4>", unsafe_allow_html=True)
 
-    mode = st.selectbox(
-        "Choose formula type:",
-        ["P(A|B)", "P(B|A)", "Bayes' Theorem"],
-        index=0
-    )
-
-    st.markdown("### 📘 Step-by-Step Solution")
+    mode = st.selectbox("Choose formula type:", ["P(A|B)", "P(B|A)", "Bayes' Theorem"])
 
     # --- Conditional P(A|B) ---
     if mode == "P(A|B)":
-        step_box("**Step 1:** Recall the definition.")
+        step_box("Step 1: Recall the definition.")
         st.latex(r"P(A|B) = \frac{P(A \cap B)}{P(B)}")
-        P_and_input = st.text_input("Enter joint probability P(A ∩ B)", "0.25", key="ab")
+
+        P_and_input = st.text_input("Enter P(A ∩ B)", "0.25", key="ab")
         try:
             P_and = parse_probability(P_and_input)
             P_given_B = P_and / P_B
             st.latex(fr"P(A|B) = \frac{{{P_and:.4f}}}{{{P_B:.4f}}} = {P_given_B:.4f}")
-            st.success(f"**Result:** P(A|B) = {P_given_B:.4f}")
+            st.success(f"Result: P(A|B) = {P_given_B:.4f}")
         except Exception:
             st.warning("Invalid inputs. Check P(A ∩ B) and P(B).")
 
     # --- Conditional P(B|A) ---
     elif mode == "P(B|A)":
-        step_box("**Step 1:** Recall the definition.")
+        step_box("Step 1: Recall the definition.")
         st.latex(r"P(B|A) = \frac{P(A \cap B)}{P(A)}")
-        P_and_input = st.text_input("Enter joint probability P(A ∩ B)", "0.25", key="ba")
+
+        P_and_input = st.text_input("Enter P(A ∩ B)", "0.25", key="ba")
         try:
             P_and = parse_probability(P_and_input)
             P_given_A = P_and / P_A
             st.latex(fr"P(B|A) = \frac{{{P_and:.4f}}}{{{P_A:.4f}}} = {P_given_A:.4f}")
-            st.success(f"**Result:** P(B|A) = {P_given_A:.4f}")
+            st.success(f"Result: P(B|A) = {P_given_A:.4f}")
         except Exception:
             st.warning("Invalid inputs. Check P(A ∩ B) and P(A).")
 
     # --- Bayes' Theorem ---
     elif mode == "Bayes' Theorem":
-        step_box("**Step 1:** Recall the theorem.")
+        step_box("Step 1: Recall the theorem.")
         st.latex(r"P(A|B) = \frac{P(B|A)\,P(A)}{P(B)}")
+
         P_B_given_A_input = st.text_input("Enter P(B|A)", "0.7")
+
         try:
             P_B_given_A = parse_probability(P_B_given_A_input)
             P_given_B = (P_B_given_A * P_A) / P_B
-            st.latex(fr"P(A|B) = \frac{{{P_B_given_A:.4f}\times{P_A:.4f}}}{{{P_B:.4f}}} = {P_given_B:.4f}")
-            st.success(f"**Result:** P(A|B) = {P_given_B:.4f}")
+
+            st.latex(
+                fr"""
+                P(A|B) 
+                = \frac{{{P_B_given_A:.4f} \times {P_A:.4f}}}{{{P_B:.4f}}}
+                = {P_given_B:.4f}
+                """
+            )
+
+            st.success(f"Result: P(A|B) = {P_given_B:.4f}")
+
         except Exception:
-            st.warning("Invalid input for P(B|A), P(A), or P(B).")
+            st.warning("Invalid inputs for Bayes’ Theorem.")
+
 
 # ==========================================================
 # Run
 # ==========================================================
 if __name__ == "__main__":
     run()
-
