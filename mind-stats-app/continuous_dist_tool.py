@@ -516,7 +516,7 @@ def uniform_distribution(decimal):
 def run():
 
     # 🔥 Updated header per your request
-    st.header("🧠 MIND: Continuous Probability Distributions (Dark & Light Mode Safe)")
+    st.header("🧠 MIND: Continuous Probability Distributions")
 
     st.markdown("""
     ---
