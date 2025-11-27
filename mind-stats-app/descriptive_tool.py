@@ -1,3 +1,10 @@
+# ==========================================================
+# Descriptive Statistics Tool
+# Updated for Universal Readability (Dark & Light Mode Safe)
+# Created by Professor Edward Pineda-Castro, Los Angeles City College
+# MIND: Statistics Visualizer Suite
+# ==========================================================
+
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -31,7 +38,6 @@ def apply_universal_style(ax):
         spine.set_color(text)
 
     return background, text
-
 
 # ==========================================================
 # Helper Functions
@@ -99,7 +105,6 @@ def compute_frequency_table(data, intervals, manual_freq=None):
         "Cumulative Freq": cum_freq
     })
     return df, total
-
 
 # ==========================================================
 # Quantitative Analyzer
@@ -178,7 +183,6 @@ def run_quantitative(df_uploaded=None):
     # CONTINUOUS
     # ====================================================
 
-    # Auto intervals (Sturges' Rule)
     min_val, max_val = np.min(data), np.max(data)
     n = len(data)
     k = int(np.ceil(1 + 3.322 * np.log10(n)))
@@ -205,7 +209,6 @@ def run_quantitative(df_uploaded=None):
     st.markdown("### Frequency Table")
     st.dataframe(df_freq, use_container_width=True)
 
-    # ---------------- PLOTS -----------------
     plot_option = st.radio(
         "Choose visualization:",
         ["Histogram", "Histogram + Ogive", "Boxplot"],
@@ -214,7 +217,6 @@ def run_quantitative(df_uploaded=None):
 
     bins = [low for low, _ in intervals] + [intervals[-1][1]]
 
-    # Histogram
     fig, ax = plt.subplots(figsize=(8, 4))
     apply_universal_style(ax)
 
@@ -246,7 +248,6 @@ def run_quantitative(df_uploaded=None):
 
         st.pyplot(fig)
 
-    # Boxplot
     else:
         fig, ax = plt.subplots(figsize=(8, 4))
         apply_universal_style(ax)
@@ -264,7 +265,6 @@ def run_quantitative(df_uploaded=None):
         ax.set_title("📦 Boxplot")
         ax.set_xlabel("Values")
         st.pyplot(fig)
-
 
 # ==========================================================
 # QUALITATIVE ANALYZER
@@ -300,7 +300,6 @@ def run_qualitative(df_uploaded=None):
 
     chart_type = st.radio("Choose chart:", ["Bar Chart", "Pie Chart"], horizontal=True)
 
-    # Bar chart
     if chart_type == "Bar Chart":
         fig, ax = plt.subplots(figsize=(8, 4))
         apply_universal_style(ax)
@@ -312,7 +311,6 @@ def run_qualitative(df_uploaded=None):
 
         st.pyplot(fig)
 
-    # Pie chart
     else:
         fig, ax = plt.subplots(figsize=(8, 4))
         apply_universal_style(ax)
@@ -329,7 +327,6 @@ def run_qualitative(df_uploaded=None):
 
         st.pyplot(fig)
 
-
 # ==========================================================
 # SUMMARY STATS + BOX PLOTS
 # ==========================================================
@@ -339,7 +336,6 @@ def run_summary(df_uploaded=None):
 
     mode = st.radio("Mode:", ["Single Dataset", "Multiple Datasets"], horizontal=True)
 
-    # ---------------------------- SINGLE DATASET --------------------------
     if mode == "Single Dataset":
         input_mode = st.radio("Input:", ["Upload File", "Manual Entry"], horizontal=True)
 
@@ -357,7 +353,6 @@ def run_summary(df_uploaded=None):
         summary = pd.DataFrame(get_summary_stats(data).items(), columns=["Statistic", "Value"])
         st.dataframe(summary, use_container_width=True)
 
-        # Boxplot
         fig, ax = plt.subplots(figsize=(8, 4))
         apply_universal_style(ax)
 
@@ -372,7 +367,6 @@ def run_summary(df_uploaded=None):
         ax.set_xlabel("Values")
         st.pyplot(fig)
 
-    # ---------------------------- MULTIPLE DATASETS --------------------------
     else:
         input_mode = st.radio("Input:", ["Upload File", "Manual Entry"], horizontal=True)
         data_dict = {}
@@ -397,7 +391,6 @@ def run_summary(df_uploaded=None):
             for i, block in enumerate(blocks, 1):
                 data_dict[f"Dataset {i}"] = np.array([float(x.strip()) for x in block.split(",") if x.strip()])
 
-        # Summary Table
         combined = pd.DataFrame()
         for name, d in data_dict.items():
             stats_dict = get_summary_stats(d)
@@ -406,7 +399,6 @@ def run_summary(df_uploaded=None):
 
         st.dataframe(combined, use_container_width=True)
 
-        # Combined Boxplot
         fig, ax = plt.subplots(figsize=(8, 4 + 0.3 * len(data_dict)))
         apply_universal_style(ax)
 
@@ -422,7 +414,6 @@ def run_summary(df_uploaded=None):
         ax.set_xlabel("Values")
         st.pyplot(fig)
 
-
 # ==========================================================
 # MAIN APP
 # ==========================================================
@@ -437,6 +428,10 @@ def run():
     ]
 
     choice = st.selectbox("Choose a category:", categories, index=None)
+
+    # 👆 Friendly instruction
+    if not choice:
+        st.info("👆 Please select a category to begin.")
 
     uploaded_file = st.file_uploader("📂 Upload CSV or Excel (optional):", type=["csv", "xlsx"])
     df_uploaded = None
@@ -459,7 +454,6 @@ def run():
         run_quantitative(df_uploaded)
     elif choice == "Summary Statistics & Boxplot":
         run_summary(df_uploaded)
-
 
 # ==========================================================
 # RUN APP
