@@ -2,6 +2,7 @@
 # sample_proportion_tool.py
 # Created by Professor Edward Pineda-Castro, Los Angeles City College
 # Part of the MIND: Statistics Visualizer Suite
+# Updated for Universal Readability (Dark & Light Mode Safe)
 # ==========================================================
 
 import streamlit as st
@@ -9,6 +10,52 @@ import numpy as np
 import math
 from scipy.stats import norm
 import matplotlib.pyplot as plt
+
+# ==========================================================
+# Universal Readability Theme (Dark + Light Mode Safe)
+# ==========================================================
+st.markdown("""
+    <style>
+        /* Make all text readable in both dark and light mode */
+        body, [class^="css"], .stTextInput, .stNumberInput, .stSelectbox,
+        .stMarkdown, label, .stRadio, .stCheckbox, .stSelectbox div {
+            color: white !important;
+        }
+
+        /* Fix all headers */
+        h1, h2, h3, h4, h5, h6 {
+            color: white !important;
+        }
+
+        /* Fix LaTeX visibility */
+        .katex-html {
+            color: white !important;
+        }
+
+        /* Plotly background consistency */
+        .js-plotly-plot .plotly {
+            background-color: #2B2B2B !important;
+        }
+
+        /* Code blocks */
+        pre, code {
+            color: white !important;
+            background-color: #2B2B2B !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# Matplotlib white text (dark-mode safe)
+plt.rcParams.update({
+    "text.color": "white",
+    "axes.labelcolor": "white",
+    "xtick.color": "white",
+    "ytick.color": "white",
+    "axes.edgecolor": "white",
+    "figure.facecolor": "#2B2B2B",
+    "axes.facecolor": "#2B2B2B",
+})
+
 
 # ==========================================================
 # Helper Function
@@ -26,6 +73,7 @@ def parse_expression(expr):
     except Exception:
         st.error("⚠️ Invalid input format. Use a number, a/b, or sqrt(x).")
         return None
+
 
 # ==========================================================
 # Normal Distribution
@@ -57,8 +105,8 @@ def normal_distribution(decimal):
 
         st.latex(rf"""
             Z = \frac{{{x_val} - {mean}}}{{{sd}}} = {z:.4f} \\
-            P(Z < {z:.4f}) = {prob:.4f} \\
-            \boxed{{P(X \le {x_val}) = {prob:.4f}}}
+            P(Z < {z:.4f}) = {prob:.{decimal}f} \\
+            \boxed{{P(X \le {x_val}) = {prob:.{decimal}f}}}
         """)
 
         fig, ax = plt.subplots(figsize=(8, 4))
@@ -75,8 +123,8 @@ def normal_distribution(decimal):
 
         st.latex(rf"""
             Z = \frac{{{x_val} - {mean}}}{{{sd}}} = {z:.4f} \\
-            P(Z > {z:.4f}) = {prob:.4f} \\
-            \boxed{{P(X \ge {x_val}) = {prob:.4f}}}
+            P(Z > {z:.4f}) = {prob:.{decimal}f} \\
+            \boxed{{P(X \ge {x_val}) = {prob:.{decimal}f}}}
         """)
 
         fig, ax = plt.subplots(figsize=(8, 4))
@@ -96,8 +144,8 @@ def normal_distribution(decimal):
 
         st.latex(rf"""
             Z_1 = {z1:.4f},\ Z_2 = {z2:.4f} \\
-            P({z1:.4f} < Z < {z2:.4f}) = {prob:.4f} \\
-            \boxed{{P({a} < X < {b}) = {prob:.4f}}}
+            P({z1:.4f} < Z < {z2:.4f}) = {prob:.{decimal}f} \\
+            \boxed{{P({a} < X < {b}) = {prob:.{decimal}f}}}
         """)
 
         fig, ax = plt.subplots(figsize=(8, 4))
@@ -121,8 +169,8 @@ def normal_distribution(decimal):
 
         st.latex(rf"""
             Z_p = {z:.4f} \\
-            x = \mu + Z_p \sigma = {x_val:.4f} \\
-            \boxed{{x = {x_val:.4f}}}
+            x = \mu + Z_p \sigma = {x_val:.{decimal}f} \\
+            \boxed{{x = {x_val:.{decimal}f}}}
         """)
 
         fig, ax = plt.subplots(figsize=(8, 4))
@@ -133,6 +181,7 @@ def normal_distribution(decimal):
             ax.fill_between(x, 0, y, where=(x >= x_val), alpha=0.6)
         ax.axvline(x_val, color="red", linestyle="--")
         st.pyplot(fig)
+
 
 # ==========================================================
 # Sampling Distribution of the Mean
@@ -173,9 +222,9 @@ def sampling_mean(decimal):
         prob = norm.cdf(z)
 
         st.latex(rf"""
-            Z = \frac{{{x_val} - {mu}}}{{{sigma}/\sqrt{{{n}}}}} = {z:.4f} \\
-            P(Z < {z:.4f}) = {prob:.4f} \\
-            \boxed{{P(\bar{{X}} < {x_val}) = {prob:.4f}}}
+            Z = {z:.4f} \\
+            P(Z < {z:.4f}) = {prob:.{decimal}f} \\
+            \boxed{{P(\bar{{X}} < {x_val}) = {prob:.{decimal}f}}}
         """)
 
         fig, ax = plt.subplots(figsize=(8, 4))
@@ -191,9 +240,9 @@ def sampling_mean(decimal):
         prob = 1 - norm.cdf(z)
 
         st.latex(rf"""
-            Z = \frac{{{x_val} - {mu}}}{{{sigma}/\sqrt{{{n}}}}} = {z:.4f} \\
-            P(Z > {z:.4f}) = {prob:.4f} \\
-            \boxed{{P(\bar{{X}} > {x_val}) = {prob:.4f}}}
+            Z = {z:.4f} \\
+            P(Z > {z:.4f}) = {prob:.{decimal}f} \\
+            \boxed{{P(\bar{{X}} > {x_val}) = {prob:.{decimal}f}}}
         """)
 
         fig, ax = plt.subplots(figsize=(8, 4))
@@ -212,9 +261,8 @@ def sampling_mean(decimal):
         prob = norm.cdf(z2) - norm.cdf(z1)
 
         st.latex(rf"""
-            Z_1 = {z1:.4f},\ Z_2 = {z2:.4f} \\
-            P({z1:.4f} < Z < {z2:.4f}) = {prob:.4f} \\
-            \boxed{{P({a} < \bar{{X}} < {b}) = {prob:.4f}}}
+            P({z1:.4f} < Z < {z2:.4f}) = {prob:.{decimal}f} \\
+            \boxed{{P({a} < \bar{{X}} < {b}) = {prob:.{decimal}f}}}
         """)
 
         fig, ax = plt.subplots(figsize=(8, 4))
@@ -231,9 +279,8 @@ def sampling_mean(decimal):
         x_val = mu + z * se
 
         st.latex(rf"""
-            Z_p = {z:.4f} \\
-            \bar X = \mu + Z_p\frac{{\sigma}}{{\sqrt n}} = {x_val:.4f} \\
-            \boxed{{\bar X = {x_val:.4f}}}
+            \bar X = {x_val:.{decimal}f} \\
+            \boxed{{\bar X = {x_val:.{decimal}f}}}
         """)
 
         fig, ax = plt.subplots(figsize=(8, 4))
@@ -241,6 +288,7 @@ def sampling_mean(decimal):
         ax.fill_between(x, 0, y, where=(x <= x_val), alpha=0.6)
         ax.axvline(x_val, color="red", linestyle="--")
         st.pyplot(fig)
+
 
 # ==========================================================
 # Sampling Distribution of the Proportion
@@ -251,7 +299,7 @@ def sampling_proportion(decimal):
     st.latex(r"""
         \mu_{\hat p} = p,\quad
         \sigma_{\hat p} = \sqrt{\frac{p(1-p)}{n}},\quad
-        Z = \frac{\hat p - p}{\sqrt{p(1-p)/n}}
+        Z = \frac{\hat p - p}{\sigma_{\hat p}}
     """)
 
     p_expr = st.text_input("Population proportion (p):", value="0.5")
@@ -281,9 +329,7 @@ def sampling_proportion(decimal):
         prob = norm.cdf(z)
 
         st.latex(rf"""
-            Z = \frac{{{x_val} - {p}}}{{\sqrt{{{p}(1-{p})/{n}}}}} = {z:.4f} \\
-            P(Z < {z:.4f}) = {prob:.4f} \\
-            \boxed{{P(\hat p < {x_val}) = {prob:.4f}}}
+            P(\hat p < {x_val}) = {prob:.{decimal}f}
         """)
 
         fig, ax = plt.subplots(figsize=(8,4))
@@ -299,9 +345,7 @@ def sampling_proportion(decimal):
         prob = 1 - norm.cdf(z)
 
         st.latex(rf"""
-            Z = \frac{{{x_val} - {p}}}{{\sqrt{{{p}(1-{p})/{n}}}}} = {z:.4f} \\
-            P(Z > {z:.4f}) = {prob:.4f} \\
-            \boxed{{P(\hat p > {x_val}) = {prob:.4f}}}
+            P(\hat p > {x_val}) = {prob:.{decimal}f}
         """)
 
         fig, ax = plt.subplots(figsize=(8,4))
@@ -320,9 +364,7 @@ def sampling_proportion(decimal):
         prob = norm.cdf(z2) - norm.cdf(z1)
 
         st.latex(rf"""
-            Z_1 = {z1:.4f},\ Z_2 = {z2:.4f} \\
-            P({z1:.4f} < Z < {z2:.4f}) = {prob:.4f} \\
-            \boxed{{P({a} < \hat p < {b}) = {prob:.4f}}}
+            P({a} < \hat p < {b}) = {prob:.{decimal}f}
         """)
 
         fig, ax = plt.subplots(figsize=(8,4))
@@ -331,6 +373,7 @@ def sampling_proportion(decimal):
         ax.axvline(a, color="red", linestyle="--")
         ax.axvline(b, color="red", linestyle="--")
         st.pyplot(fig)
+
 
 # ==========================================================
 # Uniform Distribution
@@ -383,10 +426,6 @@ def uniform_distribution(decimal):
             prob = (x_val - a) / (b - a)
 
         st.markdown(f"""
-            **🧮 Step-by-step:**  
-            1. P(X ≤ x) = (x − a) / (b − a)  
-            2. = ({x_val} − {a}) / ({b} − {a})  
-            3. = {round(prob, decimal)}  
             **Final Answer: P(X ≤ {x_val}) = {round(prob, decimal)}**
         """)
 
@@ -400,12 +439,7 @@ def uniform_distribution(decimal):
     elif calc_type == "P(X = x)":
         x_val = st.number_input("Enter x value:", value=(a + b) / 2)
 
-        st.markdown(f"""
-            **🧮 Step-by-step:**  
-            Continuous distributions have:  
-            **P(X = x) = 0**  
-            **Final Answer: P(X = {x_val}) = 0**
-        """)
+        st.markdown(f"**P(X = {x_val}) = 0** (continuous distribution)")
 
         fig, ax = plt.subplots(figsize=(8,4))
         ax.plot(x, y)
@@ -424,10 +458,6 @@ def uniform_distribution(decimal):
             prob = (b - x_val) / (b - a)
 
         st.markdown(f"""
-            **🧮 Step-by-step:**  
-            1. P(X ≥ x) = (b − x) / (b − a)  
-            2. = ({b} − {x_val}) / ({b} − {a})  
-            3. = {round(prob, decimal)}  
             **Final Answer: P(X ≥ {x_val}) = {round(prob, decimal)}**
         """)
 
@@ -454,10 +484,6 @@ def uniform_distribution(decimal):
             prob = (upper - lower) / (b - a)
 
         st.markdown(f"""
-            **🧮 Step-by-step:**  
-            1. Probability = (upper − lower)/(b − a)  
-            2. = ({upper} − {lower}) / ({b} − {a})  
-            3. = {round(prob, decimal)}  
             **Final Answer: P({low} < X < {high}) = {round(prob, decimal)}**
         """)
 
@@ -474,10 +500,6 @@ def uniform_distribution(decimal):
         x_val = a + p * (b - a)
 
         st.markdown(f"""
-            **🧮 Step-by-step:**  
-            x = a + p(b − a)  
-            = {a} + {p}({b} − {a})  
-            = **{round(x_val, decimal)}**  
             **Final Answer: x = {round(x_val, decimal)}**
         """)
 
@@ -487,11 +509,14 @@ def uniform_distribution(decimal):
         ax.axvline(x_val, color="red", linestyle="--")
         st.pyplot(fig)
 
+
 # ==========================================================
 # MAIN APP
 # ==========================================================
 def run():
-    st.header("🧠 MIND: Continuous Probability Distributions")
+
+    # 🔥 Updated header per your request
+    st.header("🧠 MIND: Continuous Probability Distributions (Dark & Light Mode Safe)")
 
     st.markdown("""
     ---
@@ -527,6 +552,7 @@ def run():
         sampling_mean(decimal)
     elif dist_choice == "Sampling Distribution of the Proportion":
         sampling_proportion(decimal)
+
 
 # ==========================================================
 # Run App
