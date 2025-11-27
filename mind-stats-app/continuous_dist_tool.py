@@ -490,8 +490,6 @@ def uniform_distribution(decimal):
 def run():
     st.header("🔔 Continuous Probability Distributions")
 
-    st.markdown("### 👆 Please select the distribution")
-
     st.markdown("""
     ---
     **Quick Reference:**
@@ -512,6 +510,8 @@ def run():
             "Sampling Distribution of the Proportion"
         ]
     )
+
+    st.markdown("### 👆 Please select the distribution")
 
     decimal = st.number_input(
         "Decimal places for output:",
