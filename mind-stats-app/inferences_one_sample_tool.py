@@ -1,7 +1,8 @@
 # ==========================================================
 # inferences_one_sample_tool.py
 # Created by Professor Edward Pineda-Castro, Los Angeles City College
-# Part of the MIND: Statistics Visualizer Suite
+# MIND: Statistics Visualizer Suite
+# Updated with Dark/Light Mode Safe Interpretation Boxes
 # ==========================================================
 
 import streamlit as st
