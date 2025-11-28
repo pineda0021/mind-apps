@@ -11,7 +11,36 @@ import pandas as pd
 from scipy.stats import norm, t, chi2, binom
 
 # ==========================================================
-# Helper Functions
+# Auto Light/Dark Mode Box
+# ==========================================================
+def themed_box(text):
+    st.markdown(f"""
+        <style>
+            .themed-box {{
+                padding: 12px;
+                border-radius: 10px;
+                margin-bottom: 10px;
+                border-left: 5px solid #007acc;
+            }}
+            @media (prefers-color-scheme: light) {{
+                .themed-box {{
+                    background-color: #e6f3ff;
+                    color: black;
+                }}
+            }}
+            @media (prefers-color-scheme: dark) {{
+                .themed-box {{
+                    background-color: #2b2b2b;
+                    color: white;
+                }}
+            }}
+        </style>
+        <div class="themed-box">{text}</div>
+    """, unsafe_allow_html=True)
+
+
+# ==========================================================
+# Helper: Upload Numeric Data
 # ==========================================================
 def load_uploaded_data():
     uploaded_file = st.file_uploader(
@@ -33,23 +62,22 @@ def load_uploaded_data():
     return None
 
 
-def step_box(text):
-    st.markdown(
-        f"""
-        <div style="background-color:#f0f6ff;padding:10px;border-radius:10px;
-        border-left:5px solid #007acc;margin-bottom:10px;">
-        <b>{text}</b>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
 # ==========================================================
 # Main App
 # ==========================================================
 def run_hypothesis_tool():
     st.header("🔎 Inferences on One Sample")
+
+    # Decimal places for ALL output
+    decimals = st.number_input(
+        "Decimal places for output:",
+        min_value=0,
+        max_value=10,
+        value=4,
+        step=1
+    )
+
+    fmt = f"{{:.{decimals}f}}"
 
     test_options = [
         "Proportion test (large sample)",
@@ -71,7 +99,14 @@ def run_hypothesis_tool():
         st.info("👆 Please select a hypothesis test to begin.")
         return
 
-    alpha = st.number_input("Significance level (α)", value=0.05, min_value=0.001, max_value=0.5, step=0.01)
+    alpha = st.number_input(
+        "Significance level (α)",
+        value=0.05,
+        min_value=0.001,
+        max_value=0.5,
+        step=0.01
+    )
+
     tails = st.selectbox("Tail type:", ["two", "left", "right"])
 
     # ==========================================================
@@ -86,111 +121,110 @@ def run_hypothesis_tool():
             p_hat = x / n
 
             st.markdown("### 📘 Step-by-Step Solution")
-            step_box("**Step 1:** Compute the sample proportion")
+            themed_box("**Step 1:** Compute the sample proportion")
             st.latex(r"\hat{p} = \frac{x}{n}")
-            st.latex(fr"\hat{{p}} = \frac{{{x}}}{{{n}}} = {p_hat:.4f}")
+            st.latex(fr"\hat{{p}} = \frac{{{x}}}{{{n}}} = {fmt.format(p_hat)}")
 
-            # Large Sample (Z-test)
+            # ------------------------------------------------------
+            # LARGE SAMPLE: Z TEST
+            # ------------------------------------------------------
             if test_choice == "Proportion test (large sample)":
                 st.markdown("### 🧮 Large Sample Z-Test")
                 st.latex(r"z = \frac{\hat{p} - p_0}{\sqrt{p_0(1 - p_0)/n}}")
 
-                step_box("**Step 2:** Compute the Standard Error and test statistic.")
+                themed_box("**Step 2:** Compute the Standard Error and z statistic.")
                 se = math.sqrt(p0 * (1 - p0) / n)
                 z_stat = (p_hat - p0) / se
-                st.latex(fr"\text{{SE}} = \sqrt{{{p0:.4f}(1-{p0:.4f})/{n}}} = {se:.6f}")
-                st.latex(fr"z = \frac{{{p_hat:.4f}-{p0:.4f}}}{{{se:.6f}}} = {z_stat:.4f}")
+                st.latex(fr"\text{{SE}} = \sqrt{{p_0(1-p_0)/n}} = {fmt.format(se)}")
+                st.latex(fr"z = \frac{{\hat p - p_0}}{{SE}} = {fmt.format(z_stat)}")
 
-                step_box("**Step 3:** Determine critical values and compute p-value.")
+                themed_box("**Step 3:** Compute p-value and compare with α")
+
                 if tails == "left":
                     z_crit = -abs(norm.ppf(alpha))
                     p_val = norm.cdf(z_stat)
                     reject = z_stat < z_crit
-                    crit_str = f"{z_crit:.4f}"
+                    crit_str = fmt.format(z_crit)
+
                 elif tails == "right":
                     z_crit = abs(norm.ppf(1 - alpha))
                     p_val = 1 - norm.cdf(z_stat)
                     reject = z_stat > z_crit
-                    crit_str = f"{z_crit:.4f}"
-                else:
-                    z_crit_left = -abs(norm.ppf(alpha / 2))
-                    z_crit_right = abs(norm.ppf(1 - alpha / 2))
-                    p_val = 2 * (1 - norm.cdf(abs(z_stat)))
-                    reject = abs(z_stat) > z_crit_right
-                    crit_str = f"{z_crit_left:.4f}, {z_crit_right:.4f}"
+                    crit_str = fmt.format(z_crit)
 
-                step_box(f"**Step 4:** Compare p-value = {p_val:.4f} with α = {alpha:.2f}")
+                else:
+                    z_left = -abs(norm.ppf(alpha / 2))
+                    z_right = abs(norm.ppf(1 - alpha / 2))
+                    p_val = 2 * (1 - norm.cdf(abs(z_stat)))
+                    reject = abs(z_stat) > z_right
+                    crit_str = f"{fmt.format(z_left)}, {fmt.format(z_right)}"
+
+                themed_box(f"**Step 4:** Compare p-value = {fmt.format(p_val)} with α = {alpha}")
 
                 decision = "✅ Reject H₀" if reject else "❌ Do not reject H₀"
+
                 st.markdown(f"""
-**Result Summary**
-
-- Test Statistic (z): {z_stat:.4f}  
-- Critical Value(s): {crit_str}  
-- P-value: {p_val:.4f}  
+### **Result Summary**
+- Test Statistic (z): {fmt.format(z_stat)}
+- Critical Value(s): {crit_str}
+- P-value: {fmt.format(p_val)}
 - Decision: **{decision}**
-
-**Interpretation:**  
-If p-value < α → Reject H₀; otherwise, fail to reject H₀.
 """)
 
-            # Small Sample (Binomial)
+            # ------------------------------------------------------
+            # SMALL SAMPLE: BINOMIAL EXACT TEST
+            # ------------------------------------------------------
             else:
-                st.markdown("### 🎯 Small Sample Binomial Test (Exact)")
-                st.latex(r"""
-                \textbf{Left-tail: }\; P(X < x) = \mathrm{BinomCDF}(x - 1, n, p_0)
-                """)
-                st.latex(r"""
-                \textbf{Right-tail: }\; P(X > x) = 1 - \mathrm{BinomCDF}(x - 1, n, p_0)
-                """)
-                st.latex(r"""
-                \textbf{Two-tail: }\; p\text{-value} = 2 \times \min\!\Big(\mathrm{BinomCDF}(x - 1, n, p_0),\; 1 - \mathrm{BinomCDF}(x - 1, n, p_0)\Big)
-                """)
+                st.markdown("### 🎯 Exact Binomial Test")
 
-                step_box("**Step 1:** Identify the tail based on H₁.")
+                themed_box("**Step 1:** Compute exact p-value using Binomial CDF.")
+
                 if tails == "left":
                     p_val = binom.cdf(x - 1, n, p0)
-                    st.latex(fr"P(X < x) = \mathrm{{BinomCDF}}({x-1}, {n}, {p0:.4f}) = {p_val:.4f}")
+                    st.latex(fr"P(X < x) = {fmt.format(p_val)}")
+                    reject = p_val < alpha
+
                 elif tails == "right":
                     p_val = 1 - binom.cdf(x - 1, n, p0)
-                    st.latex(fr"P(X > x) = 1 - \mathrm{{BinomCDF}}({x-1}, {n}, {p0:.4f}) = {p_val:.4f}")
+                    st.latex(fr"P(X > x) = {fmt.format(p_val)}")
+                    reject = p_val < alpha
+
                 else:
                     left = binom.cdf(x - 1, n, p0)
                     right = 1 - binom.cdf(x - 1, n, p0)
-                    p_val = 2 * min(left, right)
-                    p_val = float(min(1.0, p_val))
+                    p_val = float(min(1, 2 * min(left, right)))
                     st.latex(fr"""
                     \begin{{aligned}}
-                    P_\text{{left}} &= \mathrm{{BinomCDF}}({x-1}, {n}, {p0:.4f}) = {left:.4f} \\
-                    P_\text{{right}} &= 1 - \mathrm{{BinomCDF}}({x-1}, {n}, {p0:.4f}) = {right:.4f} \\
-                    p\text{{-value}} &= 2 \times \min(P_\text{{left}}, P_\text{{right}}) = {p_val:.4f}
+                    P_\text{{left}} &= {fmt.format(left)} \\
+                    P_\text{{right}} &= {fmt.format(right)} \\
+                    p\text{{-value}} &= {fmt.format(p_val)}
                     \end{{aligned}}
                     """)
+                    reject = p_val < alpha
 
-                step_box(f"**Step 2:** Compare p-value = {p_val:.4f} with α = {alpha:.2f}")
+                themed_box(f"**Step 2:** Compare p-value = {fmt.format(p_val)} with α = {alpha}")
 
-                reject = p_val < alpha
                 decision = "✅ Reject H₀" if reject else "❌ Do not reject H₀"
 
                 st.markdown(f"""
-**Result Summary**
-
-- P-value: {p_val:.4f}  
-- α = {alpha:.2f}  
+### **Result Summary**
+- P-value: {fmt.format(p_val)}
 - Decision: **{decision}**
-
-**Interpretation:**  
-If p-value < α → Reject H₀; otherwise, fail to reject H₀.
 """)
 
     # ==========================================================
     # T-TESTS
     # ==========================================================
-    elif test_choice in ["t-test for population mean (summary stats)", "t-test for population mean (raw data)"]:
+    elif test_choice in [
+        "t-test for population mean (summary stats)",
+        "t-test for population mean (raw data)"
+    ]:
+
         if test_choice == "t-test for population mean (summary stats)":
             mean = st.number_input("Sample mean (x̄)", format="%.6f")
             sd = st.number_input("Sample standard deviation (s)", format="%.6f")
             n = st.number_input("Sample size (n)", min_value=2, step=1)
+
         else:
             st.markdown("### 📊 Provide Sample Data")
             uploaded_data = load_uploaded_data()
@@ -199,13 +233,14 @@ If p-value < α → Reject H₀; otherwise, fail to reject H₀.
         mu0 = st.number_input("Null hypothesis mean (μ₀)", format="%.6f")
 
         if st.button("👨‍💻 Calculate"):
+            # Load raw data if needed
             if test_choice == "t-test for population mean (raw data)":
                 if uploaded_data is not None:
                     data = uploaded_data
                 elif raw_input:
                     data = np.array([float(i.strip()) for i in raw_input.split(",")])
                 else:
-                    st.warning("⚠️ Please upload or enter your sample data.")
+                    st.warning("⚠ Please provide sample data.")
                     return
                 mean = np.mean(data)
                 sd = np.std(data, ddof=1)
@@ -216,51 +251,53 @@ If p-value < α → Reject H₀; otherwise, fail to reject H₀.
             t_stat = (mean - mu0) / se
 
             st.markdown("### 📘 Step-by-Step Solution")
-            step_box("**Step 1:** Compute the test statistic.")
+            themed_box("**Step 1:** Compute the t-statistic.")
             st.latex(r"t = \frac{\bar{x} - \mu_0}{s / \sqrt{n}}")
-            st.latex(fr"t = \frac{{{mean:.4f} - {mu0:.4f}}}{{{sd:.4f}/\sqrt{{{n}}}}} = {t_stat:.4f}")
+            st.latex(fr"t = {fmt.format(t_stat)}")
 
-            step_box("**Step 2:** Determine critical values and compute p-value.")
+            themed_box("**Step 2:** Compute p-value and compare with α")
+
             if tails == "left":
-                t_crit = -abs(t.ppf(alpha, df))
+                t_crit = t.ppf(alpha, df)
                 p_val = t.cdf(t_stat, df)
                 reject = t_stat < t_crit
-                crit_str = f"{t_crit:.4f}"
+                crit_str = fmt.format(t_crit)
+
             elif tails == "right":
-                t_crit = abs(t.ppf(1 - alpha, df))
+                t_crit = t.ppf(1 - alpha, df)
                 p_val = 1 - t.cdf(t_stat, df)
                 reject = t_stat > t_crit
-                crit_str = f"{t_crit:.4f}"
-            else:
-                t_crit_left = -abs(t.ppf(alpha / 2, df))
-                t_crit_right = abs(t.ppf(1 - alpha / 2, df))
-                p_val = 2 * (1 - t.cdf(abs(t_stat), df))
-                reject = abs(t_stat) > t_crit_right
-                crit_str = f"{t_crit_left:.4f}, {t_crit_right:.4f}"
+                crit_str = fmt.format(t_crit)
 
-            step_box(f"**Step 3:** Compare p-value = {p_val:.4f} with α = {alpha:.2f}")
+            else:
+                t_left = t.ppf(alpha / 2, df)
+                t_right = t.ppf(1 - alpha / 2, df)
+                p_val = 2 * (1 - t.cdf(abs(t_stat), df))
+                reject = abs(t_stat) > abs(t_right)
+                crit_str = f"{fmt.format(t_left)}, {fmt.format(t_right)}"
+
+            themed_box(f"**Step 3:** Compare p-value = {fmt.format(p_val)} with α = {alpha}")
 
             decision = "✅ Reject H₀" if reject else "❌ Do not reject H₀"
+
             st.markdown(f"""
-**Result Summary**
-
-- Degrees of Freedom: {df}  
-- Test Statistic (t): {t_stat:.4f}  
-- Critical Value(s): {crit_str}  
-- P-value: {p_val:.4f}  
+### **Result Summary**
+- df = {df}
+- t-statistic = {fmt.format(t_stat)}
+- Critical Value(s): {crit_str}
+- P-value = {fmt.format(p_val)}
 - Decision: **{decision}**
-
-**Interpretation:**  
-If p-value < α → Reject H₀; otherwise, fail to reject H₀.
 """)
 
     # ==========================================================
     # CHI-SQUARED TESTS
     # ==========================================================
-    elif test_choice in ["Chi-squared test for std dev (summary stats)", "Chi-squared test for std dev (raw data)"]:
+    else:
+
         if test_choice == "Chi-squared test for std dev (summary stats)":
             sd = st.number_input("Sample standard deviation (s)", format="%.6f")
             n = st.number_input("Sample size (n)", min_value=2, step=1)
+
         else:
             st.markdown("### 📊 Provide Sample Data")
             uploaded_data = load_uploaded_data()
@@ -269,13 +306,14 @@ If p-value < α → Reject H₀; otherwise, fail to reject H₀.
         sigma0 = st.number_input("Population standard deviation (σ₀)", format="%.6f")
 
         if st.button("👨‍💻 Calculate"):
+            # Load raw data if needed
             if test_choice == "Chi-squared test for std dev (raw data)":
                 if uploaded_data is not None:
                     data = uploaded_data
                 elif raw_input:
                     data = np.array([float(i.strip()) for i in raw_input.split(",")])
                 else:
-                    st.warning("⚠️ Please upload or enter your sample data.")
+                    st.warning("⚠ Please provide sample data.")
                     return
                 sd = np.std(data, ddof=1)
                 n = len(data)
@@ -284,47 +322,47 @@ If p-value < α → Reject H₀; otherwise, fail to reject H₀.
             chi2_stat = (df * sd**2) / sigma0**2
 
             st.markdown("### 📘 Step-by-Step Solution")
-            step_box("**Step 1:** Compute the test statistic.")
-            st.latex(r"\chi^2 = \frac{(n - 1)s^2}{\sigma_0^2}")
-            st.latex(fr"\chi^2 = \frac{{({df})({sd:.4f})^2}}{{({sigma0:.4f})^2}} = {chi2_stat:.4f}")
+            themed_box("**Step 1:** Compute χ² statistic.")
+            st.latex(r"\chi^2 = \frac{(n-1)s^2}{\sigma_0^2}")
+            st.latex(fr"\chi^2 = {fmt.format(chi2_stat)}")
 
-            step_box("**Step 2:** Determine critical values and compute p-value.")
+            themed_box("**Step 2:** Compute p-value and compare with α")
+
             if tails == "left":
-                chi2_crit = chi2.ppf(alpha, df)
+                chi_crit = chi2.ppf(alpha, df)
                 p_val = chi2.cdf(chi2_stat, df)
-                reject = chi2_stat < chi2_crit
-                crit_str = f"{chi2_crit:.4f}"
-            elif tails == "right":
-                chi2_crit = chi2.ppf(1 - alpha, df)
-                p_val = 1 - chi2.cdf(chi2_stat, df)
-                reject = chi2_stat > chi2_crit
-                crit_str = f"{chi2_crit:.4f}"
-            else:
-                chi2_crit_left = chi2.ppf(alpha / 2, df)
-                chi2_crit_right = chi2.ppf(1 - alpha / 2, df)
-                p_val = 2 * min(chi2.cdf(chi2_stat, df), 1 - chi2.cdf(chi2_stat, df))
-                reject = chi2_stat < chi2_crit_left or chi2_stat > chi2_crit_right
-                crit_str = f"{chi2_crit_left:.4f}, {chi2_crit_right:.4f}"
+                reject = chi2_stat < chi_crit
+                crit_str = fmt.format(chi_crit)
 
-            step_box(f"**Step 3:** Compare p-value = {p_val:.4f} with α = {alpha:.2f}")
+            elif tails == "right":
+                chi_crit = chi2.ppf(1 - alpha, df)
+                p_val = 1 - chi2.cdf(chi2_stat, df)
+                reject = chi2_stat > chi_crit
+                crit_str = fmt.format(chi_crit)
+
+            else:
+                left = chi2.ppf(alpha / 2, df)
+                right = chi2.ppf(1 - alpha / 2, df)
+                p_val = 2 * min(chi2.cdf(chi2_stat, df), 1 - chi2.cdf(chi2_stat, df))
+                reject = chi2_stat < left or chi2_stat > right
+                crit_str = f"{fmt.format(left)}, {fmt.format(right)}"
+
+            themed_box(f"**Step 3:** p-value = {fmt.format(p_val)} vs α = {alpha}")
 
             decision = "✅ Reject H₀" if reject else "❌ Do not reject H₀"
+
             st.markdown(f"""
-**Result Summary**
-
-- Degrees of Freedom: {df}  
-- Test Statistic (χ²): {chi2_stat:.4f}  
-- Critical Value(s): {crit_str}  
-- P-value: {p_val:.4f}  
+### **Result Summary**
+- df = {df}
+- χ² statistic = {fmt.format(chi2_stat)}
+- Critical Value(s): {crit_str}
+- P-value = {fmt.format(p_val)}
 - Decision: **{decision}**
-
-**Interpretation:**  
-If p-value < α → Reject H₀; otherwise, fail to reject H₀.
 """)
+
 
 # ==========================================================
 # Run
 # ==========================================================
 if __name__ == "__main__":
     run_hypothesis_tool()
-
