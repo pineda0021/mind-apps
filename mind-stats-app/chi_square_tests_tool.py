@@ -67,7 +67,7 @@ def decision_box(reject: bool):
             <div style='display:flex; align-items:center; gap:8px;
                 padding:10px; border-radius:8px;
                 background-color:#c8f7c5; margin:10px 0;'>
-                <span style='font-size:22px; color:#2ecc71;'>✔️</span>
+                <span style='font-size:22px; color:#2ecc71;'>✅</span>
                 <span style='font-size:18px; color:black;'><b>Decision: Reject H₀</b></span>
             </div>
             """,
