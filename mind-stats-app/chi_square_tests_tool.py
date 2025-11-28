@@ -61,7 +61,7 @@ def step_box(text):
 # ==========================================================
 def decision_box(reject: bool):
     if reject:
-        # GREEN ✔️ Reject H0
+        # GREEN ✅ Reject H0
         st.markdown(
             """
             <div style='display:flex; align-items:center; gap:8px;
