@@ -1,8 +1,9 @@
 # ==========================================================
 # two_sample_tool.py
-# Professor Edward Pineda-Castro — MIND Statistics Visualizer
+# Created by Professor Edward Pineda-Castro, Los Angeles City College
+# MIND: Statistics Visualizer Suite
+# Updated with Dark/Light Mode Safe Interpretation Boxes
 # ==========================================================
-
 import streamlit as st
 import numpy as np
 import pandas as pd
