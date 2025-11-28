@@ -2,6 +2,7 @@
 # confidence_intervals_tool.py
 # Created by Professor Edward Pineda-Castro, Los Angeles City College
 # MIND: Statistics Visualizer Suite
+# Updated with Dark/Light Mode Safe Interpretation Boxes
 # ==========================================================
 
 import streamlit as st
@@ -12,6 +13,7 @@ import scipy.stats as stats
 # ==========================================================
 # Helper Functions
 # ==========================================================
+
 def round_value(value, decimals=4):
     return round(float(value), decimals)
 
@@ -30,6 +32,45 @@ def load_uploaded_data():
         except Exception as e:
             st.error(f"⚠️ Error reading file: {e}")
     return None
+
+
+# ==========================================================
+# Dark/Light Mode Safe Interpretation Box
+# ==========================================================
+
+def interpretation_box(html_text):
+    st.markdown(
+        f"""
+        <div class="interp-box">
+            {html_text}
+        </div>
+
+        <style>
+        /* LIGHT MODE */
+        @media (prefers-color-scheme: light) {{
+            .interp-box {{
+                background-color: #e6f3ff;
+                color: #000000;
+                padding: 12px;
+                border-radius: 10px;
+                border: 1px solid #bcdcff;
+            }}
+        }}
+
+        /* DARK MODE */
+        @media (prefers-color-scheme: dark) {{
+            .interp-box {{
+                background-color: #2b2b2b;
+                color: #ffffff;
+                padding: 12px;
+                border-radius: 10px;
+                border: 1px solid #444444;
+            }}
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
 
 # ==========================================================
@@ -67,351 +108,349 @@ def run():
     # 1) Confidence Interval for Proportion (p, z)
     # ==========================================================
     if choice == categories[0]:
+
+        st.latex(r"""
+            \text{CI: } 
+            \hat{p} \pm z_{\alpha/2}\sqrt{\frac{\hat{p}(1-\hat{p})}{n}}
+        """)
+
         x = st.number_input("Number of successes (x)", min_value=0, step=1)
         n = st.number_input("Sample size (n)", min_value=max(1, int(x)), step=1)
         conf = st.number_input("Confidence level (0–1)", value=0.95, format="%.3f")
 
         if st.button("👨‍💻 Calculate"):
+            
             p_hat = x / n
             z = stats.norm.ppf((1 + conf) / 2)
             se = np.sqrt(p_hat * (1 - p_hat) / n)
             moe = z * se
             lower, upper = p_hat - moe, p_hat + moe
 
-            st.latex(r"\hat{p} \pm z_{\alpha/2}\sqrt{\dfrac{\hat{p}(1-\hat{p})}{n}}")
-
             st.subheader("Step-by-Step Solution")
-            st.markdown("**Step 1:** Compute the sample proportion")
-            st.latex(fr"\hat{{p}} = \dfrac{{x}}{{n}} = {x}/{n} = {p_hat:.{decimal}f}")
+            st.markdown("**Step 1:** Compute sample proportion")
+            st.latex(fr"\hat{{p}} = {p_hat:.{decimal}f}")
 
-            st.markdown("**Step 2:** Find the critical z-value")
-            st.latex(fr"z_{{\alpha/2}} = {z:.{decimal}f} \quad \text{{for confidence}} = {conf:.3f}")
+            st.markdown("**Step 2:** Find critical value")
+            st.latex(fr"z_{{\alpha/2}} = {z:.{decimal}f}")
 
-            st.markdown("**Step 3:** Compute the standard error")
-            st.latex(fr"SE = \sqrt{{\hat{{p}}(1-\hat{{p}})/n}} = {se:.{decimal}f}")
+            st.markdown("**Step 3:** Standard error")
+            st.latex(fr"SE = {se:.{decimal}f}")
 
             st.markdown("**Step 4:** Margin of error")
-            st.latex(fr"E = z \times SE = {moe:.{decimal}f}")
+            st.latex(fr"E = {moe:.{decimal}f}")
 
-            st.markdown("**Step 5:** Confidence Interval")
-            st.latex(fr"(\hat{{p}} - E,\; \hat{{p}} + E) = ({lower:.{decimal}f},\; {upper:.{decimal}f})")
+            st.markdown("**Step 5:** Final CI")
+            st.latex(fr"({lower:.{decimal}f},\; {upper:.{decimal}f})")
 
-            st.markdown(
-                f"""
-<div style="background-color:#e6f3ff; padding:10px; border-radius:10px;">
-<b>Interpretation:</b><br>
-We are <b>{conf*100:.1f}% confident</b> that the true population proportion lies between 
-<b>{lower:.{decimal}f}</b> and <b>{upper:.{decimal}f}</b>.
-</div>
-""", unsafe_allow_html=True)
+            interpretation_box(
+                f"We are <b>{conf*100:.1f}% confident</b> that the true population "
+                f"proportion lies between <b>{lower:.{decimal}f}</b> and "
+                f"<b>{upper:.{decimal}f}</b>."
+            )
+
 
     # ==========================================================
     # 2) Sample Size for Proportion (p, z, E)
     # ==========================================================
     elif choice == categories[1]:
+
+        st.latex(r"""
+            n = \hat{p}(1-\hat{p})\left(\frac{z_{\alpha/2}}{E}\right)^2
+        """)
+
         conf = st.number_input("Confidence level", value=0.95, format="%.3f")
-        p_est = st.number_input("Estimated proportion (p̂)", value=0.5, min_value=0.0, max_value=1.0)
-        E = st.number_input("Margin of error (E)", value=0.05, min_value=0.000001, format="%.3f" )
+        p_est = st.number_input("Estimated proportion (p̂)", value=0.5)
+        E = st.number_input("Margin of error (E)", value=0.05)
 
         if st.button("👨‍💻 Calculate"):
+
             z = stats.norm.ppf((1 + conf) / 2)
             n_req = p_est * (1 - p_est) * (z / E) ** 2
-            n_ceiled = int(np.ceil(n_req))
-
-            st.latex(r"n = \hat{p}(1-\hat{p})\!\left(\dfrac{Z_{\alpha/2}}{E}\right)^{2}")
+            n_round = int(np.ceil(n_req))
 
             st.subheader("Step-by-Step Solution")
-            st.markdown("**Step 1:** Compute z-value")
-            st.latex(fr"z_{{\alpha/2}} = {z:.{decimal}f}")
+            st.markdown("**Step 1:** Critical value")
+            st.latex(fr"z = {z:.{decimal}f}")
 
-            st.markdown("**Step 2:** Substitute values into the formula")
-            st.latex(fr"n = {p_est:.{decimal}f}(1-{p_est:.{decimal}f})({z:.{decimal}f}/{E})^2 = {n_req:.{decimal}f}")
+            st.markdown("**Step 2:** Compute required n")
+            st.latex(fr"n = {n_req:.{decimal}f}")
 
-            st.markdown("**Step 3:** Round up to the next whole number")
-            st.latex(fr"n = {n_ceiled}")
+            st.markdown("**Step 3:** Round up")
+            st.latex(fr"n = {n_round}")
 
-            st.markdown(
-                f"""
-<div style="background-color:#e6f3ff; padding:10px; border-radius:10px;">
-<b>Interpretation:</b><br>
-A minimum of <b>{n_ceiled}</b> observations is needed to achieve {conf*100:.1f}% confidence 
-with a margin of error of <b>{E}</b>.
-</div>
-""", unsafe_allow_html=True)
+            interpretation_box(
+                f"A minimum of <b>{n_round}</b> participants is needed to achieve "
+                f"<b>{conf*100:.1f}% confidence</b> with margin of error <b>{E}</b>."
+            )
+
 
     # ==========================================================
-    # 3) Confidence Interval for Mean (σ known, z)
+    # 3) CI for Mean (σ known, z)
     # ==========================================================
     elif choice == categories[2]:
+
+        st.latex(r"""
+            \bar{X} \pm z_{\alpha/2}\left(\frac{\sigma}{\sqrt{n}}\right)
+        """)
+
         mean = st.number_input("Sample mean (x̄)")
         sigma = st.number_input("Population SD (σ)", min_value=0.0)
-        n = st.number_input("Sample size (n)", min_value=1, step=1)
-        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
+        n = st.number_input("Sample size (n)", min_value=1)
+        conf = st.number_input("Confidence level", value=0.95)
 
         if st.button("👨‍💻 Calculate"):
+
             z = stats.norm.ppf((1 + conf) / 2)
             se = sigma / np.sqrt(n)
             moe = z * se
             lower, upper = mean - moe, mean + moe
 
-            st.latex(r"\bar{X} \pm z_{\alpha/2}\!\left(\dfrac{\sigma}{\sqrt{n}}\right)")
+            st.subheader("Step-by-Step")
+            st.markdown("**Step 1:** Critical z-value")
+            st.latex(fr"z = {z:.{decimal}f}")
 
-            st.subheader("Step-by-Step Solution")
-            st.markdown("**Step 1:** Inputs")
-            st.write(f"x̄ = {mean}, σ = {sigma}, n = {int(n)}")
+            st.markdown("**Step 2:** Standard error")
+            st.latex(fr"SE = {se:.{decimal}f}")
 
-            st.markdown("**Step 2:** Critical value")
-            st.latex(fr"z_{{\alpha/2}} = {z:.{decimal}f}")
+            st.markdown("**Step 3:** Margin of error")
+            st.latex(fr"E = {moe:.{decimal}f}")
 
-            st.markdown("**Step 3:** Compute standard error")
-            st.latex(fr"SE = \dfrac{{\sigma}}{{\sqrt{{n}}}} = {se:.{decimal}f}")
+            st.markdown("**Step 4:** Final CI")
+            st.latex(fr"({lower:.{decimal}f}, {upper:.{decimal}f})")
 
-            st.markdown("**Step 4:** Margin of error")
-            st.latex(fr"E = z \times SE = {moe:.{decimal}f}")
+            interpretation_box(
+                f"We are <b>{conf*100:.1f}% confident</b> that μ lies between "
+                f"<b>{lower:.{decimal}f}</b> and <b>{upper:.{decimal}f}</b>."
+            )
 
-            st.markdown("**Step 5:** Confidence Interval")
-            st.latex(fr"(\bar{{X}} - E,\; \bar{{X}} + E) = ({lower:.{decimal}f},\; {upper:.{decimal}f})")
-
-            st.markdown(
-                f"""
-<div style="background-color:#e6f3ff; padding:10px; border-radius:10px;">
-<b>Interpretation:</b><br>
-We are <b>{conf*100:.1f}% confident</b> that the population mean μ lies between 
-<b>{lower:.{decimal}f}</b> and <b>{upper:.{decimal}f}</b>.
-</div>
-""", unsafe_allow_html=True)
 
     # ==========================================================
-    # 4) Confidence Interval for Mean (s given, t)
+    # 4) CI for Mean (s given, t)
     # ==========================================================
     elif choice == categories[3]:
+
+        st.latex(r"""
+            \bar{X} \pm t_{\alpha/2,\,n-1}\left(\frac{s}{\sqrt{n}}\right)
+        """)
+
         mean = st.number_input("Sample mean (x̄)")
-        s = st.number_input("Sample SD (s)", min_value=0.0)
-        n = st.number_input("Sample size (n)", min_value=2, step=1)
-        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
+        s = st.number_input("Sample SD (s)")
+        n = st.number_input("Sample size (n)", min_value=2)
+        conf = st.number_input("Confidence level", value=0.95)
 
         if st.button("👨‍💻 Calculate"):
+
             df = int(n - 1)
-            t_crit = stats.t.ppf((1 + conf) / 2, df)
+            tcrit = stats.t.ppf((1 + conf) / 2, df)
             se = s / np.sqrt(n)
-            moe = t_crit * se
+            moe = tcrit * se
             lower, upper = mean - moe, mean + moe
 
-            st.latex(r"\bar{X} \pm t_{\alpha/2,\,n-1}\!\left(\dfrac{s}{\sqrt{n}}\right)")
-            st.subheader("Step-by-Step Solution")
-            st.markdown("**Step 1:** Inputs")
-            st.write(f"x̄ = {mean}, s = {s}, n = {n}, df = {df}")
+            st.subheader("Step-by-Step")
+            st.markdown("**Step 1:** t critical value")
+            st.latex(fr"t_{{df}} = {tcrit:.{decimal}f}")
 
-            st.markdown("**Step 2:** Find t critical value")
-            st.latex(fr"t_{{\alpha/2,df}} = {t_crit:.{decimal}f}")
+            st.markdown("**Step 2:** Compute SE")
+            st.latex(fr"SE = {se:.{decimal}f}")
 
-            st.markdown("**Step 3:** Compute standard error")
-            st.latex(fr"SE = \dfrac{{s}}{{\sqrt{{n}}}} = {se:.{decimal}f}")
+            st.markdown("**Step 3:** MOE")
+            st.latex(fr"E = {moe:.{decimal}f}")
 
-            st.markdown("**Step 4:** Margin of error")
-            st.latex(fr"E = t \times SE = {moe:.{decimal}f}")
+            st.markdown("**Step 4:** CI")
+            st.latex(fr"({lower:.{decimal}f}, {upper:.{decimal}f})")
 
-            st.markdown("**Step 5:** Confidence Interval")
-            st.latex(fr"(\bar{{X}} - E,\; \bar{{X}} + E) = ({lower:.{decimal}f},\; {upper:.{decimal}f})")
-
-            st.markdown(
-                f"""
-<div style="background-color:#e6f3ff; padding:10px; border-radius:10px;">
-<b>Interpretation:</b><br>
-We are <b>{conf*100:.1f}% confident</b> that μ lies between 
-<b>{lower:.{decimal}f}</b> and <b>{upper:.{decimal}f}</b>.
-</div>
-""", unsafe_allow_html=True)
+            interpretation_box(
+                f"We are <b>{conf*100:.1f}% confident</b> that μ lies between "
+                f"<b>{lower:.{decimal}f}</b> and <b>{upper:.{decimal}f}</b>."
+            )
 
     # ==========================================================
-    # 5) Confidence Interval for Mean (with data, t)
+    # 5) CI for Mean (with data)
     # ==========================================================
     elif choice == categories[4]:
+
+        st.latex(r"""
+            \bar{X} \pm t_{\alpha/2,\,n-1}\left(\frac{s}{\sqrt{n}}\right)
+        """)
+
         data = load_uploaded_data()
-        raw_input = st.text_area("Or enter comma-separated values:")
-        if data is None and raw_input:
+        raw = st.text_area("Or enter comma-separated values:")
+
+        if data is None and raw:
             try:
-                data = np.array([float(x.strip()) for x in raw_input.split(",") if x.strip()])
+                data = np.array([float(x) for x in raw.split(",")])
             except:
                 st.error("❌ Invalid input.")
                 return
 
-        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
+        conf = st.number_input("Confidence level", value=0.95)
 
         if st.button("👨‍💻 Calculate"):
+
             if data is None or len(data) < 2:
-                st.warning("⚠️ Provide at least two data points.")
+                st.warning("⚠️ Need at least 2 numbers.")
                 return
 
-            n, mean, s = len(data), np.mean(data), np.std(data, ddof=1)
+            n = len(data)
             df = n - 1
-            t_crit = stats.t.ppf((1 + conf) / 2, df)
+            mean = np.mean(data)
+            s = np.std(data, ddof=1)
+            tcrit = stats.t.ppf((1 + conf) / 2, df)
             se = s / np.sqrt(n)
-            moe = t_crit * se
+            moe = tcrit * se
             lower, upper = mean - moe, mean + moe
 
-            st.latex(r"\bar{X} \pm t_{\alpha/2,\,n-1}\!\left(\dfrac{s}{\sqrt{n}}\right)")
-            st.subheader("Step-by-Step Solution")
-            st.markdown("**Step 1:** From data")
+            st.subheader("Step-by-Step")
+            st.markdown("**Step 1:** Summary stats")
             st.write(f"n={n}, x̄={mean:.{decimal}f}, s={s:.{decimal}f}")
 
-            st.markdown("**Step 2:** Compute critical value")
-            st.latex(fr"t_{{\alpha/2,df}} = {t_crit:.{decimal}f}")
+            st.markdown("**Step 2:** Critical value")
+            st.latex(fr"t = {tcrit:.{decimal}f}")
 
-            st.markdown("**Step 3:** Compute SE and MOE")
-            st.latex(fr"SE = \dfrac{{s}}{{\sqrt{{n}}}} = {se:.{decimal}f}, \quad E = t \times SE = {moe:.{decimal}f}")
-
-            st.markdown("**Step 4:** Confidence Interval")
+            st.markdown("**Step 3:** Compute CI")
             st.latex(fr"({lower:.{decimal}f}, {upper:.{decimal}f})")
 
-            st.markdown(
-                f"""
-<div style="background-color:#e6f3ff; padding:10px; border-radius:10px;">
-<b>Interpretation:</b><br>
-We are <b>{conf*100:.1f}% confident</b> that μ lies between 
-<b>{lower:.{decimal}f}</b> and <b>{upper:.{decimal}f}</b>.
-</div>
-""", unsafe_allow_html=True)
+            interpretation_box(
+                f"We are <b>{conf*100:.1f}% confident</b> that μ lies between "
+                f"<b>{lower:.{decimal}f}</b> and <b>{upper:.{decimal}f}</b>."
+            )
 
     # ==========================================================
-    # 6) Sample Size for Mean (σ known, z, E)
+    # 6) Sample Size for Mean (σ known)
     # ==========================================================
     elif choice == categories[5]:
-        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
+
+        st.latex(r"""
+            n = \left(\frac{z_{\alpha/2}\sigma}{E}\right)^2
+        """)
+
+        conf = st.number_input("Confidence level", value=0.95)
         sigma = st.number_input("Population SD (σ)", min_value=0.0)
-        E = st.number_input("Margin of error (E)", value=0.05, min_value=0.000001)
+        E = st.number_input("Margin of error (E)", value=0.05)
 
         if st.button("👨‍💻 Calculate"):
+
             z = stats.norm.ppf((1 + conf) / 2)
             n_req = (z * sigma / E) ** 2
-            n_ceiled = int(np.ceil(n_req))
+            n_round = int(np.ceil(n_req))
 
-            st.latex(r"n = \left(\dfrac{z_{\alpha/2}\sigma}{E}\right)^2")
+            st.subheader("Step-by-Step")
+            st.latex(fr"z = {z:.{decimal}f}")
+            st.latex(fr"n = {n_req:.{decimal}f}")
+            st.latex(fr"n = {n_round}")
 
-            st.subheader("Step-by-Step Solution")
-            st.markdown("**Step 1:** Critical z-value")
-            st.latex(fr"z_{{\alpha/2}} = {z:.{decimal}f}")
-
-            st.markdown("**Step 2:** Substitute into formula")
-            st.latex(fr"n = ({z:.{decimal}f} \times {sigma:.{decimal}f} / {E})^2 = {n_req:.{decimal}f}")
-
-            st.markdown("**Step 3:** Round up")
-            st.latex(fr"n = {n_ceiled}")
-
-            st.markdown(
-                f"""
-<div style="background-color:#e6f3ff; padding:10px; border-radius:10px;">
-<b>Interpretation:</b><br>
-At {conf*100:.1f}% confidence, at least <b>{n_ceiled}</b> samples are required 
-to estimate μ with a margin of error of <b>{E}</b>.
-</div>
-""", unsafe_allow_html=True)
+            interpretation_box(
+                f"At <b>{conf*100:.1f}% confidence</b>, you need at least "
+                f"<b>{n_round}</b> samples to estimate μ with margin of error <b>{E}</b>."
+            )
 
     # ==========================================================
-    # 7) Confidence Interval for Variance & SD (χ²)
+    # 7) CI for Variance & SD (χ²)
     # ==========================================================
     elif choice == categories[6]:
-        n = st.number_input("Sample size (n)", min_value=2, step=1)
-        input_type = st.radio(
-            "Provide summary input:",
-            ["Enter sample standard deviation (s)", "Enter sample variance (s²)"],
+
+        st.latex(r"""
+            \left(
+            \frac{(n-1)s^2}{\chi^2_{upper}},
+            \frac{(n-1)s^2}{\chi^2_{lower}}
+            \right)
+        """)
+
+        n = st.number_input("Sample size (n)", min_value=2)
+        method = st.radio(
+            "Provide input:",
+            ["Enter SD (s)", "Enter Variance (s²)"],
             horizontal=True
         )
 
-        if input_type == "Enter sample standard deviation (s)":
+        if method == "Enter SD (s)":
             s = st.number_input("Sample SD (s)", min_value=0.0)
             s2 = s ** 2
         else:
-            s2 = st.number_input("Sample variance (s²)", min_value=0.0)
+            s2 = st.number_input("Sample Variance (s²)", min_value=0.0)
             s = np.sqrt(s2)
 
-        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
+        conf = st.number_input("Confidence level", value=0.95)
 
         if st.button("👨‍💻 Calculate"):
+
             df = int(n - 1)
-            chi2_lower = stats.chi2.ppf((1 - conf)/2, df)
-            chi2_upper = stats.chi2.ppf(1 - (1 - conf)/2, df)
-            var_lower, var_upper = df * s2 / chi2_upper, df * s2 / chi2_lower
-            sd_lower, sd_upper = np.sqrt(var_lower), np.sqrt(var_upper)
+            chi_lower = stats.chi2.ppf((1 - conf) / 2, df)
+            chi_upper = stats.chi2.ppf(1 - (1 - conf) / 2, df)
 
-            st.latex(r"\text{Var CI: } \left(\dfrac{(n-1)s^2}{\chi^2_{(1-\alpha/2)}}, \dfrac{(n-1)s^2}{\chi^2_{(\alpha/2)}}\right)")
-            st.subheader("Step-by-Step Solution")
-            st.markdown("**Step 1:** Inputs")
-            st.write(f"n={int(n)}, df={df}, s²={s2:.{decimal}f}, s={s:.{decimal}f}")
+            var_lower = df * s2 / chi_upper
+            var_upper = df * s2 / chi_lower
 
-            st.markdown("**Step 2:** χ² critical values")
-            st.latex(fr"χ²_{{lower}} = {chi2_lower:.{decimal}f}, \quad χ²_{{upper}} = {chi2_upper:.{decimal}f}")
+            sd_lower = np.sqrt(var_lower)
+            sd_upper = np.sqrt(var_upper)
 
-            st.markdown("**Step 3:** Variance Interval")
-            st.latex(fr"\text{{Variance CI}} = \left(\dfrac{{(n-1)s^2}}{{χ²_{{upper}}}}, \dfrac{{(n-1)s^2}}{{χ²_{{lower}}}}\right) = ({var_lower:.{decimal}f}, {var_upper:.{decimal}f})")
+            st.subheader("Step-by-Step")
+            st.latex(fr"χ^2_{{lower}} = {chi_lower:.{decimal}f}")
+            st.latex(fr"χ^2_{{upper}} = {chi_upper:.{decimal}f}")
+            st.latex(fr"\text{{Var CI}} = ({var_lower:.{decimal}f}, {var_upper:.{decimal}f})")
+            st.latex(fr"\text{{SD CI}} = ({sd_lower:.{decimal}f}, {sd_upper:.{decimal}f})")
 
-            st.markdown("**Step 4:** Standard Deviation Interval")
-            st.latex(fr"\text{{SD CI}} = (\sqrt{{{var_lower:.{decimal}f}}}, \sqrt{{{var_upper:.{decimal}f}}}) = ({sd_lower:.{decimal}f}, {sd_upper:.{decimal}f})")
-
-            st.markdown(
-                f"""
-<div style="background-color:#e6f3ff; padding:10px; border-radius:10px;">
-<b>Interpretation:</b><br>
-We are <b>{conf*100:.1f}% confident</b> that the population variance lies between 
-<b>{var_lower:.{decimal}f}</b> and <b>{var_upper:.{decimal}f}</b>, and the population standard deviation lies between 
-<b>{sd_lower:.{decimal}f}</b> and <b>{sd_upper:.{decimal}f}</b>.
-</div>
-""", unsafe_allow_html=True)
+            interpretation_box(
+                f"Variance is between <b>{var_lower:.{decimal}f}</b> and "
+                f"<b>{var_upper:.{decimal}f}</b>. "
+                f"Standard deviation is between <b>{sd_lower:.{decimal}f}</b> and "
+                f"<b>{sd_upper:.{decimal}f}</b>."
+            )
 
     # ==========================================================
-    # 8) Confidence Interval for Variance & SD (with data, χ²)
+    # 8) CI for Variance & SD with Data
     # ==========================================================
     else:
-        st.subheader("📊 Confidence Interval for Variance & SD (with data, χ²)")
+
+        st.latex(r"""
+            \text{CI using } \chi^2 \text{ and sample variance}
+        """)
+
         data = load_uploaded_data()
-        raw_input = st.text_area("Or enter comma-separated values:")
-        if data is None and raw_input:
+        raw = st.text_area("Or enter comma-separated values:")
+
+        if data is None and raw:
             try:
-                data = np.array([float(x.strip()) for x in raw_input.split(",") if x.strip()])
+                data = np.array([float(x) for x in raw.split(",")])
             except:
-                st.error("❌ Invalid input. Use numeric comma-separated values only.")
+                st.error("❌ Invalid input.")
                 return
 
-        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
+        conf = st.number_input("Confidence level", value=0.95)
 
         if st.button("👨‍💻 Calculate"):
+
             if data is None or len(data) < 2:
-                st.warning("⚠️ Provide at least two data points.")
+                st.warning("⚠️ Need at least two numbers.")
                 return
 
             n = len(data)
             df = n - 1
             s2 = np.var(data, ddof=1)
             s = np.sqrt(s2)
-            chi2_lower = stats.chi2.ppf((1 - conf)/2, df)
-            chi2_upper = stats.chi2.ppf(1 - (1 - conf)/2, df)
-            var_lower, var_upper = df * s2 / chi2_upper, df * s2 / chi2_lower
-            sd_lower, sd_upper = np.sqrt(var_lower), np.sqrt(var_upper)
 
-            st.latex(r"\text{CI for Variance and SD using χ² distribution}")
+            chi_lower = stats.chi2.ppf((1 - conf) / 2, df)
+            chi_upper = stats.chi2.ppf(1 - (1 - conf) / 2, df)
 
-            st.subheader("Step-by-Step Solution")
-            st.markdown("**Step 1:** Compute summary statistics from data")
-            st.write(f"n={n}, df={df}, s²={s2:.{decimal}f}, s={s:.{decimal}f}")
+            var_lower = df * s2 / chi_upper
+            var_upper = df * s2 / chi_lower
+            sd_lower = np.sqrt(var_lower)
+            sd_upper = np.sqrt(var_upper)
 
-            st.markdown("**Step 2:** χ² critical values")
-            st.latex(fr"χ²_{{lower}} = {chi2_lower:.{decimal}f}, \quad χ²_{{upper}} = {chi2_upper:.{decimal}f}")
+            st.subheader("Step-by-Step")
+            st.write(f"n={n}, s²={s2:.{decimal}f}, s={s:.{decimal}f}")
 
-            st.markdown("**Step 3:** Variance Interval")
+            st.latex(fr"χ^2_{{lower}} = {chi_lower:.{decimal}f}")
+            st.latex(fr"χ^2_{{upper}} = {chi_upper:.{decimal}f}")
             st.latex(fr"\text{{Variance CI}} = ({var_lower:.{decimal}f}, {var_upper:.{decimal}f})")
-
-            st.markdown("**Step 4:** Standard Deviation Interval")
             st.latex(fr"\text{{SD CI}} = ({sd_lower:.{decimal}f}, {sd_upper:.{decimal}f})")
 
-            st.markdown(
-                f"""
-<div style="background-color:#e6f3ff; padding:10px; border-radius:10px;">
-<b>Interpretation:</b><br>
-We are <b>{conf*100:.1f}% confident</b> that the population variance lies between 
-<b>{var_lower:.{decimal}f}</b> and <b>{var_upper:.{decimal}f}</b>, and the population standard deviation lies between 
-<b>{sd_lower:.{decimal}f}</b> and <b>{sd_upper:.{decimal}f}</b>.
-</div>
-""", unsafe_allow_html=True)
+            interpretation_box(
+                f"We are <b>{conf*100:.1f}% confident</b> that the population "
+                f"variance lies between <b>{var_lower:.{decimal}f}</b> and "
+                f"<b>{var_upper:.{decimal}f}</b>, and deviation between "
+                f"<b>{sd_lower:.{decimal}f}</b> and <b>{sd_upper:.{decimal}f}</b>."
+            )
 
 
 # ==========================================================
@@ -419,5 +458,4 @@ We are <b>{conf*100:.1f}% confident</b> that the population variance lies betwee
 # ==========================================================
 if __name__ == "__main__":
     run()
-
 
