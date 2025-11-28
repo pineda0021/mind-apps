@@ -63,7 +63,7 @@ def step_box(text):
 # ==========================================================
 def decision_box(text, reject: bool):
     color = "#2ecc71" if reject else "#e74c3c"
-    icon = "✔️" if reject else "✖️"
+    icon = "✅" if reject else "❌"
     st.markdown(
         f"""
         <div style="
