@@ -1,6 +1,5 @@
 # ==========================================================
 # two_sample_tool.py
-# formatted to match One-Sample Tool
 # Professor Edward Pineda-Castro — MIND Statistics Visualizer
 # ==========================================================
 
@@ -156,7 +155,7 @@ def run_two_sample_tool():
                 ci_high = diff + zcrit * se_u
                 st.markdown(f"• Confidence Interval ({100*(1-alpha):.0f}%): ({ci_low:.{dec}f}, {ci_high:.{dec}f})")
 
-            decision = "✔️ Reject H₀" if reject else "✖️ Do not reject H₀"
+            decision = "✅ Reject H₀" if reject else "❌ Do not reject H₀"
             st.markdown(f"• Decision: {decision}")
 
     # ==========================================================
@@ -204,7 +203,7 @@ def run_two_sample_tool():
                 ci_high = mean_d + tcrit*se
                 st.markdown(f"• Confidence Interval ({100*(1-alpha):.0f}%): ({ci_low:.{dec}f}, {ci_high:.{dec}f})")
 
-            decision = "✔️ Reject H₀" if reject else "✖️ Do not reject H₀"
+            decision = "✅ Reject H₀" if reject else "❌ Do not reject H₀"
             st.markdown(f"• Decision: {decision}")
 
     # ==========================================================
@@ -240,7 +239,7 @@ def run_two_sample_tool():
                 ci_high = mean_d + tcrit*se
                 st.markdown(f"• Confidence Interval ({100*(1-alpha):.0f}%): ({ci_low:.{dec}f}, {ci_high:.{dec}f})")
 
-            decision = "✔️ Reject H₀" if reject else "✖️ Do not reject H₀"
+            decision = "✅ Reject H₀" if reject else "❌ Do not reject H₀"
             st.markdown(f"• Decision: {decision}")
 
     # ==========================================================
@@ -283,7 +282,7 @@ def run_two_sample_tool():
                 ci_high = diff + tcrit*se
                 st.markdown(f"• Confidence Interval ({100*(1-alpha):.0f}%): ({ci_low:.{dec}f}, {ci_high:.{dec}f})")
 
-            decision = "✔️ Reject H₀" if reject else "✖️ Do not reject H₀"
+            decision = "✅ Reject H₀" if reject else "❌ Do not reject H₀"
             st.markdown(f"• Decision: {decision}")
 
     # ==========================================================
@@ -323,7 +322,7 @@ def run_two_sample_tool():
                 ci_high = diff + tcrit*se
                 st.markdown(f"• Confidence Interval ({100*(1-alpha):.0f}%): ({ci_low:.{dec}f}, {ci_high:.{dec}f})")
 
-            decision = "✔️ Reject H₀" if reject else "✖️ Do not reject H₀"
+            decision = "✅ Reject H₀" if reject else "❌ Do not reject H₀"
             st.markdown(f"• Decision: {decision}")
 
     # ==========================================================
@@ -353,7 +352,7 @@ def run_two_sample_tool():
 • Test Statistic (F): {F:.{dec}f}  
 • Critical Value(s): {crit_str}  
 • P-value: {p_val:.{dec}f}  
-• Decision: {"✔️ Reject H₀" if reject else "✖️ Do not reject H₀"}
+• Decision: {"✅ Reject H₀" if reject else "❌ Do not reject H₀"}
 """)
 
     elif test_choice == "F-Test (Summary)":
@@ -378,7 +377,7 @@ def run_two_sample_tool():
 • Test Statistic (F): {F:.{dec}f}  
 • Critical Value(s): {crit_str}  
 • P-value: {p_val:.{dec}f}  
-• Decision: {"✔️ Reject H₀" if reject else "✖️ Do not reject H₀"}
+• Decision: {"✅ Reject H₀" if reject else "❌ Do not reject H₀"}
 """)
 
 # ---------- RUN ----------
