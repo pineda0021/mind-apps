@@ -127,7 +127,6 @@ def run_two_sample_tool():
             se = np.sqrt(p_pool*(1-p_pool)*(1/n1 + 1/n2))
             z = (p1 - p2)/se
 
-            # Step-by-step
             st.markdown("### 📘 Step-by-Step")
             step_box("**Step 1: Compute sample proportions**")
             st.latex(fr"\hat p_1={p1:.{dec}f},\; \hat p_2={p2:.{dec}f},\; \hat p={p_pool:.{dec}f}")
@@ -139,7 +138,6 @@ def run_two_sample_tool():
             step_box("**Step 3: Tail-specific p-value**")
             p_val, reject, crit_str = z_tail_metrics(z, alpha, tails)
 
-            # Final summary
             st.markdown("### 📝 Result Summary")
             st.markdown(f"""
 • Test Statistic (z): {z:.{dec}f}  
@@ -147,7 +145,6 @@ def run_two_sample_tool():
 • P-value: {p_val:.{dec}f}  
 """)
 
-            # Confidence Interval (two-sided only)
             if show_ci:
                 zcrit = stats.norm.ppf(1 - alpha/2)
                 se_u = np.sqrt(p1*(1-p1)/n1 + p2*(1-p2)/n2)
@@ -160,7 +157,7 @@ def run_two_sample_tool():
             st.markdown(f"• Decision: {decision}")
 
     # ==========================================================
-    # PAIRED t-TEST (DATA)
+    # PAIRED t-TEST (DATA) — UPDATED WITH DATAFRAME PREVIEW
     # ==========================================================
     elif test_choice == "Paired t-Test (Data)":
         st.subheader("Enter Paired Samples")
@@ -171,6 +168,7 @@ def run_two_sample_tool():
             x1 = np.array([float(i) for i in s1.split(",")])
             x2 = np.array([float(i) for i in s2.split(",")])
 
+            # Compute differences
             d = x1 - x2
             n = len(d)
             mean_d = np.mean(d)
@@ -179,9 +177,25 @@ def run_two_sample_tool():
             tstat = mean_d/se
             df = n - 1
 
+            # --------------------------
+            # DataFrame preview
+            # --------------------------
+            df_preview = pd.DataFrame({
+                "x₁": x1,
+                "x₂": x2,
+                "dᵢ = x₁ − x₂": d
+            })
+
+            st.markdown("### 🔍 Data Preview (x₁, x₂, dᵢ)")
+            st.dataframe(df_preview.style.format("{:.4f}"))
+
+            # --------------------------
+            # Step-by-step
+            # --------------------------
             st.markdown("### 📘 Step-by-Step")
             step_box("**Step 1: Differences**")
             st.latex(r"d_i=x_{1i}-x_{2i}")
+            st.markdown(f"**Differences (dᵢ):** {np.round(d, 4).tolist()}")
             st.latex(fr"\bar d={mean_d:.{dec}f},\; s_d={sd_d:.{dec}f},\; n={n}")
 
             step_box("**Step 2: Test statistic**")
@@ -197,12 +211,14 @@ def run_two_sample_tool():
 • P-value: {p_val:.{dec}f}  
 """)
 
-            # Optional confidence interval
             if show_ci:
                 tcrit = stats.t.ppf(1 - alpha/2, df)
                 ci_low = mean_d - tcrit*se
                 ci_high = mean_d + tcrit*se
-                st.markdown(f"• Confidence Interval ({100*(1-alpha):.0f}%): ({ci_low:.{dec}f}, {ci_high:.{dec}f})")
+                st.markdown(
+                    f"• Confidence Interval ({100*(1-alpha):.0f}%): "
+                    f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
+                )
 
             decision = "✅ Reject H₀" if reject else "❌ Do not reject H₀"
             st.markdown(f"• Decision: {decision}")
