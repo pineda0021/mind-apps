@@ -2,11 +2,13 @@
 # anova_tool.py
 # Created by Professor Edward Pineda-Castro, Los Angeles City College
 # Part of the MIND: Statistics Visualizer Suite
+# Updated: Added Horizontal Matplotlib Boxplots + Accessibility Summaries
 # ==========================================================
 
 import streamlit as st
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from scipy.stats import f
 
 # ==========================================================
@@ -56,13 +58,11 @@ def load_uploaded_data():
 
         # Detect format type
         if df.shape[1] == 2 and set(df.columns.str.lower()) >= {"group", "value"}:
-            # Long format: one column = group names, one column = values
             groups = [group["value"].dropna().tolist() for _, group in df.groupby(df.columns[0])]
             st.success("✅ Detected long format with 'Group' and 'Value' columns.")
             return groups
 
         elif df.shape[1] >= 2:
-            # Wide format: each column = one group
             groups = [df[col].dropna().tolist() for col in df.columns]
             st.success("✅ Detected wide format (each column = one group).")
             return groups
@@ -77,10 +77,29 @@ def load_uploaded_data():
 
 
 # ==========================================================
-# One-Way ANOVA Calculation
+# ACCESSIBILITY FUNCTION
+# Provides text descriptions for students who cannot see the charts
+# ==========================================================
+def accessibility_summary(groups):
+    st.markdown("### ♿ Accessibility Summary (Text-Only Interpretation)")
+    for i, g in enumerate(groups):
+        st.markdown(
+            f"""
+            **Group {i+1} Summary**
+            - n = {len(g)}
+            - Min = {np.min(g):.3f}
+            - Q1 = {np.percentile(g, 25):.3f}
+            - Median = {np.median(g):.3f}
+            - Q3 = {np.percentile(g, 75):.3f}
+            - Max = {np.max(g):.3f}
+            """
+        )
+
+
+# ==========================================================
+# One-Way ANOVA Calculation + Boxplots
 # ==========================================================
 def one_way_anova(groups, alpha, decimals):
-    """Perform One-Way ANOVA and display results."""
     st.markdown("## 📊 One-Way ANOVA Test")
     st.markdown("---")
 
@@ -104,6 +123,23 @@ def one_way_anova(groups, alpha, decimals):
     })
     st.dataframe(summary_df)
 
+    # ======================================================
+    # NEW: Horizontal Boxplots using Matplotlib
+    # ======================================================
+    step_box("**Step 1A:** Visualize Groups (Horizontal Boxplots)")
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.boxplot(groups, vert=False, patch_artist=True)
+
+    ax.set_xlabel("Values")
+    ax.set_yticks(range(1, len(groups) + 1))
+    ax.set_yticklabels([f"Group {i+1}" for i in range(len(groups))])
+    ax.set_title("Horizontal Boxplots of Groups")
+
+    st.pyplot(fig)
+
+    # Accessibility summary
+    accessibility_summary(groups)
+
     # Step 2: Calculate SSB, SSW, MSB, MSW
     step_box("**Step 2:** Compute Sums of Squares")
     ssb = sum(n * (m - overall_mean) ** 2 for n, m in zip(group_sizes, group_means))
@@ -113,7 +149,7 @@ def one_way_anova(groups, alpha, decimals):
     msb = ssb / df_between
     msw = ssw / df_within
 
-    # Step 3: Compute F statistic
+    # Step 3: Compute F-statistic
     step_box("**Step 3:** Compute F Statistic")
     f_stat = msb / msw
     p_value = 1 - f.cdf(f_stat, df_between, df_within)
@@ -130,18 +166,18 @@ def one_way_anova(groups, alpha, decimals):
     })
     st.dataframe(anova_df)
 
-    # Step 5: Decision and Interpretation
+    # Step 5: Decision
     step_box("**Step 5:** Decision and Interpretation")
     st.write(f"**F-statistic:** {round(f_stat, decimals)}")
     st.write(f"**P-value:** {round(p_value, decimals)}")
-    st.write(f"**Critical Value (F₍₁₋α, df₁, df₂₎):** {round(critical_value, decimals)}")
-    st.write(f"**Degrees of Freedom:** df₁ = {df_between}, df₂ = {df_within}")
+    st.write(f"**Critical Value:** {round(critical_value, decimals)}")
 
     if p_value <= alpha:
         st.success("✅ Reject H₀: There is a significant difference among group means.")
     else:
         st.info("❌ Fail to Reject H₀: No significant difference among group means.")
 
+    # Step 6: Summary Interpretation
     step_box("**Step 6:** Summary Interpretation")
     interpretation = (
         "Since the p-value is "
@@ -160,22 +196,20 @@ def one_way_anova(groups, alpha, decimals):
 # Streamlit Interface
 # ==========================================================
 def run():
-    st.header("📊 One-Way ANOVA Test")
+    st.header("📊 One-Way ANOVA Test (Enhanced Version)")
 
     st.markdown("""
     This tool tests whether **three or more group means are equal** using the F-test.
+
     ---
     **Input Options:**  
-    - 🧮 Manual entry of group data  
-    - 📁 Upload CSV or Excel file (wide or long format)
+    - Manual entry  
+    - Upload CSV/Excel  
     """)
-
+    
     input_method = st.radio(
         "Choose data input method:",
-        [
-            "📋 Manual Entry",
-            "📂 Upload CSV/Excel File"
-        ]
+        ["📋 Manual Entry", "📂 Upload CSV/Excel File"]
     )
 
     groups = []
@@ -199,7 +233,7 @@ def run():
                     try:
                         groups.append(list(map(float, group_text.strip().split(','))))
                     except Exception:
-                        st.error(f"⚠️ Invalid input in Group {i+1}. Use commas to separate values (e.g., 10,12,14).")
+                        st.error(f"⚠️ Invalid input in Group {i+1}. Use commas to separate values.")
 
     elif input_method == "📂 Upload CSV/Excel File":
         groups = load_uploaded_data()
@@ -220,7 +254,7 @@ def run():
 if __name__ == "__main__":
     run()
 
-# ✅ Compatibility for main app
+# Compatibility for main app
 run_anova_tool = run
 
 
