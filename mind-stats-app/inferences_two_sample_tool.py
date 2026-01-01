@@ -2,6 +2,7 @@
 # two_sample_tool.py
 # Created by Professor Edward Pineda-Castro, Los Angeles City College
 # MIND: Statistics Visualizer Suite
+# Updated with Dark/Light Mode Safe Interpretation Boxes
 # ==========================================================
 import streamlit as st
 import numpy as np
@@ -57,6 +58,25 @@ def t_tail_metrics(tval, df, alpha, tail):
         crit_str = f"±{crit:.4f}"
     return p, reject, crit_str
 
+def f_tail_metrics(F, df1, df2, alpha, tail):
+    if tail == "left":
+        crit = stats.f.ppf(alpha, df1, df2)
+        p = stats.f.cdf(F, df1, df2)
+        reject = F < crit
+        crit_str = f"{crit:.4f}"
+    elif tail == "right":
+        crit = stats.f.ppf(1 - alpha, df1, df2)
+        p = 1 - stats.f.cdf(F, df1, df2)
+        reject = F > crit
+        crit_str = f"{crit:.4f}"
+    else:
+        crit_low = stats.f.ppf(alpha/2, df1, df2)
+        crit_high = stats.f.ppf(1 - alpha/2, df1, df2)
+        p = 2 * min(stats.f.cdf(F, df1, df2), 1 - stats.f.cdf(F, df1, df2))
+        reject = (F < crit_low) or (F > crit_high)
+        crit_str = f"{crit_low:.4f}, {crit_high:.4f}"
+    return p, reject, crit_str
+
 # ==========================================================
 # MAIN TOOL
 # ==========================================================
@@ -66,18 +86,24 @@ def run_two_sample_tool():
     test_choice = st.selectbox(
         "Choose a Two-Sample Test:",
         [
+            "Two-Proportion Z-Test",
+            "Paired t-Test (Data)",
+            "Paired t-Test (Summary)",
             "Independent t-Test (Data, Welch)",
-            "Independent t-Test (Summary, Welch)"
+            "Independent t-Test (Summary, Welch)",
+            "F-Test (Data)",
+            "F-Test (Summary)"
         ],
         index=None,
         placeholder="Select a test..."
     )
 
     if not test_choice:
+        st.info("👆 Select a test to begin.")
         return
 
-    dec = st.number_input("Decimal places:", 0, 10, 4)
-    alpha = st.number_input("Significance level (α):", 0.001, 0.5, 0.05)
+    dec = st.number_input("Decimal places for output:", 0, 10, 4)
+    alpha = st.number_input("Significance level (α):", 0.001, 0.5, 0.05, step=0.01)
     tails = st.selectbox("Tail type:", ["two", "left", "right"])
     show_ci = st.checkbox("Show Confidence Interval (two-sided only)")
 
@@ -85,6 +111,7 @@ def run_two_sample_tool():
     # WELCH t-TEST (DATA)
     # ==========================================================
     if test_choice == "Independent t-Test (Data, Welch)":
+        st.subheader("Independent Samples Data")
         a = st.text_area("Sample 1:", "1,2,3,4")
         b = st.text_area("Sample 2:", "1,2,3,4")
 
@@ -97,15 +124,15 @@ def run_two_sample_tool():
             s1, s2 = np.std(x1, ddof=1), np.std(x2, ddof=1)
 
             se = np.sqrt(s1**2/n1 + s2**2/n2)
-            tstat = (m1 - m2)/se
+            tstat = (m1 - m2) / se
 
             df = (se**4) / (
                 ((s1**2/n1)**2)/(n1-1) +
                 ((s2**2/n2)**2)/(n2-1)
             )
-
             df_crit = np.floor(df)
 
+            st.markdown("### 📘 Step-by-Step")
             step_box("**Step 1: Test statistic and degrees of freedom**")
             st.latex(fr"t={tstat:.{dec}f}")
             st.latex(fr"df_{{Welch}}\approx {df:.2f},\quad df_{{crit}}={int(df_crit)}")
@@ -122,8 +149,8 @@ def run_two_sample_tool():
             if show_ci:
                 tcrit = stats.t.ppf(1 - alpha/2, df)
                 diff = m1 - m2
-                ci_low = diff - tcrit*se
-                ci_high = diff + tcrit*se
+                ci_low = diff - tcrit * se
+                ci_high = diff + tcrit * se
                 st.markdown(
                     f"• Confidence Interval ({100*(1-alpha):.0f}%): "
                     f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
@@ -135,6 +162,7 @@ def run_two_sample_tool():
     # WELCH t-TEST (SUMMARY)
     # ==========================================================
     elif test_choice == "Independent t-Test (Summary, Welch)":
+        st.subheader("Summary Statistics Input")
         m1 = st.number_input("Mean 1:", 0.0)
         s1 = st.number_input("SD 1:", 1.0)
         n1 = st.number_input("n₁:", 2, step=1)
@@ -145,15 +173,15 @@ def run_two_sample_tool():
         if st.button("Calculate"):
             se = np.sqrt(s1**2/n1 + s2**2/n2)
             diff = m1 - m2
-            tstat = diff/se
+            tstat = diff / se
 
             df = (se**4) / (
                 ((s1**2/n1)**2)/(n1-1) +
                 ((s2**2/n2)**2)/(n2-1)
             )
-
             df_crit = np.floor(df)
 
+            st.markdown("### 📘 Step-by-Step")
             step_box("**Step 1: Test statistic and degrees of freedom**")
             st.latex(fr"t={tstat:.{dec}f}")
             st.latex(fr"df_{{Welch}}\approx {df:.2f},\quad df_{{crit}}={int(df_crit)}")
@@ -169,8 +197,8 @@ def run_two_sample_tool():
 
             if show_ci:
                 tcrit = stats.t.ppf(1 - alpha/2, df)
-                ci_low = diff - tcrit*se
-                ci_high = diff + tcrit*se
+                ci_low = diff - tcrit * se
+                ci_high = diff + tcrit * se
                 st.markdown(
                     f"• Confidence Interval ({100*(1-alpha):.0f}%): "
                     f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
