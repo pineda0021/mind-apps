@@ -82,6 +82,7 @@ def run_two_sample_tool():
     )
 
     if not test_choice:
+        st.info("👆 Please select a hypothesis test to begin.")
         return
 
     dec = st.number_input("Decimal places:", 0, 10, 4)
