@@ -74,7 +74,7 @@ def run_two_sample_tool():
             "F-Test (Summary)"
         ],
         index=None
-        placeholder="Select a test..."
+      
     )
 
     if not test_choice:
