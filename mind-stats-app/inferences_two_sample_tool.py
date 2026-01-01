@@ -1,9 +1,4 @@
 # ==========================================================
-# two_sample_tool.py
-# Created by Professor Edward Pineda-Castro
-# MIND: Statistics Visualizer Suite
-# ==========================================================
-# ==========================================================
 # two_sample_tool_correct.py
 # Clean, correct hypothesis testing & confidence intervals
 # ==========================================================
@@ -79,11 +74,12 @@ def run_two_sample_tool():
             "F-Test (Summary)"
         ],
         index=None
+        placeholder="Select a test..."
     )
 
     if not test_choice:
-        st.info("👆 Please select a hypothesis test to begin.")
-        return
+    st.info("👆 Please select a hypothesis test to begin.")
+    return
 
     dec = st.number_input("Decimal places:", 0, 10, 4)
     alpha = st.number_input("Significance level α:", 0.001, 0.5, 0.05, step=0.01)
@@ -228,3 +224,5 @@ def run_two_sample_tool():
 # ----------------------------------------------------------
 if __name__ == "__main__":
     run_two_sample_tool()
+
+  
