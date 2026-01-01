@@ -278,12 +278,14 @@ def run_two_sample_tool():
             se = np.sqrt(s1**2/n1 + s2**2/n2)
             tstat = (m1 - m2)/se
             df = (se**4)/(((s1**2/n1)**2)/(n1-1) + ((s2**2/n2)**2)/(n2-1))
+            df_crit = np.floor(df)
 
             st.markdown("### 📘 Step-by-Step")
             step_box("**Step 1: Test statistic**")
+            st.latex(fr"df_{{Welch}}\approx {df:.2f},\quad df_{{crit}}={int(df_crit)}")
             st.latex(fr"t={tstat:.{dec}f},\; df\approx{df:.2f}")
 
-            p_val, reject, crit_str = t_tail_metrics(tstat, df, alpha, tails)
+            p_val, reject, crit_str = t_tail_metrics(tstat, df_crit, alpha, tails)
 
             st.markdown("### 📝 Result Summary")
             st.markdown(f"""
