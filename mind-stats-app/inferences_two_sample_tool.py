@@ -57,7 +57,27 @@ def t_tail_metrics(tval, df, alpha, tail):
         crit_str = f"±{crit:.4f}"
     return p, reject, crit_str, crit
 
-# ---------- CI critical values ----------
+def f_tail_metrics(F, df1, df2, alpha, tail):
+    if tail == "left":
+        crit = stats.f.ppf(alpha, df1, df2)
+        p = stats.f.cdf(F, df1, df2)
+        reject = F < crit
+        crit_str = f"{crit:.4f}"
+    elif tail == "right":
+        crit = stats.f.ppf(1 - alpha, df1, df2)
+        p = 1 - stats.f.cdf(F, df1, df2)
+        reject = F > crit
+        crit_str = f"{crit:.4f}"
+    else:
+        crit_low = stats.f.ppf(alpha/2, df1, df2)
+        crit_high = stats.f.ppf(1 - alpha/2, df1, df2)
+        p = 2 * min(stats.f.cdf(F, df1, df2),
+                    1 - stats.f.cdf(F, df1, df2))
+        reject = (F < crit_low) or (F > crit_high)
+        crit_str = f"{crit_low:.4f}, {crit_high:.4f}"
+    return p, reject, crit_str
+
+# ---------- CI critical values (ALWAYS TWO-SIDED) ----------
 def z_ci_critical(alpha):
     return stats.norm.ppf(1 - alpha/2)
 
@@ -77,14 +97,16 @@ def run_two_sample_tool():
             "Paired t-Test (Data)",
             "Paired t-Test (Summary)",
             "Independent t-Test (Data, Welch)",
-            "Independent t-Test (Summary, Welch)"
+            "Independent t-Test (Summary, Welch)",
+            "F-Test (Data)",
+            "F-Test (Summary)"
         ],
         index=None,
         placeholder="Select a test..."
     )
 
     if not test_choice:
-        st.info("👆 Please select a hypothesis test to begin.")
+        st.info("👆 Select a test to begin.")
         return
 
     dec = st.number_input("Decimal places for output:", 0, 10, 4)
@@ -109,6 +131,7 @@ def run_two_sample_tool():
 
             p_val, reject, crit_str, _ = z_tail_metrics(z, alpha, tails)
 
+            st.markdown("### 📝 Result Summary")
             st.markdown(f"""
 • Test Statistic (z): {z:.{dec}f}  
 • Critical Value (Hypothesis Test): {crit_str}  
@@ -117,15 +140,18 @@ def run_two_sample_tool():
 """)
 
             if show_ci:
-                zcrit_ci = z_ci_critical(alpha)
+                zcrit = z_ci_critical(alpha)
                 diff = p1 - p2
-                ci_low = diff - zcrit_ci*se
-                ci_high = diff + zcrit_ci*se
+                ci_low = diff - zcrit*se
+                ci_high = diff + zcrit*se
 
-                st.markdown(f"""
-• Critical Value (Confidence Interval): ±{zcrit_ci:.{dec}f}  
-• Confidence Interval ({100*(1-alpha):.0f}%): ({ci_low:.{dec}f}, {ci_high:.{dec}f})
-""")
+                step_box("**Confidence Interval (Two-Sided)**")
+                st.latex(fr"z_{{CI}} = {zcrit:.{dec}f}")
+                st.markdown(
+                    f"• Critical Value (Confidence Interval): ±{zcrit:.{dec}f}  \n"
+                    f"• Confidence Interval ({100*(1-alpha):.0f}%): "
+                    f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
+                )
 
     # ======================================================
     # PAIRED t-TEST (DATA)
@@ -143,10 +169,11 @@ def run_two_sample_tool():
             sd_d = np.std(d, ddof=1)
             se = sd_d/np.sqrt(len(d))
             tstat = mean_d/se
-            df = len(d) - 1
+            df = len(d)-1
 
             p_val, reject, crit_str, _ = t_tail_metrics(tstat, df, alpha, tails)
 
+            st.markdown("### 📝 Result Summary")
             st.markdown(f"""
 • Test Statistic (t): {tstat:.{dec}f}  
 • df: {df}  
@@ -156,14 +183,17 @@ def run_two_sample_tool():
 """)
 
             if show_ci:
-                tcrit_ci = t_ci_critical(df, alpha)
-                ci_low = mean_d - tcrit_ci*se
-                ci_high = mean_d + tcrit_ci*se
+                tcrit = t_ci_critical(df, alpha)
+                ci_low = mean_d - tcrit*se
+                ci_high = mean_d + tcrit*se
 
-                st.markdown(f"""
-• Critical Value (Confidence Interval): ±{tcrit_ci:.{dec}f}  
-• Confidence Interval ({100*(1-alpha):.0f}%): ({ci_low:.{dec}f}, {ci_high:.{dec}f})
-""")
+                step_box("**Confidence Interval (Two-Sided)**")
+                st.latex(fr"t_{{CI}} = {tcrit:.{dec}f}")
+                st.markdown(
+                    f"• Critical Value (Confidence Interval): ±{tcrit:.{dec}f}  \n"
+                    f"• Confidence Interval ({100*(1-alpha):.0f}%): "
+                    f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
+                )
 
     # ======================================================
     # INDEPENDENT t-TEST (DATA, WELCH)
@@ -189,6 +219,7 @@ def run_two_sample_tool():
 
             p_val, reject, crit_str, _ = t_tail_metrics(tstat, df, alpha, tails)
 
+            st.markdown("### 📝 Result Summary")
             st.markdown(f"""
 • Test Statistic (t): {tstat:.{dec}f}  
 • df (Welch): {df:.2f}  
@@ -198,15 +229,18 @@ def run_two_sample_tool():
 """)
 
             if show_ci:
-                tcrit_ci = t_ci_critical(df, alpha)
+                tcrit = t_ci_critical(df, alpha)
                 diff = m1 - m2
-                ci_low = diff - tcrit_ci*se
-                ci_high = diff + tcrit_ci*se
+                ci_low = diff - tcrit*se
+                ci_high = diff + tcrit*se
 
-                st.markdown(f"""
-• Critical Value (Confidence Interval): ±{tcrit_ci:.{dec}f}  
-• Confidence Interval ({100*(1-alpha):.0f}%): ({ci_low:.{dec}f}, {ci_high:.{dec}f})
-""")
+                step_box("**Confidence Interval (Two-Sided)**")
+                st.latex(fr"t_{{CI}} = {tcrit:.{dec}f}")
+                st.markdown(
+                    f"• Critical Value (Confidence Interval): ±{tcrit:.{dec}f}  \n"
+                    f"• Confidence Interval ({100*(1-alpha):.0f}%): "
+                    f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
+                )
 
 # ---------- RUN ----------
 if __name__ == "__main__":
