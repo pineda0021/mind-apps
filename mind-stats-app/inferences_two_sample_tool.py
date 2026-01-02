@@ -2,6 +2,7 @@
 # two_sample_tool.py
 # Created by Professor Edward Pineda-Castro, Los Angeles City College
 # MIND: Statistics Visualizer Suite
+# Updated with Dark/Light Mode Safe Interpretation Boxes
 # ==========================================================
 import streamlit as st
 import numpy as np
@@ -71,8 +72,7 @@ def f_tail_metrics(F, df1, df2, alpha, tail):
     else:
         crit_low = stats.f.ppf(alpha/2, df1, df2)
         crit_high = stats.f.ppf(1 - alpha/2, df1, df2)
-        p = 2 * min(stats.f.cdf(F, df1, df2),
-                    1 - stats.f.cdf(F, df1, df2))
+        p = 2 * min(stats.f.cdf(F, df1, df2), 1 - stats.f.cdf(F, df1, df2))
         reject = (F < crit_low) or (F > crit_high)
         crit_str = f"{crit_low:.4f}, {crit_high:.4f}"
     return p, reject, crit_str
@@ -147,29 +147,246 @@ def run_two_sample_tool():
 
                 zcrit = stats.norm.ppf(1 - alpha/2)
                 diff = p1 - p2
-                ci_low = diff - zcrit * se
-                ci_high = diff + zcrit * se
+                ci_low = diff - zcrit*se
+                ci_high = diff + zcrit*se
                 st.markdown(f"• Confidence Interval ({100*(1-alpha):.0f}%): ({ci_low:.{dec}f}, {ci_high:.{dec}f})")
 
             st.markdown(f"• Decision: {'✅ Reject H₀' if reject else '❌ Do not reject H₀'}")
 
     # ==========================================================
-    # ALL t-TESTS (Paired & Welch)
+    # PAIRED t-TEST (DATA)
     # ==========================================================
-    elif test_choice in [
-        "Paired t-Test (Data)",
-        "Paired t-Test (Summary)",
-        "Independent t-Test (Data, Welch)",
-        "Independent t-Test (Summary, Welch)"
-    ]:
-        st.info("This section follows the same structure as the Z-test above, with t-based statistics.")
-        st.info("Confidence intervals are always two-sided and computed using t_{1-α/2}.")
+    elif test_choice == "Paired t-Test (Data)":
+        s1 = st.text_area("Sample 1:", "1,2,3,4")
+        s2 = st.text_area("Sample 2:", "1,2,3,4")
+
+        if st.button("Calculate"):
+            x1 = np.array([float(i) for i in s1.split(",")])
+            x2 = np.array([float(i) for i in s2.split(",")])
+            d = x1 - x2
+
+            st.markdown("### 🔍 Data Preview")
+            st.dataframe(pd.DataFrame({"x₁": x1, "x₂": x2, "dᵢ": d}).style.format("{:.4f}"))
+
+            n = len(d)
+            mean_d = np.mean(d)
+            sd_d = np.std(d, ddof=1)
+            se = sd_d/np.sqrt(n)
+            tstat = mean_d/se
+            df = n - 1
+
+            st.markdown("### 📘 Step-by-Step")
+            step_box("**Step 1: Differences**")
+            st.latex(r"d_i=x_{1i}-x_{2i}")
+
+            step_box("**Step 2: Test statistic**")
+            st.latex(r"t=\frac{\bar d}{s_d/\sqrt{n}}")
+            st.latex(fr"t={tstat:.{dec}f}")
+
+            p_val, reject, crit_str = t_tail_metrics(tstat, df, alpha, tails)
+
+            st.markdown("### 📝 Result Summary")
+            st.markdown(f"""
+• Test Statistic (t): {tstat:.{dec}f}  
+• Critical Value (Hypothesis Test): {crit_str}  
+• P-value: {p_val:.{dec}f}  
+""")
+
+            if show_ci:
+                st.info("ℹ️ Confidence intervals are always two-sided, regardless of whether the hypothesis test is left-, right-, or two-tailed.")
+                st.latex(r"\text{CI} = \bar d \pm t_{1-\alpha/2}\cdot SE")
+
+                tcrit = stats.t.ppf(1 - alpha/2, df)
+                ci_low = mean_d - tcrit*se
+                ci_high = mean_d + tcrit*se
+                st.markdown(f"• Confidence Interval ({100*(1-alpha):.0f}%): ({ci_low:.{dec}f}, {ci_high:.{dec}f})")
+
+            st.markdown(f"• Decision: {'✅ Reject H₀' if reject else '❌ Do not reject H₀'}")
 
     # ==========================================================
-    # F-TESTS
+    # PAIRED t-TEST (SUMMARY)
     # ==========================================================
-    elif test_choice in ["F-Test (Data)", "F-Test (Summary)"]:
-        st.info("F-tests do not produce confidence intervals; they are hypothesis tests only.")
+    elif test_choice == "Paired t-Test (Summary)":
+        mean_d = st.number_input("Mean difference (d̄):", 0.0)
+        sd_d = st.number_input("SD of differences (s_d):", 1.0)
+        n = st.number_input("Sample size n:", 2, step=1)
+
+        if st.button("Calculate"):
+            df = n - 1
+            se = sd_d/np.sqrt(n)
+            tstat = mean_d/se
+
+            st.markdown("### 📘 Step-by-Step")
+            step_box("**Step 1: Test statistic**")
+            st.latex(fr"t={tstat:.{dec}f}")
+
+            p_val, reject, crit_str = t_tail_metrics(tstat, df, alpha, tails)
+
+            st.markdown("### 📝 Result Summary")
+            st.markdown(f"""
+• Test Statistic (t): {tstat:.{dec}f}  
+• Critical Value (Hypothesis Test): {crit_str}  
+• P-value: {p_val:.{dec}f}  
+""")
+
+            if show_ci:
+                st.info("ℹ️ Confidence intervals are always two-sided, regardless of whether the hypothesis test is left-, right-, or two-tailed.")
+                st.latex(r"\text{CI} = \bar d \pm t_{1-\alpha/2}\cdot SE")
+
+                tcrit = stats.t.ppf(1 - alpha/2, df)
+                ci_low = mean_d - tcrit*se
+                ci_high = mean_d + tcrit*se
+                st.markdown(f"• Confidence Interval ({100*(1-alpha):.0f}%): ({ci_low:.{dec}f}, {ci_high:.{dec}f})")
+
+            st.markdown(f"• Decision: {'✅ Reject H₀' if reject else '❌ Do not reject H₀'}")
+
+    # ==========================================================
+    # INDEPENDENT t-TEST (DATA, WELCH)
+    # ==========================================================
+    elif test_choice == "Independent t-Test (Data, Welch)":
+        a = st.text_area("Sample 1:", "1,2,3,4")
+        b = st.text_area("Sample 2:", "1,2,3,4")
+
+        if st.button("Calculate"):
+            x1 = np.array([float(i) for i in a.split(",")])
+            x2 = np.array([float(i) for i in b.split(",")])
+
+            st.markdown("### 🔍 Data Preview")
+            st.dataframe(pd.DataFrame({
+                "Sample": ["Sample 1", "Sample 2"],
+                "Mean": [np.mean(x1), np.mean(x2)],
+                "SD": [np.std(x1, ddof=1), np.std(x2, ddof=1)]
+            }).style.format("{:.4f}"))
+
+            m1, m2 = np.mean(x1), np.mean(x2)
+            s1, s2 = np.std(x1, ddof=1), np.std(x2, ddof=1)
+            n1, n2 = len(x1), len(x2)
+
+            se = np.sqrt(s1**2/n1 + s2**2/n2)
+            tstat = (m1 - m2)/se
+            df = (se**4)/(((s1**2/n1)**2)/(n1-1) + ((s2**2/n2)**2)/(n2-1))
+
+            st.markdown("### 📘 Step-by-Step")
+            step_box("**Step 1: Test statistic**")
+            st.latex(fr"t={tstat:.{dec}f},\; df\approx{df:.2f}")
+
+            p_val, reject, crit_str = t_tail_metrics(tstat, df, alpha, tails)
+
+            st.markdown("### 📝 Result Summary")
+            st.markdown(f"""
+• Test Statistic (t): {tstat:.{dec}f}  
+• Critical Value (Hypothesis Test): {crit_str}  
+• P-value: {p_val:.{dec}f}  
+""")
+
+            if show_ci:
+                st.info("ℹ️ Confidence intervals are always two-sided, regardless of whether the hypothesis test is left-, right-, or two-tailed.")
+                st.latex(r"\text{CI} = (\bar x_1 - \bar x_2) \pm t_{1-\alpha/2}\cdot SE")
+
+                diff = m1 - m2
+                tcrit = stats.t.ppf(1 - alpha/2, df)
+                ci_low = diff - tcrit*se
+                ci_high = diff + tcrit*se
+                st.markdown(f"• Confidence Interval ({100*(1-alpha):.0f}%): ({ci_low:.{dec}f}, {ci_high:.{dec}f})")
+
+            st.markdown(f"• Decision: {'✅ Reject H₀' if reject else '❌ Do not reject H₀'}")
+
+    # ==========================================================
+    # INDEPENDENT t-TEST (SUMMARY, WELCH)
+    # ==========================================================
+    elif test_choice == "Independent t-Test (Summary, Welch)":
+        m1 = st.number_input("Mean 1:", 0.0)
+        s1 = st.number_input("SD 1:", 1.0)
+        n1 = st.number_input("n₁:", 2, step=1)
+        m2 = st.number_input("Mean 2:", 0.0)
+        s2 = st.number_input("SD 2:", 1.0)
+        n2 = st.number_input("n₂:", 2, step=1)
+
+        if st.button("Calculate"):
+            se = np.sqrt(s1**2/n1 + s2**2/n2)
+            diff = m1 - m2
+            tstat = diff/se
+            df = (se**4)/(((s1**2/n1)**2)/(n1-1) + ((s2**2/n2)**2)/(n2-1))
+
+            st.markdown("### 📘 Step-by-Step")
+            step_box("**Step 1: Test statistic**")
+            st.latex(fr"t={tstat:.{dec}f},\; df\approx{df:.2f}")
+
+            p_val, reject, crit_str = t_tail_metrics(tstat, df, alpha, tails)
+
+            st.markdown("### 📝 Result Summary")
+            st.markdown(f"""
+• Test Statistic (t): {tstat:.{dec}f}  
+• Critical Value (Hypothesis Test): {crit_str}  
+• P-value: {p_val:.{dec}f}  
+""")
+
+            if show_ci:
+                st.info("ℹ️ Confidence intervals are always two-sided, regardless of whether the hypothesis test is left-, right-, or two-tailed.")
+                st.latex(r"\text{CI} = (\bar x_1 - \bar x_2) \pm t_{1-\alpha/2}\cdot SE")
+
+                tcrit = stats.t.ppf(1 - alpha/2, df)
+                ci_low = diff - tcrit*se
+                ci_high = diff + tcrit*se
+                st.markdown(f"• Confidence Interval ({100*(1-alpha):.0f}%): ({ci_low:.{dec}f}, {ci_high:.{dec}f})")
+
+            st.markdown(f"• Decision: {'✅ Reject H₀' if reject else '❌ Do not reject H₀'}")
+
+    # ==========================================================
+    # F-TEST (DATA)
+    # ==========================================================
+    elif test_choice == "F-Test (Data)":
+        a = st.text_area("Sample 1:", "1,2,3,4")
+        b = st.text_area("Sample 2:", "1,2,3,4")
+
+        if st.button("Calculate"):
+            x1 = np.array([float(i) for i in a.split(",")])
+            x2 = np.array([float(i) for i in b.split(",")])
+            s1, s2 = np.std(x1, ddof=1), np.std(x2, ddof=1)
+            n1, n2 = len(x1), len(x2)
+            F = (s1**2)/(s2**2)
+            df1, df2 = n1-1, n2-1
+
+            st.markdown("### 📘 Step-by-Step")
+            step_box("**Step 1: F statistic**")
+            st.latex(fr"F={F:.{dec}f}")
+
+            p_val, reject, crit_str = f_tail_metrics(F, df1, df2, alpha, tails)
+
+            st.markdown("### 📝 Result Summary")
+            st.markdown(f"""
+• Test Statistic (F): {F:.{dec}f}  
+• Critical Value (Hypothesis Test): {crit_str}  
+• P-value: {p_val:.{dec}f}  
+• Decision: {'✅ Reject H₀' if reject else '❌ Do not reject H₀'}
+""")
+
+    # ==========================================================
+    # F-TEST (SUMMARY)
+    # ==========================================================
+    elif test_choice == "F-Test (Summary)":
+        n1 = st.number_input("n₁:", 2, step=1)
+        s1 = st.number_input("s₁:", 1.0)
+        n2 = st.number_input("n₂:", 2, step=1)
+        s2 = st.number_input("s₂:", 1.0)
+
+        if st.button("Calculate"):
+            F = (s1**2)/(s2**2)
+            df1, df2 = n1-1, n2-1
+
+            st.markdown("### 📘 Step-by-Step")
+            step_box("**Step 1: Compute F**")
+            st.latex(fr"F={F:.{dec}f}")
+
+            p_val, reject, crit_str = f_tail_metrics(F, df1, df2, alpha, tails)
+
+            st.markdown("### 📝 Result Summary")
+            st.markdown(f"""
+• Test Statistic (F): {F:.{dec}f}  
+• Critical Value (Hypothesis Test): {crit_str}  
+• P-value: {p_val:.{dec}f}  
+• Decision: {'✅ Reject H₀' if reject else '❌ Do not reject H₀'}
+""")
 
 # ---------- RUN ----------
 if __name__ == "__main__":
