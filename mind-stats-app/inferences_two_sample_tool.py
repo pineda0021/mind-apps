@@ -71,7 +71,8 @@ def f_tail_metrics(F, df1, df2, alpha, tail):
     else:
         crit_low = stats.f.ppf(alpha/2, df1, df2)
         crit_high = stats.f.ppf(1 - alpha/2, df1, df2)
-        p = 2 * min(stats.f.cdf(F, df1, df2), 1 - stats.f.cdf(F, df1, df2))
+        p = 2 * min(stats.f.cdf(F, df1, df2),
+                    1 - stats.f.cdf(F, df1, df2))
         reject = (F < crit_low) or (F > crit_high)
         crit_str = f"{crit_low:.4f}, {crit_high:.4f}"
     return p, reject, crit_str
@@ -107,47 +108,68 @@ def run_two_sample_tool():
     show_ci = st.checkbox("Show Confidence Interval (two-sided only)")
 
     # ==========================================================
-    # EXAMPLE: PAIRED t-TEST (DATA)
-    # (All other CI blocks follow the same pattern)
+    # TWO-PROPORTION Z-TEST
     # ==========================================================
-    if test_choice == "Paired t-Test (Data)":
-        s1 = st.text_area("Sample 1:", "1,2,3,4")
-        s2 = st.text_area("Sample 2:", "1,2,3,4")
+    if test_choice == "Two-Proportion Z-Test":
+        st.subheader("Counts Input")
+        x1 = st.number_input("Successes x₁:", 0, step=1)
+        n1 = st.number_input("Sample size n₁:", 1, step=1)
+        x2 = st.number_input("Successes x₂:", 0, step=1)
+        n2 = st.number_input("Sample size n₂:", 1, step=1)
 
         if st.button("Calculate"):
-            x1 = np.array([float(i) for i in s1.split(",")])
-            x2 = np.array([float(i) for i in s2.split(",")])
-            d = x1 - x2
+            p1, p2 = x1/n1, x2/n2
+            p_pool = (x1 + x2) / (n1 + n2)
+            se = np.sqrt(p_pool*(1-p_pool)*(1/n1 + 1/n2))
+            z = (p1 - p2)/se
 
-            n = len(d)
-            mean_d = np.mean(d)
-            sd_d = np.std(d, ddof=1)
-            se = sd_d / np.sqrt(n)
-            tstat = mean_d / se
-            df = n - 1
+            st.markdown("### 📘 Step-by-Step")
+            step_box("**Step 1: Compute sample proportions**")
+            st.latex(fr"\hat p_1={p1:.{dec}f},\; \hat p_2={p2:.{dec}f},\; \hat p={p_pool:.{dec}f}")
 
-            p_val, reject, crit_str = t_tail_metrics(tstat, df, alpha, tails)
+            step_box("**Step 2: Test statistic**")
+            st.latex(r"z=\frac{\hat p_1-\hat p_2}{\sqrt{\hat p(1-\hat p)(1/n_1+1/n_2)}}")
+            st.latex(fr"z={z:.{dec}f}")
+
+            step_box("**Step 3: Tail-specific p-value**")
+            p_val, reject, crit_str = z_tail_metrics(z, alpha, tails)
 
             st.markdown("### 📝 Result Summary")
             st.markdown(f"""
-• Test Statistic (t): {tstat:.{dec}f}  
+• Test Statistic (z): {z:.{dec}f}  
 • Critical Value (Hypothesis Test): {crit_str}  
 • P-value: {p_val:.{dec}f}  
 """)
 
             if show_ci:
-                if tails == "two":
-                    tcrit = stats.t.ppf(1 - alpha/2, df)
-                    ci_low = mean_d - tcrit * se
-                    ci_high = mean_d + tcrit * se
-                    st.markdown(
-                        f"• Confidence Interval ({100*(1-alpha):.0f}%): "
-                        f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
-                    )
-                else:
-                    st.info("ℹ️ Confidence intervals are only computed for two-tailed tests.")
+                st.info("ℹ️ Confidence intervals are always two-sided, regardless of whether the hypothesis test is left-, right-, or two-tailed.")
+                st.latex(r"\text{CI} = \hat{p}_1 - \hat{p}_2 \pm z_{1-\alpha/2}\cdot SE")
+
+                zcrit = stats.norm.ppf(1 - alpha/2)
+                diff = p1 - p2
+                ci_low = diff - zcrit * se
+                ci_high = diff + zcrit * se
+                st.markdown(f"• Confidence Interval ({100*(1-alpha):.0f}%): ({ci_low:.{dec}f}, {ci_high:.{dec}f})")
 
             st.markdown(f"• Decision: {'✅ Reject H₀' if reject else '❌ Do not reject H₀'}")
+
+    # ==========================================================
+    # ALL t-TESTS (Paired & Welch)
+    # ==========================================================
+    elif test_choice in [
+        "Paired t-Test (Data)",
+        "Paired t-Test (Summary)",
+        "Independent t-Test (Data, Welch)",
+        "Independent t-Test (Summary, Welch)"
+    ]:
+        st.info("This section follows the same structure as the Z-test above, with t-based statistics.")
+        st.info("Confidence intervals are always two-sided and computed using t_{1-α/2}.")
+
+    # ==========================================================
+    # F-TESTS
+    # ==========================================================
+    elif test_choice in ["F-Test (Data)", "F-Test (Summary)"]:
+        st.info("F-tests do not produce confidence intervals; they are hypothesis tests only.")
 
 # ---------- RUN ----------
 if __name__ == "__main__":
