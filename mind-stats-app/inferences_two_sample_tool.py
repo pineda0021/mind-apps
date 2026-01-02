@@ -142,13 +142,10 @@ def run_two_sample_tool():
 """)
 
             if show_ci:
-                st.info("ℹ️ Confidence intervals are always two-sided, regardless of whether the hypothesis test is left-, right-, or two-tailed.")
-                st.latex(r"\text{CI} = \hat{p}_1 - \hat{p}_2 \pm z_{1-\alpha/2}\cdot SE")
-
                 zcrit = stats.norm.ppf(1 - alpha/2)
                 diff = p1 - p2
-                ci_low = diff - zcrit*se
-                ci_high = diff + zcrit*se
+                ci_low = diff - zcrit * se
+                ci_high = diff + zcrit * se
                 st.markdown(f"• Confidence Interval ({100*(1-alpha):.0f}%): ({ci_low:.{dec}f}, {ci_high:.{dec}f})")
 
             st.markdown(f"• Decision: {'✅ Reject H₀' if reject else '❌ Do not reject H₀'}")
@@ -157,6 +154,7 @@ def run_two_sample_tool():
     # PAIRED t-TEST (DATA)
     # ==========================================================
     elif test_choice == "Paired t-Test (Data)":
+        st.subheader("Enter Paired Samples")
         s1 = st.text_area("Sample 1:", "1,2,3,4")
         s2 = st.text_area("Sample 2:", "1,2,3,4")
 
@@ -193,9 +191,6 @@ def run_two_sample_tool():
 """)
 
             if show_ci:
-                st.info("ℹ️ Confidence intervals are always two-sided, regardless of whether the hypothesis test is left-, right-, or two-tailed.")
-                st.latex(r"\text{CI} = \bar d \pm t_{1-\alpha/2}\cdot SE")
-
                 tcrit = stats.t.ppf(1 - alpha/2, df)
                 ci_low = mean_d - tcrit*se
                 ci_high = mean_d + tcrit*se
@@ -230,9 +225,6 @@ def run_two_sample_tool():
 """)
 
             if show_ci:
-                st.info("ℹ️ Confidence intervals are always two-sided, regardless of whether the hypothesis test is left-, right-, or two-tailed.")
-                st.latex(r"\text{CI} = \bar d \pm t_{1-\alpha/2}\cdot SE")
-
                 tcrit = stats.t.ppf(1 - alpha/2, df)
                 ci_low = mean_d - tcrit*se
                 ci_high = mean_d + tcrit*se
@@ -280,9 +272,6 @@ def run_two_sample_tool():
 """)
 
             if show_ci:
-                st.info("ℹ️ Confidence intervals are always two-sided, regardless of whether the hypothesis test is left-, right-, or two-tailed.")
-                st.latex(r"\text{CI} = (\bar x_1 - \bar x_2) \pm t_{1-\alpha/2}\cdot SE")
-
                 diff = m1 - m2
                 tcrit = stats.t.ppf(1 - alpha/2, df)
                 ci_low = diff - tcrit*se
@@ -322,9 +311,6 @@ def run_two_sample_tool():
 """)
 
             if show_ci:
-                st.info("ℹ️ Confidence intervals are always two-sided, regardless of whether the hypothesis test is left-, right-, or two-tailed.")
-                st.latex(r"\text{CI} = (\bar x_1 - \bar x_2) \pm t_{1-\alpha/2}\cdot SE")
-
                 tcrit = stats.t.ppf(1 - alpha/2, df)
                 ci_low = diff - tcrit*se
                 ci_high = diff + tcrit*se
