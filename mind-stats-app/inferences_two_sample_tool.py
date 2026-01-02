@@ -103,32 +103,34 @@ def run_two_sample_tool():
         st.info("👆 Select a test to begin.")
         return
 
-    dec = st.number_input("Decimal places for output:", 0, 10, 4, key="dec")
+    dec = st.number_input("Decimal places:", 0, 10, 4, key="dec")
     alpha = st.number_input("Significance level (α):", 0.001, 0.5, 0.05, step=0.01, key="alpha")
     tails = st.selectbox("Tail type:", ["two", "left", "right"], key="tails")
     show_ci = st.checkbox("Show Confidence Interval (two-sided only)", key="show_ci")
 
     # ==========================================================
-    # TWO-PROPORTION Z-TEST
+    # PAIRED t-TEST (SUMMARY)
     # ==========================================================
-    if test_choice == "Two-Proportion Z-Test":
-        x1 = st.number_input("Successes x₁:", 0, step=1, key="z_x1")
-        n1 = st.number_input("Sample size n₁:", 1, step=1, key="z_n1")
-        x2 = st.number_input("Successes x₂:", 0, step=1, key="z_x2")
-        n2 = st.number_input("Sample size n₂:", 1, step=1, key="z_n2")
+    if test_choice == "Paired t-Test (Summary)":
+        mean_d = st.number_input("Mean difference (d̄):", 0.0, key="paired_sum_mean")
+        sd_d = st.number_input("SD of differences (s_d):", 1.0, key="paired_sum_sd")
+        n = st.number_input("Sample size n:", 2, step=1, key="paired_sum_n")
 
-        if st.button("Calculate", key="z_calc"):
-            p1, p2 = x1/n1, x2/n2
-            p_pool = (x1 + x2)/(n1 + n2)
-            se = np.sqrt(p_pool*(1-p_pool)*(1/n1 + 1/n2))
-            z = (p1 - p2)/se
+        if st.button("Calculate", key="paired_sum_calc"):
+            df = n - 1
+            se = sd_d / np.sqrt(n)
+            tstat = mean_d / se
 
-            p_val, reject, crit_str = z_tail_metrics(z, alpha, tails)
+            st.markdown("### 🧮 Step-by-Step")
+            step_box("**Step 1: Test statistic**")
+            st.latex(fr"t = {tstat:.{dec}f}")
+
+            p_val, reject, crit_str = t_tail_metrics(tstat, df, alpha, tails)
 
             st.markdown("### 📝 Result Summary")
             st.caption("🧪 Hypothesis-test critical values depend on the alternative hypothesis.")
             st.markdown(f"""
-• z = {z:.{dec}f}  
+• Test Statistic (t): {tstat:.{dec}f}  
 • Critical Value (Hypothesis Test): {crit_str}  
 • P-value: {p_val:.{dec}f}  
 • Decision: {"Reject H₀" if reject else "Do not reject H₀"}
@@ -136,45 +138,83 @@ def run_two_sample_tool():
 
             if show_ci:
                 st.caption("💡 Confidence intervals are always two-sided.")
-                zcrit = stats.norm.ppf(1 - alpha/2)
-                diff = p1 - p2
-                ci_low = diff - zcrit*se
-                ci_high = diff + zcrit*se
+                tcrit = stats.t.ppf(1 - alpha/2, df)
+                ci_low = mean_d - tcrit * se
+                ci_high = mean_d + tcrit * se
                 st.markdown(f"CI: ({ci_low:.{dec}f}, {ci_high:.{dec}f})")
 
     # ==========================================================
-    # PAIRED t-TEST (DATA)
+    # INDEPENDENT t-TEST (SUMMARY, WELCH)
     # ==========================================================
-    elif test_choice == "Paired t-Test (Data)":
-        s1 = st.text_area("Sample 1:", "1,2,3,4", key="paired_s1")
-        s2 = st.text_area("Sample 2:", "1,2,3,4", key="paired_s2")
+    elif test_choice == "Independent t-Test (Summary, Welch)":
+        m1 = st.number_input("Mean 1:", 0.0, key="welch_sum_m1")
+        s1 = st.number_input("SD 1:", 1.0, key="welch_sum_s1")
+        n1 = st.number_input("n₁:", 2, step=1, key="welch_sum_n1")
+        m2 = st.number_input("Mean 2:", 0.0, key="welch_sum_m2")
+        s2 = st.number_input("SD 2:", 1.0, key="welch_sum_s2")
+        n2 = st.number_input("n₂:", 2, step=1, key="welch_sum_n2")
 
-        if st.button("Calculate", key="paired_calc"):
-            x1 = np.array([float(i) for i in s1.split(",")])
-            x2 = np.array([float(i) for i in s2.split(",")])
-            d = x1 - x2
+        if st.button("Calculate", key="welch_sum_calc"):
+            se = np.sqrt(s1**2/n1 + s2**2/n2)
+            diff = m1 - m2
+            tstat = diff / se
 
-            st.dataframe(pd.DataFrame({"x₁": x1, "x₂": x2, "dᵢ": d}))
+            df = (se**4) / (
+                ((s1**2/n1)**2)/(n1-1) +
+                ((s2**2/n2)**2)/(n2-1)
+            )
 
-            mean_d = np.mean(d)
-            sd_d = np.std(d, ddof=1)
-            se = sd_d/np.sqrt(len(d))
-            tstat = mean_d/se
-            df = len(d)-1
+            step_box("**Step 1: Test statistic**")
+            st.latex(fr"t = {tstat:.{dec}f}, \; df \approx {df:.2f}")
 
             p_val, reject, crit_str = t_tail_metrics(tstat, df, alpha, tails)
 
             st.markdown("### 📝 Result Summary")
             st.caption("🧪 Hypothesis-test critical values depend on the alternative hypothesis.")
             st.markdown(f"""
-• t = {tstat:.{dec}f}  
+• Test Statistic (t): {tstat:.{dec}f}  
 • Critical Value (Hypothesis Test): {crit_str}  
 • P-value: {p_val:.{dec}f}  
 • Decision: {"Reject H₀" if reject else "Do not reject H₀"}
 """)
 
-    # (Other tests follow same key pattern — omitted here only for brevity)
+            if show_ci:
+                st.caption("💡 Confidence intervals are always two-sided.")
+                tcrit = stats.t.ppf(1 - alpha/2, df)
+                ci_low = diff - tcrit * se
+                ci_high = diff + tcrit * se
+                st.markdown(f"CI: ({ci_low:.{dec}f}, {ci_high:.{dec}f})")
+
+    # ==========================================================
+    # F-TEST (SUMMARY)
+    # ==========================================================
+    elif test_choice == "F-Test (Summary)":
+        n1 = st.number_input("n₁:", 2, step=1, key="f_sum_n1")
+        s1 = st.number_input("s₁:", 1.0, key="f_sum_s1")
+        n2 = st.number_input("n₂:", 2, step=1, key="f_sum_n2")
+        s2 = st.number_input("s₂:", 1.0, key="f_sum_s2")
+
+        if st.button("Calculate", key="f_sum_calc"):
+            F = (s1**2) / (s2**2)
+            df1, df2 = n1-1, n2-1
+
+            step_box("**Step 1: Compute F**")
+            st.latex(fr"F = {F:.{dec}f}")
+
+            p_val, reject, crit_str = f_tail_metrics(F, df1, df2, alpha, tails)
+
+            st.markdown("### 📝 Result Summary")
+            st.caption("🧪 Hypothesis-test critical values depend on the alternative hypothesis.")
+            st.markdown(f"""
+• Test Statistic (F): {F:.{dec}f}  
+• Critical Value (Hypothesis Test): {crit_str}  
+• P-value: {p_val:.{dec}f}  
+• Decision: {"Reject H₀" if reject else "Do not reject H₀"}
+""")
 
 # ---------- RUN ----------
 if __name__ == "__main__":
     run_two_sample_tool()
+
+     
+
