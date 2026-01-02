@@ -112,15 +112,142 @@ def run_two_sample_tool():
 
     st.caption(
         "ℹ️ Critical values depend on the tail type. "
-        "Confidence intervals **always use a two-tailed critical value** "
+        "Confidence intervals always use a **two-tailed critical value** "
         "and are only valid for **two-sided tests**."
     )
 
     # ==========================================================
+    # TWO-PROPORTION Z-TEST
+    # ==========================================================
+    if test_choice == "Two-Proportion Z-Test":
+        x1 = st.number_input("Successes x₁:", 0, step=1)
+        n1 = st.number_input("Sample size n₁:", 1, step=1)
+        x2 = st.number_input("Successes x₂:", 0, step=1)
+        n2 = st.number_input("Sample size n₂:", 1, step=1)
+
+        if st.button("Calculate"):
+            p1, p2 = x1 / n1, x2 / n2
+            p_pool = (x1 + x2) / (n1 + n2)
+            se = np.sqrt(p_pool * (1 - p_pool) * (1 / n1 + 1 / n2))
+            z = (p1 - p2) / se
+
+            p_val, reject, crit_str = z_tail_metrics(z, alpha, tails)
+
+            st.markdown("### 📝 Result Summary")
+            st.markdown(
+                f"""
+• **Test Statistic (z):** {z:.{dec}f}  
+• **Critical Value(s):** {crit_str}  
+• **P-value:** {p_val:.{dec}f}  
+• **Decision:** {"✅ Reject H₀" if reject else "❌ Do not reject H₀"}
+"""
+            )
+
+            if show_ci and tails == "two":
+                zcrit = stats.norm.ppf(1 - alpha / 2)
+                se_u = np.sqrt(p1 * (1 - p1) / n1 + p2 * (1 - p2) / n2)
+                diff = p1 - p2
+                ci_low = diff - zcrit * se_u
+                ci_high = diff + zcrit * se_u
+                st.markdown(
+                    f"• **Confidence Interval ({100*(1-alpha):.0f}%):** "
+                    f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
+                )
+            elif show_ci:
+                st.warning("Confidence intervals require a two-tailed test.")
+
+    # ==========================================================
+    # PAIRED t-TEST (DATA)
+    # ==========================================================
+    elif test_choice == "Paired t-Test (Data)":
+        s1 = st.text_area("Sample 1:", "1,2,3,4")
+        s2 = st.text_area("Sample 2:", "1,2,3,4")
+
+        if st.button("Calculate"):
+            x1 = np.array([float(i) for i in s1.split(",")])
+            x2 = np.array([float(i) for i in s2.split(",")])
+
+            d = x1 - x2
+            n = len(d)
+            mean_d = np.mean(d)
+            sd_d = np.std(d, ddof=1)
+            se = sd_d / np.sqrt(n)
+            tstat = mean_d / se
+            df = n - 1
+
+            p_val, reject, crit_str = t_tail_metrics(tstat, df, alpha, tails)
+
+            st.markdown("### 📝 Result Summary")
+            st.markdown(
+                f"""
+• **Test Statistic (t):** {tstat:.{dec}f}  
+• **Critical Value(s):** {crit_str}  
+• **P-value:** {p_val:.{dec}f}  
+• **Decision:** {"✅ Reject H₀" if reject else "❌ Do not reject H₀"}
+"""
+            )
+
+            if show_ci and tails == "two":
+                tcrit = stats.t.ppf(1 - alpha / 2, df)
+                ci_low = mean_d - tcrit * se
+                ci_high = mean_d + tcrit * se
+                st.markdown(
+                    f"• **Confidence Interval ({100*(1-alpha):.0f}%):** "
+                    f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
+                )
+            elif show_ci:
+                st.warning("Confidence intervals require a two-tailed test.")
+
+    # ==========================================================
+    # INDEPENDENT t-TEST (WELCH, DATA)
+    # ==========================================================
+    elif test_choice == "Independent t-Test (Data, Welch)":
+        a = st.text_area("Sample 1:", "1,2,3,4")
+        b = st.text_area("Sample 2:", "1,2,3,4")
+
+        if st.button("Calculate"):
+            x1 = np.array([float(i) for i in a.split(",")])
+            x2 = np.array([float(i) for i in b.split(",")])
+
+            n1, n2 = len(x1), len(x2)
+            m1, m2 = np.mean(x1), np.mean(x2)
+            s1, s2 = np.std(x1, ddof=1), np.std(x2, ddof=1)
+
+            se = np.sqrt(s1**2 / n1 + s2**2 / n2)
+            tstat = (m1 - m2) / se
+            df = (se**4) / (
+                ((s1**2 / n1) ** 2) / (n1 - 1)
+                + ((s2**2 / n2) ** 2) / (n2 - 1)
+            )
+
+            p_val, reject, crit_str = t_tail_metrics(tstat, df, alpha, tails)
+
+            st.markdown("### 📝 Result Summary")
+            st.markdown(
+                f"""
+• **Test Statistic (t):** {tstat:.{dec}f}  
+• **Critical Value(s):** {crit_str}  
+• **P-value:** {p_val:.{dec}f}  
+• **Decision:** {"✅ Reject H₀" if reject else "❌ Do not reject H₀"}
+"""
+            )
+
+            if show_ci and tails == "two":
+                tcrit = stats.t.ppf(1 - alpha / 2, df)
+                diff = m1 - m2
+                ci_low = diff - tcrit * se
+                ci_high = diff + tcrit * se
+                st.markdown(
+                    f"• **Confidence Interval ({100*(1-alpha):.0f}%):** "
+                    f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
+                )
+            elif show_ci:
+                st.warning("Confidence intervals require a two-tailed test.")
+
+    # ==========================================================
     # F-TEST (DATA)
     # ==========================================================
-    if test_choice == "F-Test (Data)":
-        st.subheader("Independent Samples Data")
+    elif test_choice == "F-Test (Data)":
         a = st.text_area("Sample 1:", "1,2,3,4")
         b = st.text_area("Sample 2:", "1,2,3,4")
 
@@ -129,13 +256,8 @@ def run_two_sample_tool():
             x2 = np.array([float(i) for i in b.split(",")])
 
             s1, s2 = np.std(x1, ddof=1), np.std(x2, ddof=1)
-            n1, n2 = len(x1), len(x2)
             F = (s1**2) / (s2**2)
-            df1, df2 = n1 - 1, n2 - 1
-
-            st.markdown("### 📘 Step-by-Step")
-            step_box("**Step 1: F statistic**")
-            st.latex(fr"F = {F:.{dec}f}")
+            df1, df2 = len(x1) - 1, len(x2) - 1
 
             p_val, reject, crit_str = f_tail_metrics(F, df1, df2, alpha, tails)
 
