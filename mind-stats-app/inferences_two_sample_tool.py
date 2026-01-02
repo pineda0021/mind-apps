@@ -111,9 +111,9 @@ def run_two_sample_tool():
     show_ci = st.checkbox("Show Confidence Interval")
 
     st.caption(
-        "ℹ️ Critical values depend on the tail type. "
-        "Confidence intervals always use a **two-tailed critical value** "
-        "and are only valid for **two-sided tests**."
+        "ℹ️ Critical values depend on the hypothesis tail. "
+        "Confidence intervals always use a two-tailed critical value, "
+        "regardless of the hypothesis test."
     )
 
     # ==========================================================
@@ -143,18 +143,17 @@ def run_two_sample_tool():
 """
             )
 
-            if show_ci and tails == "two":
+            if show_ci:
                 zcrit = stats.norm.ppf(1 - alpha / 2)
                 se_u = np.sqrt(p1 * (1 - p1) / n1 + p2 * (1 - p2) / n2)
                 diff = p1 - p2
                 ci_low = diff - zcrit * se_u
                 ci_high = diff + zcrit * se_u
+
                 st.markdown(
                     f"• **Confidence Interval ({100*(1-alpha):.0f}%):** "
                     f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
                 )
-            elif show_ci:
-                st.warning("Confidence intervals require a two-tailed test.")
 
     # ==========================================================
     # PAIRED t-TEST (DATA)
@@ -181,22 +180,22 @@ def run_two_sample_tool():
             st.markdown(
                 f"""
 • **Test Statistic (t):** {tstat:.{dec}f}  
+• **Degrees of Freedom (df):** {df}  
 • **Critical Value(s):** {crit_str}  
 • **P-value:** {p_val:.{dec}f}  
 • **Decision:** {"✅ Reject H₀" if reject else "❌ Do not reject H₀"}
 """
             )
 
-            if show_ci and tails == "two":
+            if show_ci:
                 tcrit = stats.t.ppf(1 - alpha / 2, df)
                 ci_low = mean_d - tcrit * se
                 ci_high = mean_d + tcrit * se
+
                 st.markdown(
                     f"• **Confidence Interval ({100*(1-alpha):.0f}%):** "
                     f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
                 )
-            elif show_ci:
-                st.warning("Confidence intervals require a two-tailed test.")
 
     # ==========================================================
     # INDEPENDENT t-TEST (WELCH, DATA)
@@ -226,23 +225,23 @@ def run_two_sample_tool():
             st.markdown(
                 f"""
 • **Test Statistic (t):** {tstat:.{dec}f}  
+• **Degrees of Freedom (df):** {df:.2f}  
 • **Critical Value(s):** {crit_str}  
 • **P-value:** {p_val:.{dec}f}  
 • **Decision:** {"✅ Reject H₀" if reject else "❌ Do not reject H₀"}
 """
             )
 
-            if show_ci and tails == "two":
+            if show_ci:
                 tcrit = stats.t.ppf(1 - alpha / 2, df)
                 diff = m1 - m2
                 ci_low = diff - tcrit * se
                 ci_high = diff + tcrit * se
+
                 st.markdown(
                     f"• **Confidence Interval ({100*(1-alpha):.0f}%):** "
                     f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
                 )
-            elif show_ci:
-                st.warning("Confidence intervals require a two-tailed test.")
 
     # ==========================================================
     # F-TEST (DATA)
@@ -265,6 +264,7 @@ def run_two_sample_tool():
             st.markdown(
                 f"""
 • **Test Statistic (F):** {F:.{dec}f}  
+• **Degrees of Freedom:** ({df1}, {df2})  
 • **Critical Value(s):** {crit_str}  
 • **P-value:** {p_val:.{dec}f}  
 • **Decision:** {"✅ Reject H₀" if reject else "❌ Do not reject H₀"}
