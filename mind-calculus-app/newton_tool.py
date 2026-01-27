@@ -6,6 +6,33 @@ import pandas as pd
 from sympy.abc import x
 
 # -----------------------------
+# Helpers
+# -----------------------------
+def normalize_real_roots(expr: sp.Expr) -> sp.Expr:
+    """
+    Best-practice normalization for common student input:
+    - Converts x**(1/3) into sign(x)*abs(x)**(1/3) so it's REAL for negative x.
+    This avoids NumPy's (-0.05)**(1/3) -> NaN behavior.
+    """
+    r13 = sp.Rational(1, 3)
+
+    def is_one_third_power(e):
+        return isinstance(e, sp.Pow) and e.exp == r13
+
+    return expr.replace(
+        is_one_third_power,
+        lambda e: sp.sign(e.base) * sp.Abs(e.base) ** r13
+    )
+
+def safe_float(val):
+    """Convert to float if possible; otherwise return np.nan."""
+    try:
+        out = float(val)
+        return out if np.isfinite(out) else np.nan
+    except Exception:
+        return np.nan
+
+# -----------------------------
 # Core Newton engine (C-only)
 # -----------------------------
 def newton_history(f_expr, x0, tol, max_iter):
@@ -17,6 +44,7 @@ def newton_history(f_expr, x0, tol, max_iter):
       - derivative_zero
       - non_finite
       - max_iter
+      - iter (for intermediate rows)
     """
     fx = sp.lambdify(x, f_expr, modules=["numpy"])
     fpx_expr = sp.diff(f_expr, x)
@@ -26,94 +54,96 @@ def newton_history(f_expr, x0, tol, max_iter):
     xn = float(x0)
 
     for n in range(max_iter):
-        fn = fx(xn)
-        fpn = fpx(xn)
+        fn = safe_float(fx(xn))
+        fpn = safe_float(fpx(xn))
 
-        # coerce safely to float when possible
-        try:
-            fn = float(fn)
-            fpn = float(fpn)
-        except Exception:
-            rows.append((n, xn, np.nan, np.nan, np.nan, "non_finite"))
-            break
-
-        # non-finite check
-        if (not np.isfinite(fn)) or (not np.isfinite(fpn)):
+        # non-finite checks
+        if not np.isfinite(fn) or not np.isfinite(fpn):
             rows.append((n, xn, fn, fpn, np.nan, "non_finite"))
             break
 
-        # convergence check (best to check before derivative-zero stop)
+        # convergence check
         if abs(fn) < tol:
             rows.append((n, xn, fn, fpn, xn, "converged"))
             break
 
-        # derivative zero stop
+        # derivative zero check
         if fpn == 0:
             rows.append((n, xn, fn, fpn, np.nan, "derivative_zero"))
             break
 
         xnext = xn - fn / fpn
-
-        # xnext finite?
         if not np.isfinite(xnext):
             rows.append((n, xn, fn, fpn, np.nan, "non_finite"))
             break
 
-        # normal step
-        rows.append((n, xn, fn, fpn, float(xnext), ""))  # temp status
+        rows.append((n, xn, fn, fpn, float(xnext), "iter"))
         xn = float(xnext)
 
-    # If we ran out of iterations without a terminal status, set max_iter
+    # If we ran out of iterations after normal steps, set max_iter
     if len(rows) == 0:
         df = pd.DataFrame(columns=["n", "x_n", "f(x_n)", "f'(x_n)", "x_{n+1}", "status"])
         return df, fx, fpx, fpx_expr
 
-    if rows[-1][5] == "":
-        # last row was a normal step but loop ended -> max_iter
+    if rows[-1][5] == "iter" and len(rows) == max_iter:
         n, xn, fn, fpn, xnext, _ = rows[-1]
         rows[-1] = (n, xn, fn, fpn, xnext, "max_iter")
 
-    # Fill status for intermediate normal rows (optional: leave blank or label "iter")
-    # Here we label non-terminal normal rows as "iter" for clarity.
-    fixed = []
-    for i, r in enumerate(rows):
-        n, xn, fn, fpn, xnext, status = r
-        if status == "":
-            status = "iter"
-        fixed.append((n, xn, fn, fpn, xnext, status))
-
-    df = pd.DataFrame(fixed, columns=["n", "x_n", "f(x_n)", "f'(x_n)", "x_{n+1}", "status"])
+    df = pd.DataFrame(rows, columns=["n", "x_n", "f(x_n)", "f'(x_n)", "x_{n+1}", "status"])
     return df, fx, fpx, fpx_expr
 
 # -----------------------------
-# Plot helper (zoomed + local tangent)
+# Plot helper (robust to NaNs)
 # -----------------------------
 def make_plot(f, x_n, fpx_n, x_next, x_min, x_max, tangent_half_window):
     X = np.linspace(x_min, x_max, 800)
+
+    # Compute Y safely and mask non-finite values
     Y = f(X)
+    Y = np.array(Y, dtype=float)
+    mask = np.isfinite(Y)
 
     fig, ax = plt.subplots(figsize=(8, 4), constrained_layout=True)
     ax.axhline(0, linewidth=1)
-    ax.plot(X, Y, linewidth=2, label="f(x)")
 
-    y_n = float(f(x_n))
-    ax.plot([x_n], [y_n], marker="o", linestyle="None", label="(x_n, f(x_n))")
+    if np.any(mask):
+        ax.plot(X[mask], Y[mask], linewidth=2, label="f(x)")
+    else:
+        ax.text(0.5, 0.5, "f(x) is not finite on this window",
+                transform=ax.transAxes, ha="center", va="center")
+        ax.set_xlim(x_min, x_max)
+        ax.grid(True, alpha=0.35)
+        return fig
 
-    # Tangent (local)
-    if np.isfinite(fpx_n):
-        Xt = np.linspace(x_n - tangent_half_window, x_n + tangent_half_window, 200)
-        Yt = y_n + fpx_n * (Xt - x_n)
-        ax.plot(Xt, Yt, linewidth=2, label="tangent at x_n")
+    # Current point
+    y_n = safe_float(f(x_n))
+    if np.isfinite(y_n):
+        ax.plot([x_n], [y_n], marker="o", linestyle="None", label="(x_n, f(x_n))")
 
-    # Next point (if defined)
-    if np.isfinite(x_next):
-        ax.plot([x_next], [0], marker="o", linestyle="None", label="x_{n+1}")
-        ax.vlines([x_n, x_next], ymin=min(0, y_n), ymax=max(0, y_n), linestyles="dotted")
+        # Local tangent
+        if np.isfinite(fpx_n):
+            Xt = np.linspace(x_n - tangent_half_window, x_n + tangent_half_window, 200)
+            Yt = y_n + fpx_n * (Xt - x_n)
+            Yt = np.array(Yt, dtype=float)
+            m2 = np.isfinite(Yt)
+            if np.any(m2):
+                ax.plot(Xt[m2], Yt[m2], linewidth=2, label="tangent at x_n")
+
+        # Next point if defined
+        if np.isfinite(x_next):
+            ax.plot([x_next], [0], marker="o", linestyle="None", label="x_{n+1}")
+            ax.vlines([x_n, x_next], ymin=min(0, y_n), ymax=max(0, y_n), linestyles="dotted")
+    else:
+        # If y_n is non-finite, skip point/tangent and just show curve
+        pass
 
     ax.set_xlim(x_min, x_max)
 
-    # y-limits
-    y_candidates = [0, np.nanmin(Y), np.nanmax(Y), y_n]
+    # y-limits from finite values only
+    y_candidates = [0, np.nanmin(Y[mask]), np.nanmax(Y[mask])]
+    if np.isfinite(y_n):
+        y_candidates.append(y_n)
+
     y_lo, y_hi = float(np.nanmin(y_candidates)), float(np.nanmax(y_candidates))
     pad = 0.10 * (y_hi - y_lo if y_hi != y_lo else 1.0)
     ax.set_ylim(y_lo - pad, y_hi + pad)
@@ -142,8 +172,10 @@ def run():
         plot_half_window = st.number_input("Plot half-window (zoom):", value=1.25)
         tangent_half_window = st.number_input("Tangent half-window (local):", value=0.75)
 
+    # Parse + normalize
     try:
         f_expr = sp.sympify(f_input)
+        f_expr = normalize_real_roots(f_expr)  # ✅ fixes x**(1/3) on negatives
     except Exception as e:
         st.error(f"Invalid function: {e}")
         return
@@ -154,7 +186,7 @@ def run():
         st.error("No iterations computed.")
         return
 
-    # Clean table display
+    # Table display
     df_show = df.copy()
     for col in ["x_n", "f(x_n)", "f'(x_n)", "x_{n+1}"]:
         df_show[col] = pd.to_numeric(df_show[col], errors="coerce").round(6)
@@ -162,9 +194,8 @@ def run():
     st.subheader("Iteration Table")
     st.dataframe(df_show, use_container_width=True, hide_index=True)
 
-    # One best-practice status box driven ONLY by final df status (C-only)
+    # Status box (C-only)
     last_status = str(df.iloc[-1]["status"])
-
     if last_status == "converged":
         st.success("✅ Converged: |f(xₙ)| is below tolerance.")
     elif last_status == "derivative_zero":
@@ -172,18 +203,13 @@ def run():
         st.info("Try a different initial guess x₀ (even a small change can help).")
     elif last_status == "non_finite":
         st.error("❌ Did not converge: values became non-finite (overflow/undefined).")
-        st.info("Try an x₀ closer to the root, or check the function’s domain.")
+        st.info("Try a different x₀, or check the function’s domain/real-valued behavior.")
     elif last_status == "max_iter":
         st.error("❌ Did not converge: reached max iterations.")
         st.info("Increase max iterations or choose a better initial guess x₀.")
-    else:
-        # 'iter' shouldn't be terminal, but handle anyway
-        st.warning(f"Stopped with status: {last_status}")
 
-    # Visualization
+    # Visualization (with slider guard)
     st.subheader("Visualization")
-
-    # slider fix when only 1 row
     if len(df) == 1:
         step = 0
         st.caption("Only one step available.")
@@ -191,13 +217,22 @@ def run():
         step = st.slider("Show step n:", 0, len(df) - 1, 0)
 
     x_n = float(df.loc[step, "x_n"])
-    fpn = float(df.loc[step, "f'(x_n)"]) if np.isfinite(df.loc[step, "f'(x_n)"]) else np.nan
+    fpn = safe_float(df.loc[step, "f'(x_n)"])
     x_next = df.loc[step, "x_{n+1}"]
-    x_next = float(x_next) if pd.notna(x_next) and np.isfinite(x_next) else np.nan
+    x_next = safe_float(x_next)
 
-    # If derivative zero at this step, don't pretend x_{n+1} exists
     if fpn == 0:
-        x_next = np.nan
+        x_next = np.nan  # no Newton step exists
+
+    # If current f(x_n) isn't finite, avoid crashing and explain
+    y_n = safe_float(f_num(x_n))
+    if not np.isfinite(y_n):
+        st.warning(
+            "Cannot plot this step because f(xₙ) is not a real finite number.\n\n"
+            "Tip: For cube roots, prefer `cbrt(x)` or use the built-in normalization of `x**(1/3)` "
+            "with a real-valued cube-root form."
+        )
+        return
 
     x_min = x_n - float(plot_half_window)
     x_max = x_n + float(plot_half_window)
