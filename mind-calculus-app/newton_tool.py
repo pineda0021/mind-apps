@@ -9,7 +9,7 @@ from sympy.abc import x
 # Real cube-root that works for negative inputs (SymPy-safe)
 # ---------------------------------------------------------
 class Cbrt(sp.Function):
-    # Nice LaTeX: \sqrt[3]{x}
+    # Pretty LaTeX: cube root
     def _latex(self, printer):
         return r"\sqrt[3]{%s}" % printer._print(self.args[0])
 
@@ -20,9 +20,9 @@ class Cbrt(sp.Function):
 
 def replace_third_powers(expr: sp.Expr) -> sp.Expr:
     """
-    Replace any power with denominator 3 (like x**(1/3), x**(-2/3), etc.)
-    with expressions in terms of Cbrt(...) that stay real for negative inputs.
-    Handles the most common exponents used in Newton/derivatives.
+    Replace base**(p/3) with Cbrt(base)**p for ANY integer p.
+    This keeps cube-roots REAL for negative inputs and avoids lambdify printing
+    unevaluated Derivative(...) objects.
     """
     def repl_pow(e):
         if not isinstance(e, sp.Pow):
@@ -30,21 +30,10 @@ def replace_third_powers(expr: sp.Expr) -> sp.Expr:
         exp = e.exp
         if not isinstance(exp, sp.Rational) or exp.q != 3:
             return e
-
-        p = exp.p
         base = e.base
-
-        if p == 1:
-            return Cbrt(base)
-        if p == 2:
-            return Cbrt(base) ** 2
-        if p == -1:
-            return 1 / Cbrt(base)
-        if p == -2:
-            return 1 / (Cbrt(base) ** 2)
-
-        # leave other p/3 cases unchanged
-        return e
+        p = int(exp.p)  # numerator
+        # base**(p/3) -> Cbrt(base)**p
+        return Cbrt(base) ** p
 
     return expr.replace(
         lambda e: isinstance(e, sp.Pow) and isinstance(e.exp, sp.Rational) and e.exp.q == 3,
@@ -64,17 +53,25 @@ def safe_float(val) -> float:
 # -----------------------------
 def newton_history(f_expr, x0, tol, max_iter):
     """
-    Returns:
-      df columns: n, x_n, f(x_n), f'(x_n), x_{n+1}, status
-    status ALWAYS ends as one of:
+    Returns df with columns:
+      n, x_n, f(x_n), f'(x_n), x_{n+1}, status
+
+    Terminal status ALWAYS one of:
       - converged
       - derivative_zero
       - non_finite
       - max_iter
-    Intermediate rows are labeled: iter
+    Intermediate rows: iter
     """
+    # ✅ Rewrite BEFORE lambdify
+    f_expr = replace_third_powers(f_expr)
+
     fx = sp.lambdify(x, f_expr, modules=[{"Cbrt": np.cbrt}, "numpy"])
+
     fpx_expr = sp.diff(f_expr, x)
+    # ✅ Rewrite derivative too (critical)
+    fpx_expr = replace_third_powers(fpx_expr)
+
     fpx = sp.lambdify(x, fpx_expr, modules=[{"Cbrt": np.cbrt}, "numpy"])
 
     rows = []
@@ -111,7 +108,7 @@ def newton_history(f_expr, x0, tol, max_iter):
         df = pd.DataFrame(columns=["n", "x_n", "f(x_n)", "f'(x_n)", "x_{n+1}", "status"])
         return df, fx, fpx, fpx_expr
 
-    # if we ended due to max iterations after iter steps
+    # If we ended after max_iter normal steps
     if rows[-1][5] == "iter" and len(rows) == max_iter:
         n, xn, fn, fpn, xnext, _ = rows[-1]
         rows[-1] = (n, xn, fn, fpn, xnext, "max_iter")
@@ -125,7 +122,6 @@ def newton_history(f_expr, x0, tol, max_iter):
 def make_plot(f, x_n, fpx_n, x_next, x_min, x_max, tangent_half_window):
     X = np.linspace(x_min, x_max, 800)
 
-    # compute Y safely and mask non-finite values
     Y = np.array(f(X), dtype=float)
     mask = np.isfinite(Y)
 
@@ -161,7 +157,6 @@ def make_plot(f, x_n, fpx_n, x_next, x_min, x_max, tangent_half_window):
 
     ax.set_xlim(x_min, x_max)
 
-    # y-limits from finite values only
     y_candidates = [0, np.nanmin(Y[mask]), np.nanmax(Y[mask])]
     if np.isfinite(y_n):
         y_candidates.append(y_n)
@@ -194,9 +189,10 @@ def run():
         plot_half_window = st.number_input("Plot half-window (zoom):", value=1.25)
         tangent_half_window = st.number_input("Tangent half-window (local):", value=0.75)
 
-    # Parse + rewrite 1/3 powers into Cbrt for real outputs on negatives
+    # Parse
     try:
         f_expr = sp.sympify(f_input)
+        # Optional rewrite here too (safe/redundant)
         f_expr = replace_third_powers(f_expr)
     except Exception as e:
         st.error(f"Invalid function: {e}")
@@ -245,12 +241,12 @@ def run():
     if fpn == 0:
         x_next = np.nan
 
-    # If f(x_n) isn't finite, avoid crashing and explain
+    # guard: if f(x_n) isn't finite, explain and stop
     y_n = safe_float(f_num(x_n))
     if not np.isfinite(y_n):
         st.warning(
             "Cannot plot this step because f(xₙ) is not a real finite number for the current input.\n\n"
-            "Tip: cube roots are supported (e.g., x**(1/3)) via a real-valued cube-root rewrite."
+            "Tip: cube roots are supported (e.g., x**(1/3)) via a real cube-root rewrite."
         )
         return
 
