@@ -9,7 +9,6 @@ from sympy.abc import x
 # Real cube-root that works for negative inputs (SymPy-safe)
 # ---------------------------------------------------------
 class Cbrt(sp.Function):
-    # Pretty LaTeX: cube root
     def _latex(self, printer):
         return r"\sqrt[3]{%s}" % printer._print(self.args[0])
 
@@ -31,8 +30,7 @@ def replace_third_powers(expr: sp.Expr) -> sp.Expr:
         if not isinstance(exp, sp.Rational) or exp.q != 3:
             return e
         base = e.base
-        p = int(exp.p)  # numerator
-        # base**(p/3) -> Cbrt(base)**p
+        p = int(exp.p)
         return Cbrt(base) ** p
 
     return expr.replace(
@@ -41,7 +39,6 @@ def replace_third_powers(expr: sp.Expr) -> sp.Expr:
     )
 
 def safe_float(val) -> float:
-    """Convert to float if possible; otherwise return np.nan."""
     try:
         out = float(val)
         return out if np.isfinite(out) else np.nan
@@ -53,45 +50,58 @@ def safe_float(val) -> float:
 # -----------------------------
 def newton_history(f_expr, x0, tol, max_iter):
     """
-    Returns df with columns:
+    df columns:
       n, x_n, f(x_n), f'(x_n), x_{n+1}, status
 
     Terminal status ALWAYS one of:
       - converged
       - derivative_zero
       - non_finite
+      - diverging
       - max_iter
     Intermediate rows: iter
     """
-    # ✅ Rewrite BEFORE lambdify
+    # Rewrite fractional third-powers to Cbrt
     f_expr = replace_third_powers(f_expr)
 
     fx = sp.lambdify(x, f_expr, modules=[{"Cbrt": np.cbrt}, "numpy"])
-
     fpx_expr = sp.diff(f_expr, x)
-    # ✅ Rewrite derivative too (critical)
     fpx_expr = replace_third_powers(fpx_expr)
-
     fpx = sp.lambdify(x, fpx_expr, modules=[{"Cbrt": np.cbrt}, "numpy"])
 
     rows = []
     xn = float(x0)
 
+    prev_abs_f = None
+    worse_streak = 0
+
     for n in range(max_iter):
         fn = safe_float(fx(xn))
         fpn = safe_float(fpx(xn))
 
-        # non-finite checks
         if not np.isfinite(fn) or not np.isfinite(fpn):
             rows.append((n, xn, fn, fpn, np.nan, "non_finite"))
             break
 
-        # convergence check
+        # Divergence detection by worsening |f(x_n)| several times in a row
+        abs_f = abs(fn)
+        if prev_abs_f is not None:
+            if abs_f > prev_abs_f * 1.05:   # 5% worse
+                worse_streak += 1
+            else:
+                worse_streak = 0
+        prev_abs_f = abs_f
+
+        if worse_streak >= 3:
+            rows.append((n, xn, fn, fpn, np.nan, "diverging"))
+            break
+
+        # Converged?
         if abs(fn) < tol:
             rows.append((n, xn, fn, fpn, xn, "converged"))
             break
 
-        # derivative zero check
+        # Derivative zero?
         if fpn == 0:
             rows.append((n, xn, fn, fpn, np.nan, "derivative_zero"))
             break
@@ -100,6 +110,13 @@ def newton_history(f_expr, x0, tol, max_iter):
         if not np.isfinite(xnext):
             rows.append((n, xn, fn, fpn, np.nan, "non_finite"))
             break
+
+        # Extra divergence check: |x| blowing up fast (catches x^(1/3): ratio=2)
+        if len(rows) >= 1:
+            prev_x = rows[-1][1]  # last x_n stored
+            if np.isfinite(prev_x) and abs(prev_x) > 0 and abs(xnext) > 1.5 * abs(prev_x):
+                rows.append((n, xn, fn, fpn, float(xnext), "diverging"))
+                break
 
         rows.append((n, xn, fn, fpn, float(xnext), "iter"))
         xn = float(xnext)
@@ -121,7 +138,6 @@ def newton_history(f_expr, x0, tol, max_iter):
 # -----------------------------
 def make_plot(f, x_n, fpx_n, x_next, x_min, x_max, tangent_half_window):
     X = np.linspace(x_min, x_max, 800)
-
     Y = np.array(f(X), dtype=float)
     mask = np.isfinite(Y)
 
@@ -141,7 +157,6 @@ def make_plot(f, x_n, fpx_n, x_next, x_min, x_max, tangent_half_window):
     if np.isfinite(y_n):
         ax.plot([x_n], [y_n], marker="o", linestyle="None", label="(x_n, f(x_n))")
 
-        # local tangent
         if np.isfinite(fpx_n):
             Xt = np.linspace(x_n - tangent_half_window, x_n + tangent_half_window, 200)
             Yt = y_n + fpx_n * (Xt - x_n)
@@ -150,7 +165,6 @@ def make_plot(f, x_n, fpx_n, x_next, x_min, x_max, tangent_half_window):
             if np.any(m2):
                 ax.plot(Xt[m2], Yt[m2], linewidth=2, label="tangent at x_n")
 
-        # x_{n+1}
         if np.isfinite(x_next):
             ax.plot([x_next], [0], marker="o", linestyle="None", label="x_{n+1}")
             ax.vlines([x_n, x_next], ymin=min(0, y_n), ymax=max(0, y_n), linestyles="dotted")
@@ -189,11 +203,11 @@ def run():
         plot_half_window = st.number_input("Plot half-window (zoom):", value=1.25)
         tangent_half_window = st.number_input("Tangent half-window (local):", value=0.75)
 
-    # Parse
+    # ✅ Student-friendly: allow x^(1/3)
+    f_input = f_input.replace("^", "**")
+
     try:
         f_expr = sp.sympify(f_input)
-        # Optional rewrite here too (safe/redundant)
-        f_expr = replace_third_powers(f_expr)
     except Exception as e:
         st.error(f"Invalid function: {e}")
         return
@@ -204,7 +218,6 @@ def run():
         st.error("No iterations computed.")
         return
 
-    # Table display
     df_show = df.copy()
     for col in ["x_n", "f(x_n)", "f'(x_n)", "x_{n+1}"]:
         df_show[col] = pd.to_numeric(df_show[col], errors="coerce").round(6)
@@ -212,10 +225,13 @@ def run():
     st.subheader("Iteration Table")
     st.dataframe(df_show, use_container_width=True, hide_index=True)
 
-    # Status box (C-only)
+    # Status box
     last_status = str(df.iloc[-1]["status"])
     if last_status == "converged":
         st.success("✅ Converged: |f(xₙ)| is below tolerance.")
+    elif last_status == "diverging":
+        st.error("❌ Did not converge: Error is getting worse (Fails).")
+        st.info("Newton’s Method is diverging for this starting value. Try a different x₀ or use bisection.")
     elif last_status == "derivative_zero":
         st.error("❌ Did not converge: stopped because f'(xₙ) = 0 (horizontal tangent).")
         st.info("Try a different initial guess x₀ (even a small change can help).")
@@ -241,12 +257,11 @@ def run():
     if fpn == 0:
         x_next = np.nan
 
-    # guard: if f(x_n) isn't finite, explain and stop
     y_n = safe_float(f_num(x_n))
     if not np.isfinite(y_n):
         st.warning(
-            "Cannot plot this step because f(xₙ) is not a real finite number for the current input.\n\n"
-            "Tip: cube roots are supported (e.g., x**(1/3)) via a real cube-root rewrite."
+            "Cannot plot this step because f(xₙ) is not a real finite number.\n\n"
+            "Tip: cube roots are supported; you can type x^(1/3) or x**(1/3)."
         )
         return
 
@@ -264,7 +279,6 @@ def run():
     )
     st.pyplot(fig, use_container_width=True)
 
-    # Result summary
     st.subheader("Result")
     st.latex(rf"x \approx {float(df.iloc[-1]['x_n']):.10f}")
     st.latex(rf"f(x) \approx {float(df.iloc[-1]['f(x_n)']):.4e}")
