@@ -5,26 +5,53 @@ import sympy as sp
 import pandas as pd
 from sympy.abc import x
 
-# -----------------------------
-# Helpers
-# -----------------------------
-def normalize_real_roots(expr: sp.Expr) -> sp.Expr:
-    """
-    Best-practice normalization for common student input:
-    - Converts x**(1/3) into sign(x)*abs(x)**(1/3) so it's REAL for negative x.
-    This avoids NumPy's (-0.05)**(1/3) -> NaN behavior.
-    """
-    r13 = sp.Rational(1, 3)
+# ---------------------------------------------------------
+# Real cube-root that works for negative inputs (SymPy-safe)
+# ---------------------------------------------------------
+class Cbrt(sp.Function):
+    # Nice LaTeX: \sqrt[3]{x}
+    def _latex(self, printer):
+        return r"\sqrt[3]{%s}" % printer._print(self.args[0])
 
-    def is_one_third_power(e):
-        return isinstance(e, sp.Pow) and e.exp == r13
+    # d/dx Cbrt(u) = u' / (3*Cbrt(u)^2)
+    def fdiff(self, argindex=1):
+        u = self.args[0]
+        return 1 / (3 * Cbrt(u) ** 2)
+
+def replace_third_powers(expr: sp.Expr) -> sp.Expr:
+    """
+    Replace any power with denominator 3 (like x**(1/3), x**(-2/3), etc.)
+    with expressions in terms of Cbrt(...) that stay real for negative inputs.
+    Handles the most common exponents used in Newton/derivatives.
+    """
+    def repl_pow(e):
+        if not isinstance(e, sp.Pow):
+            return e
+        exp = e.exp
+        if not isinstance(exp, sp.Rational) or exp.q != 3:
+            return e
+
+        p = exp.p
+        base = e.base
+
+        if p == 1:
+            return Cbrt(base)
+        if p == 2:
+            return Cbrt(base) ** 2
+        if p == -1:
+            return 1 / Cbrt(base)
+        if p == -2:
+            return 1 / (Cbrt(base) ** 2)
+
+        # leave other p/3 cases unchanged
+        return e
 
     return expr.replace(
-        is_one_third_power,
-        lambda e: sp.sign(e.base) * sp.Abs(e.base) ** r13
+        lambda e: isinstance(e, sp.Pow) and isinstance(e.exp, sp.Rational) and e.exp.q == 3,
+        repl_pow
     )
 
-def safe_float(val):
+def safe_float(val) -> float:
     """Convert to float if possible; otherwise return np.nan."""
     try:
         out = float(val)
@@ -39,16 +66,16 @@ def newton_history(f_expr, x0, tol, max_iter):
     """
     Returns:
       df columns: n, x_n, f(x_n), f'(x_n), x_{n+1}, status
-    Status is ALWAYS one of:
+    status ALWAYS ends as one of:
       - converged
       - derivative_zero
       - non_finite
       - max_iter
-      - iter (for intermediate rows)
+    Intermediate rows are labeled: iter
     """
-    fx = sp.lambdify(x, f_expr, modules=["numpy"])
+    fx = sp.lambdify(x, f_expr, modules=[{"Cbrt": np.cbrt}, "numpy"])
     fpx_expr = sp.diff(f_expr, x)
-    fpx = sp.lambdify(x, fpx_expr, modules=["numpy"])
+    fpx = sp.lambdify(x, fpx_expr, modules=[{"Cbrt": np.cbrt}, "numpy"])
 
     rows = []
     xn = float(x0)
@@ -80,11 +107,11 @@ def newton_history(f_expr, x0, tol, max_iter):
         rows.append((n, xn, fn, fpn, float(xnext), "iter"))
         xn = float(xnext)
 
-    # If we ran out of iterations after normal steps, set max_iter
     if len(rows) == 0:
         df = pd.DataFrame(columns=["n", "x_n", "f(x_n)", "f'(x_n)", "x_{n+1}", "status"])
         return df, fx, fpx, fpx_expr
 
+    # if we ended due to max iterations after iter steps
     if rows[-1][5] == "iter" and len(rows) == max_iter:
         n, xn, fn, fpn, xnext, _ = rows[-1]
         rows[-1] = (n, xn, fn, fpn, xnext, "max_iter")
@@ -98,9 +125,8 @@ def newton_history(f_expr, x0, tol, max_iter):
 def make_plot(f, x_n, fpx_n, x_next, x_min, x_max, tangent_half_window):
     X = np.linspace(x_min, x_max, 800)
 
-    # Compute Y safely and mask non-finite values
-    Y = f(X)
-    Y = np.array(Y, dtype=float)
+    # compute Y safely and mask non-finite values
+    Y = np.array(f(X), dtype=float)
     mask = np.isfinite(Y)
 
     fig, ax = plt.subplots(figsize=(8, 4), constrained_layout=True)
@@ -115,12 +141,11 @@ def make_plot(f, x_n, fpx_n, x_next, x_min, x_max, tangent_half_window):
         ax.grid(True, alpha=0.35)
         return fig
 
-    # Current point
     y_n = safe_float(f(x_n))
     if np.isfinite(y_n):
         ax.plot([x_n], [y_n], marker="o", linestyle="None", label="(x_n, f(x_n))")
 
-        # Local tangent
+        # local tangent
         if np.isfinite(fpx_n):
             Xt = np.linspace(x_n - tangent_half_window, x_n + tangent_half_window, 200)
             Yt = y_n + fpx_n * (Xt - x_n)
@@ -129,13 +154,10 @@ def make_plot(f, x_n, fpx_n, x_next, x_min, x_max, tangent_half_window):
             if np.any(m2):
                 ax.plot(Xt[m2], Yt[m2], linewidth=2, label="tangent at x_n")
 
-        # Next point if defined
+        # x_{n+1}
         if np.isfinite(x_next):
             ax.plot([x_next], [0], marker="o", linestyle="None", label="x_{n+1}")
             ax.vlines([x_n, x_next], ymin=min(0, y_n), ymax=max(0, y_n), linestyles="dotted")
-    else:
-        # If y_n is non-finite, skip point/tangent and just show curve
-        pass
 
     ax.set_xlim(x_min, x_max)
 
@@ -172,10 +194,10 @@ def run():
         plot_half_window = st.number_input("Plot half-window (zoom):", value=1.25)
         tangent_half_window = st.number_input("Tangent half-window (local):", value=0.75)
 
-    # Parse + normalize
+    # Parse + rewrite 1/3 powers into Cbrt for real outputs on negatives
     try:
         f_expr = sp.sympify(f_input)
-        f_expr = normalize_real_roots(f_expr)  # ✅ fixes x**(1/3) on negatives
+        f_expr = replace_third_powers(f_expr)
     except Exception as e:
         st.error(f"Invalid function: {e}")
         return
@@ -208,7 +230,7 @@ def run():
         st.error("❌ Did not converge: reached max iterations.")
         st.info("Increase max iterations or choose a better initial guess x₀.")
 
-    # Visualization (with slider guard)
+    # Visualization
     st.subheader("Visualization")
     if len(df) == 1:
         step = 0
@@ -218,19 +240,17 @@ def run():
 
     x_n = float(df.loc[step, "x_n"])
     fpn = safe_float(df.loc[step, "f'(x_n)"])
-    x_next = df.loc[step, "x_{n+1}"]
-    x_next = safe_float(x_next)
+    x_next = safe_float(df.loc[step, "x_{n+1}"])
 
     if fpn == 0:
-        x_next = np.nan  # no Newton step exists
+        x_next = np.nan
 
-    # If current f(x_n) isn't finite, avoid crashing and explain
+    # If f(x_n) isn't finite, avoid crashing and explain
     y_n = safe_float(f_num(x_n))
     if not np.isfinite(y_n):
         st.warning(
-            "Cannot plot this step because f(xₙ) is not a real finite number.\n\n"
-            "Tip: For cube roots, prefer `cbrt(x)` or use the built-in normalization of `x**(1/3)` "
-            "with a real-valued cube-root form."
+            "Cannot plot this step because f(xₙ) is not a real finite number for the current input.\n\n"
+            "Tip: cube roots are supported (e.g., x**(1/3)) via a real-valued cube-root rewrite."
         )
         return
 
