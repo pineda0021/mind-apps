@@ -3,6 +3,7 @@ import streamlit as st
 # Import tool modules (ensure these .py files exist and are correctly named)
 import limits_tool
 import derivative_tool
+import newton_tool            
 import riemann_tool
 import antiderivative_tool
 import solid_volume_tool
@@ -17,6 +18,7 @@ st.sidebar.header("📚 Select a Concept")
 tool = st.sidebar.radio("Choose a tool:", [
     "Limits Visualizer",
     "Derivative Visualizer",
+    "Newton's Method",         
     "Riemann Sum Explorer",
     "Antiderivative Visualizer",
     "Solid of Revolution Tool"
@@ -27,6 +29,8 @@ if tool == "Limits Visualizer":
     limits_tool.run()
 elif tool == "Derivative Visualizer":
     derivative_tool.run()
+elif tool == "Newton's Method":   
+    newton_tool.run()
 elif tool == "Riemann Sum Explorer":
     riemann_tool.run()
 elif tool == "Antiderivative Visualizer":
@@ -44,3 +48,4 @@ Department of Mathematics, Los Angeles City College
 📧 Email: pinedaem@lacitycollege.edu | 📞 Tel: (323) 953-4000 ext. 2827                                                                                                   
 Founder of MIND — Making Inference Digestible
 """)
+
