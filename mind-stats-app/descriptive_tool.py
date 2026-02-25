@@ -1,6 +1,6 @@
 # ==========================================================
 # Descriptive Statistics Tool
-# Clean Light-Mode Plotly Version
+# Plotly Version (Original Structure Preserved)
 # Created by Professor Edward Pineda-Castro
 # MIND: Statistics Visualizer Suite
 # ==========================================================
@@ -117,7 +117,7 @@ def run_quantitative(df_uploaded=None):
             st.error("Invalid numeric input.")
             return
 
-    # ================= DISCRETE =================
+    # ---------------- DISCRETE ----------------
 
     if q_type == "Discrete":
         counts = pd.Series(data).value_counts().sort_index()
@@ -133,18 +133,17 @@ def run_quantitative(df_uploaded=None):
 
         fig = px.histogram(
             x=data,
-            nbins=len(np.unique(data)),
-            template="plotly_white"
+            nbins=len(np.unique(data))
         )
-        fig.update_layout(title="📊 Discrete Histogram (No Gaps)",
-                          xaxis_title="Values",
-                          yaxis_title="Frequency")
-        fig.update_traces(marker_line_color="black")
-
+        fig.update_layout(
+            title="📊 Discrete Histogram (No Gaps)",
+            xaxis_title="Values",
+            yaxis_title="Frequency"
+        )
         st.plotly_chart(fig, use_container_width=True)
         return
 
-    # ================= CONTINUOUS =================
+    # ---------------- CONTINUOUS ----------------
 
     min_val, max_val = np.min(data), np.max(data)
     n = len(data)
@@ -181,11 +180,12 @@ def run_quantitative(df_uploaded=None):
     bins = [low for low, _ in intervals] + [intervals[-1][1]]
 
     if plot_option == "Histogram":
-        fig = px.histogram(x=data, nbins=len(intervals), template="plotly_white")
-        fig.update_layout(title="📊 Continuous Histogram (No Gaps)",
-                          xaxis_title="Class Intervals",
-                          yaxis_title="Frequency")
-        fig.update_traces(marker_line_color="black")
+        fig = px.histogram(x=data, nbins=len(intervals))
+        fig.update_layout(
+            title="📊 Continuous Histogram (No Gaps)",
+            xaxis_title="Class Intervals",
+            yaxis_title="Frequency"
+        )
         st.plotly_chart(fig, use_container_width=True)
 
     elif plot_option == "Histogram + Ogive":
@@ -204,24 +204,76 @@ def run_quantitative(df_uploaded=None):
         ))
 
         fig.update_layout(
-            template="plotly_white",
             title="📊 Histogram + Ogive",
             xaxis_title="Class Intervals",
             yaxis_title="Frequency",
-            yaxis2=dict(overlaying="y", side="right",
-                        title="Cumulative Frequency")
+            yaxis2=dict(
+                overlaying="y",
+                side="right",
+                title="Cumulative Frequency"
+            )
         )
 
         st.plotly_chart(fig, use_container_width=True)
 
     else:
-        fig = px.box(x=data, orientation="h", template="plotly_white")
-        fig.update_layout(title="📦 Boxplot", xaxis_title="Values")
+        fig = px.box(x=data, orientation="h")
+        fig.update_layout(
+            title="📦 Boxplot",
+            xaxis_title="Values"
+        )
         st.plotly_chart(fig, use_container_width=True)
 
 # ==========================================================
-# (Qualitative, Summary, and run() remain structurally identical,
-# only plots converted to Plotly — omitted here for brevity limit)
+# QUALITATIVE ANALYZER
+# ==========================================================
+
+def run_qualitative(df_uploaded=None):
+    st.subheader("🎨 Qualitative (Categorical) Analyzer")
+
+    input_mode = st.radio("Input Mode:", ["Upload File", "Manual Entry"], horizontal=True)
+
+    if input_mode == "Upload File":
+        if df_uploaded is None:
+            st.warning("Upload file first.")
+            return
+        text_cols = df_uploaded.select_dtypes(include="object").columns
+        if not len(text_cols):
+            st.error("No categorical columns found.")
+            return
+        col = st.selectbox("Select column:", text_cols)
+        data = df_uploaded[col].dropna().astype(str).values
+    else:
+        raw_data = st.text_area("Categories:", "Red, Blue, Red, Green, Yellow")
+        data = [x.strip() for x in raw_data.split(",") if x.strip()]
+
+    counts = pd.Series(data).value_counts()
+
+    freq_df = pd.DataFrame({
+        "Category": counts.index,
+        "Frequency": counts.values,
+        "Relative Freq": np.round(counts.values / len(data), 4)
+    })
+
+    st.dataframe(freq_df, use_container_width=True)
+
+    chart_type = st.radio("Choose chart:", ["Bar Chart", "Pie Chart"], horizontal=True)
+
+    if chart_type == "Bar Chart":
+        fig = px.bar(x=counts.index, y=counts.values)
+        fig.update_layout(
+            title="🎨 Bar Chart",
+            xaxis_title="Category",
+            yaxis_title="Frequency"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        fig = px.pie(names=counts.index, values=counts.values)
+        fig.update_layout(title="🥧 Pie Chart")
+        st.plotly_chart(fig, use_container_width=True)
+
+# ==========================================================
+# MAIN APP
 # ==========================================================
 
 def run():
@@ -242,14 +294,20 @@ def run():
     df_uploaded = None
 
     if uploaded_file:
-        df_uploaded = (
-            pd.read_csv(uploaded_file)
-            if uploaded_file.name.endswith(".csv")
-            else pd.read_excel(uploaded_file)
-        )
-        st.success("File uploaded successfully!")
+        try:
+            df_uploaded = (
+                pd.read_csv(uploaded_file)
+                if uploaded_file.name.endswith(".csv")
+                else pd.read_excel(uploaded_file)
+            )
+            st.success("File uploaded successfully!")
+        except Exception as e:
+            st.error(f"Error loading file: {e}")
+            return
 
-    if choice == "Quantitative (Discrete or Continuous)":
+    if choice == "Qualitative (Categorical)":
+        run_qualitative(df_uploaded)
+    elif choice == "Quantitative (Discrete or Continuous)":
         run_quantitative(df_uploaded)
 
 if __name__ == "__main__":
