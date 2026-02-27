@@ -1,7 +1,7 @@
 # ==========================================================
 # Descriptive Statistics Tool
-# Plotly Version (Original Structure Preserved)
-# Created by Professor Edward Pineda-Castro
+# Plotly Version (No Dark Mode Styling)
+# Created by Professor Edward Pineda-Castro, Los Angeles City College
 # MIND: Statistics Visualizer Suite
 # ==========================================================
 
@@ -81,104 +81,146 @@ def compute_frequency_table(data, intervals, manual_freq=None):
     return df, total
 
 # ==========================================================
-# Summary Statistics & Boxplots (RESTORED)
+# Quantitative Analyzer
 # ==========================================================
 
-def run_summary(df_uploaded=None):
-    st.subheader("📊 Summary Statistics & Boxplots")
+def run_quantitative(df_uploaded=None):
+    st.subheader("📊 Quantitative Data Analyzer")
 
-    mode = st.radio("Mode:", ["Single Dataset", "Multiple Datasets"], horizontal=True)
+    q_type = st.radio("Select Data Type:", ["Discrete", "Continuous"], horizontal=True)
+    input_mode = st.radio("Data Input Mode:", ["Upload File", "Manual Entry"], horizontal=True)
 
-    # ================= SINGLE DATASET =================
+    data = None
 
-    if mode == "Single Dataset":
-        input_mode = st.radio("Input:", ["Upload File", "Manual Entry"], horizontal=True)
-
-        if input_mode == "Upload File":
-            if df_uploaded is None:
-                st.warning("Upload file first.")
+    if input_mode == "Upload File":
+        if df_uploaded is not None:
+            numeric_cols = df_uploaded.select_dtypes(include=[np.number]).columns.tolist()
+            if not numeric_cols:
+                st.error("No numeric columns found.")
                 return
-            numeric_cols = df_uploaded.select_dtypes(include=[np.number]).columns
-            col = st.selectbox("Column:", numeric_cols)
+            col = st.selectbox("Select numeric column:", numeric_cols)
             data = df_uploaded[col].dropna().astype(float).values
+            st.success(f"Loaded {len(data)} observations.")
         else:
-            raw = st.text_area("Numbers:", "56, 57, 54, 61, 63, 58, 59, 62")
-            try:
-                data = np.array([float(x.strip()) for x in raw.split(",") if x.strip()])
-            except:
-                st.error("Invalid input.")
-                return
+            st.warning("Upload a dataset first.")
+            return
+    else:
+        example = (
+            "3, 5, 4, 4, 3, 2, 5, 5, 3, 4"
+            if q_type == "Discrete"
+            else "728,730,726,698,721,722,700,720,729,678"
+        )
+        raw_data = st.text_area("Enter comma-separated numeric values:", example)
+        try:
+            data = np.array([float(x.strip()) for x in raw_data.split(",") if x.strip()])
+            st.success(f"Loaded {len(data)} observations.")
+        except:
+            st.error("Invalid numeric input.")
+            return
 
-        summary = pd.DataFrame(get_summary_stats(data).items(),
-                               columns=["Statistic", "Value"])
-        st.dataframe(summary, use_container_width=True)
+    # ================= DISCRETE =================
 
+    if q_type == "Discrete":
+        counts = pd.Series(data).value_counts().sort_index()
+        freq_df = pd.DataFrame({
+            "Value": counts.index,
+            "Frequency": counts.values,
+            "Relative Frequency": np.round(counts.values / len(data), 4)
+        })
+        freq_df["Cumulative Frequency"] = freq_df["Frequency"].cumsum()
+
+        st.markdown("### Frequency Table")
+        st.dataframe(freq_df, use_container_width=True)
+
+        fig = px.histogram(
+            x=data,
+            nbins=len(np.unique(data))
+        )
+        fig.update_layout(
+            title="📊 Discrete Histogram (No Gaps)",
+            xaxis_title="Values",
+            yaxis_title="Frequency"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        return
+
+    # ================= CONTINUOUS =================
+
+    min_val, max_val = np.min(data), np.max(data)
+    n = len(data)
+    k = int(np.ceil(1 + 3.322 * np.log10(n)))
+    class_width = np.ceil((max_val - min_val) / k)
+
+    auto_intervals = []
+    start = np.floor(min_val)
+    for i in range(k):
+        low = start + i * class_width
+        high = low + class_width - 1
+        auto_intervals.append((low, high))
+
+    default_intervals_text = ", ".join(f"[{int(l)},{int(h)}]" for l, h in auto_intervals)
+
+    st.info(f"Generated {k} class intervals (width ≈ {int(class_width)}).")
+
+    edit = st.checkbox("Edit class intervals?", value=False)
+    intervals = parse_intervals(
+        st.text_area("Class Intervals:", default_intervals_text)
+    ) if edit else auto_intervals
+
+    df_freq, total = compute_frequency_table(data, intervals)
+
+    st.markdown("### Frequency Table")
+    st.dataframe(df_freq, use_container_width=True)
+
+    plot_option = st.radio(
+        "Choose visualization:",
+        ["Histogram", "Histogram + Ogive", "Boxplot"],
+        horizontal=True
+    )
+
+    if plot_option == "Histogram":
+        fig = px.histogram(x=data, nbins=len(intervals))
+        fig.update_layout(
+            title="📊 Continuous Histogram (No Gaps)",
+            xaxis_title="Class Intervals",
+            yaxis_title="Frequency"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    elif plot_option == "Histogram + Ogive":
+        fig = go.Figure()
+        fig.add_trace(go.Histogram(x=data, nbinsx=len(intervals), name="Frequency"))
+
+        upper_bounds = [high for _, high in intervals]
+        cum_freq = df_freq["Cumulative Freq"].values
+
+        fig.add_trace(go.Scatter(
+            x=upper_bounds,
+            y=cum_freq,
+            mode="lines+markers",
+            name="Cumulative Frequency",
+            yaxis="y2"
+        ))
+
+        fig.update_layout(
+            title="📊 Histogram + Ogive",
+            xaxis_title="Class Intervals",
+            yaxis_title="Frequency",
+            yaxis2=dict(
+                overlaying="y",
+                side="right",
+                title="Cumulative Frequency"
+            )
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+    else:
         fig = px.box(x=data, orientation="h")
         fig.update_layout(
             title="📦 Boxplot",
             xaxis_title="Values"
         )
-        st.plotly_chart(fig, use_container_width=True)
-
-    # ================= MULTIPLE DATASETS =================
-
-    else:
-        input_mode = st.radio("Input:", ["Upload File", "Manual Entry"], horizontal=True)
-        data_dict = {}
-
-        if input_mode == "Upload File":
-            if df_uploaded is None:
-                st.warning("Upload first.")
-                return
-
-            numeric_cols = df_uploaded.select_dtypes(include=[np.number]).columns
-            selected = st.multiselect(
-                "Select numeric columns:",
-                numeric_cols,
-                default=list(numeric_cols)[:2]
-            )
-
-            for col in selected:
-                data_dict[col] = df_uploaded[col].dropna().astype(float).values
-
-        else:
-            raw = st.text_area(
-                "Enter datasets separated by semicolons:",
-                "56,57,54; 49,51,55; 65,64,68"
-            )
-            blocks = [b.strip() for b in raw.split(";") if b.strip()]
-
-            for i, block in enumerate(blocks, 1):
-                try:
-                    data_dict[f"Dataset {i}"] = np.array(
-                        [float(x.strip()) for x in block.split(",") if x.strip()]
-                    )
-                except:
-                    st.error(f"Invalid input in Dataset {i}")
-                    return
-
-        combined = pd.DataFrame()
-        for name, d in data_dict.items():
-            stats_dict = get_summary_stats(d)
-            df_stats = pd.DataFrame(stats_dict, index=[name])
-            combined = pd.concat([combined, df_stats])
-
-        st.dataframe(combined, use_container_width=True)
-
-        fig = go.Figure()
-
-        for name, d in data_dict.items():
-            fig.add_trace(go.Box(
-                x=d,
-                name=name,
-                orientation="h"
-            ))
-
-        fig.update_layout(
-            title="📦 Boxplots (Multiple)",
-            xaxis_title="Values"
-        )
-
         st.plotly_chart(fig, use_container_width=True)
 
 # ==========================================================
@@ -199,8 +241,11 @@ def run():
     if not choice:
         st.info("👆 Please select a category to begin.")
 
-    uploaded_file = st.file_uploader("📂 Upload CSV or Excel (optional):",
-                                     type=["csv", "xlsx"])
+    uploaded_file = st.file_uploader(
+        "📂 Upload CSV or Excel (optional):",
+        type=["csv", "xlsx"]
+    )
+
     df_uploaded = None
 
     if uploaded_file:
@@ -215,8 +260,8 @@ def run():
             st.error(f"Error loading file: {e}")
             return
 
-    if choice == "Summary Statistics & Boxplot":
-        run_summary(df_uploaded)
+    if choice == "Quantitative (Discrete or Continuous)":
+        run_quantitative(df_uploaded)
 
 if __name__ == "__main__":
     run()
