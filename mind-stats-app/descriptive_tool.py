@@ -1,6 +1,6 @@
 # ==========================================================
 # Descriptive Statistics Tool
-# Plotly Version 
+# Plotly Version (No Dark Mode Styling)
 # Created by Professor Edward Pineda-Castro
 # MIND: Statistics Visualizer Suite
 # ==========================================================
