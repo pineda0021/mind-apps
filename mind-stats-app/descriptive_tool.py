@@ -1,6 +1,6 @@
 # ==========================================================
 # Descriptive Statistics Tool
-# Plotly Version (No Dark Mode Styling)
+# Plotly Version (Original Structure Preserved)
 # Created by Professor Edward Pineda-Castro
 # MIND: Statistics Visualizer Suite
 # ==========================================================
@@ -111,8 +111,6 @@ def run_quantitative(df_uploaded=None):
             st.error("Invalid numeric input.")
             return
 
-    # ================= DISCRETE =================
-
     if q_type == "Discrete":
         counts = pd.Series(data).value_counts().sort_index()
         freq_df = pd.DataFrame({
@@ -132,7 +130,7 @@ def run_quantitative(df_uploaded=None):
         st.plotly_chart(fig, use_container_width=True)
         return
 
-    # ================= CONTINUOUS =================
+    # Continuous
 
     min_val, max_val = np.min(data), np.max(data)
     n = len(data)
@@ -225,6 +223,105 @@ def run_quantitative(df_uploaded=None):
         st.plotly_chart(fig, use_container_width=True)
 
 # ==========================================================
+# QUALITATIVE ANALYZER
+# ==========================================================
+
+def run_qualitative(df_uploaded=None):
+    st.subheader("🎨 Qualitative (Categorical) Analyzer")
+
+    input_mode = st.radio("Input Mode:", ["Upload File", "Manual Entry"], horizontal=True)
+
+    if input_mode == "Upload File":
+        if df_uploaded is None:
+            st.warning("Upload file first.")
+            return
+        text_cols = df_uploaded.select_dtypes(include="object").columns
+        if not len(text_cols):
+            st.error("No categorical columns found.")
+            return
+        col = st.selectbox("Select column:", text_cols)
+        data = df_uploaded[col].dropna().astype(str).values
+    else:
+        raw_data = st.text_area("Categories:", "Red, Blue, Red, Green, Yellow")
+        data = [x.strip() for x in raw_data.split(",") if x.strip()]
+
+    counts = pd.Series(data).value_counts()
+
+    freq_df = pd.DataFrame({
+        "Category": counts.index,
+        "Frequency": counts.values,
+        "Relative Freq": np.round(counts.values / len(data), 4)
+    })
+
+    st.dataframe(freq_df, use_container_width=True)
+
+    chart_type = st.radio("Choose chart:", ["Bar Chart", "Pie Chart"], horizontal=True)
+
+    if chart_type == "Bar Chart":
+        fig = px.bar(x=counts.index, y=counts.values)
+        fig.update_layout(title="🎨 Bar Chart",
+                          xaxis_title="Category",
+                          yaxis_title="Frequency")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        fig = px.pie(names=counts.index, values=counts.values)
+        fig.update_layout(title="🥧 Pie Chart")
+        st.plotly_chart(fig, use_container_width=True)
+
+# ==========================================================
+# SUMMARY STATS + BOX PLOTS
+# ==========================================================
+
+def run_summary(df_uploaded=None):
+    st.subheader("📊 Summary Statistics & Boxplots")
+
+    mode = st.radio("Mode:", ["Single Dataset", "Multiple Datasets"], horizontal=True)
+
+    if mode == "Single Dataset":
+        raw = st.text_area("Numbers:", "56, 57, 54, 61, 63, 58, 59, 62")
+        data = np.array([float(x.strip()) for x in raw.split(",") if x.strip()])
+
+        summary = pd.DataFrame(get_summary_stats(data).items(),
+                               columns=["Statistic", "Value"])
+        st.dataframe(summary, use_container_width=True)
+
+        fig = px.box(x=data, orientation="h")
+        fig.update_layout(title="📦 Boxplot",
+                          xaxis_title="Values")
+        st.plotly_chart(fig, use_container_width=True)
+
+    else:
+        raw = st.text_area(
+            "Enter datasets separated by semicolons:",
+            "56,57,54; 49,51,55; 65,64,68"
+        )
+
+        blocks = [b.strip() for b in raw.split(";") if b.strip()]
+        data_dict = {}
+
+        for i, block in enumerate(blocks, 1):
+            data_dict[f"Dataset {i}"] = np.array(
+                [float(x.strip()) for x in block.split(",") if x.strip()]
+            )
+
+        combined = pd.DataFrame()
+        for name, d in data_dict.items():
+            stats_dict = get_summary_stats(d)
+            df_stats = pd.DataFrame(stats_dict, index=[name])
+            combined = pd.concat([combined, df_stats])
+
+        st.dataframe(combined, use_container_width=True)
+
+        fig = go.Figure()
+        for name, d in data_dict.items():
+            fig.add_trace(go.Box(x=d, name=name, orientation="h"))
+
+        fig.update_layout(title="📦 Boxplots (Multiple)",
+                          xaxis_title="Values")
+
+        st.plotly_chart(fig, use_container_width=True)
+
+# ==========================================================
 # MAIN APP
 # ==========================================================
 
@@ -259,8 +356,12 @@ def run():
             st.error(f"Error loading file: {e}")
             return
 
-    if choice == "Quantitative (Discrete or Continuous)":
+    if choice == "Qualitative (Categorical)":
+        run_qualitative(df_uploaded)
+    elif choice == "Quantitative (Discrete or Continuous)":
         run_quantitative(df_uploaded)
+    elif choice == "Summary Statistics & Boxplot":
+        run_summary(df_uploaded)
 
 if __name__ == "__main__":
     run()
