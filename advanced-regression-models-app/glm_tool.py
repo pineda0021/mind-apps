@@ -147,7 +147,7 @@ def run():
 - Log-Likelihood measures how well the model explains the observed data.
 - AIC, AICc, and BIC penalize model complexity.
 - Lower values indicate better balance between fit and complexity.
-- AICc is recommended when sample size is small relative to number of parameters.
+- AICc is recommended when the sample size is small relative to the number of parameters.
 """)
 
     # ======================================================
@@ -185,7 +185,7 @@ def run():
     def build_equation(model, response):
 
         params = model.params
-        equation = f"\\hat{{{response}}} = {round(params['Intercept'],4)}"
+        equation = f"\\hat{E{{response}}} = {round(params['Intercept'],4)}"
 
         for name in params.index:
 
