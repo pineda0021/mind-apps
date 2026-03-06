@@ -295,14 +295,14 @@ def run():
             direction = "increase" if coef > 0 else "decrease"
 
             st.write(
-                f"For **{var_name} = {level}**, the estimated **{response}** "
+                f"For **{var_name} = {level}**, the estimated mean **{response}** "
                 f"shows a **{direction} of {abs(coef)} units** compared to "
                 f"the reference group (**{ref}**), holding other variables constant."
             )
 
         else:
             st.write(
-                f"For each one-unit increase in **{name}**, "
+                f"the estimated mean in **{name}**, "
                 f"the estimated mean **{response}** changes by "
                 f"{coef} units, holding other variables constant."
             )
