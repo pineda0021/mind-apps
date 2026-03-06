@@ -185,7 +185,7 @@ def run():
     def build_equation(model, response):
 
         params = model.params
-        equation = f"\E\hat{{{response}}} = {round(params['Intercept'],4)}"
+        equation = f"\\widehat{{\\mathbb{{E}}}}({response}) = {round(params['Intercept'],4)}"
 
         for name in params.index:
 
@@ -195,7 +195,7 @@ def run():
             coef = round(params[name], 4)
             sign = "+" if coef >= 0 else "-"
 
-            if "C(" in name:
+            if name.startswith("C("):
                 var_name = name.split("[")[0]
                 var_name = var_name.replace("C(", "").split(",")[0]
                 level = name.split("T.")[1].replace("]", "")
@@ -205,8 +205,70 @@ def run():
 
         return equation
 
-    st.subheader("Fitted Regression Equation")
+    # ======================================================
+    # 8.1 REFIT REDUCED MODEL
+    # ======================================================
+
+    def refit_reduced_model(full_model, alpha=0.05):
+
+        pvals = full_model.pvalues.drop("Intercept")
+        significant_terms = pvals[pvals < alpha].index.tolist()
+
+        if not significant_terms:
+            return None
+
+        keep_predictors = set()
+
+        for term in significant_terms:
+
+            if term.startswith("C("):
+                var_name = term.split("[")[0]
+                var_name = var_name.replace("C(", "").split(",")[0]
+                keep_predictors.add(var_name)
+            else:
+                keep_predictors.add(term)
+
+        new_terms = []
+
+        for var in predictors:
+            if var in keep_predictors:
+                if var in categorical_vars:
+                    ref = reference_dict[var]
+                    new_terms.append(
+                        f'C({var}, Treatment(reference="{ref}"))'
+                    )
+                else:
+                    new_terms.append(var)
+
+        if not new_terms:
+            return None
+
+        reduced_formula = response + " ~ " + " + ".join(new_terms)
+
+        reduced_model = smf.ols(
+            formula=reduced_formula,
+            data=df
+        ).fit()
+
+        return reduced_model
+
+    # ======================================================
+    # 8.3 DISPLAY EQUATIONS
+    # ======================================================
+
+    st.subheader("Fitted Regression Equation (Full Model)")
     st.latex(build_equation(model, response))
+
+    reduced_model = refit_reduced_model(model)
+
+    if reduced_model is not None:
+        st.subheader("Reduced Model (Refit Using Significant Predictors)")
+        st.latex(build_equation(reduced_model, response))
+
+        st.subheader("Reduced Model Summary")
+        st.text(reduced_model.summary())
+    else:
+        st.warning("No predictors are statistically significant at α = 0.05.")
 
     # ======================================================
     # 9. INTERPRETATION OF COEFFICIENTS
