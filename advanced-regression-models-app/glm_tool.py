@@ -24,6 +24,7 @@ def run():
         return
 
     df = pd.read_csv(uploaded_file)
+
     st.subheader("Data Preview")
     st.dataframe(df.head())
 
@@ -123,13 +124,12 @@ def run():
     st.header("4️⃣ Model Fit Evaluation")
 
     n = df.shape[0]
-    k = int(model.df_model) + 1  # includes intercept
+    k = int(model.df_model) + 1
 
     loglik = model.llf
     aic = model.aic
     bic = model.bic
 
-    # AICc
     if (n - k - 1) > 0:
         aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
     else:
@@ -151,7 +151,7 @@ def run():
 """)
 
     # ======================================================
-    # 7. LIKELIHOOD RATIO (DEVIANCE) TEST
+    # 7. LIKELIHOOD RATIO TEST
     # ======================================================
 
     st.subheader("Likelihood Ratio (Deviance) Test")
@@ -206,7 +206,7 @@ def run():
         return equation
 
     # ======================================================
-    # 8.1 REFIT REDUCED MODEL
+    # 8.1 REFIT REDUCED MODEL (FIXED)
     # ======================================================
 
     def refit_reduced_model(full_model, alpha=0.05):
@@ -226,7 +226,7 @@ def run():
                 var_name = var_name.replace("C(", "").split(",")[0]
                 keep_predictors.add(var_name)
             else:
-                keep_predictors.add(term)
+                keep_predictors.add(term.strip())
 
         new_terms = []
 
@@ -283,7 +283,7 @@ def run():
 
         coef = round(coef, 4)
 
-        if "C(" in name:
+        if name.startswith("C("):
             var_name = name.split("[")[0]
             var_name = var_name.replace("C(", "").split(",")[0]
             level = name.split("T.")[1].replace("]", "")
@@ -305,7 +305,7 @@ def run():
             )
 
     # ======================================================
-    # 10. PREDICTION
+    # 10. PREDICTION (FIXED)
     # ======================================================
 
     st.header("6️⃣ Prediction")
@@ -314,20 +314,23 @@ def run():
 
     for var in predictors:
 
-        if not pd.api.types.is_numeric_dtype(df[var]):
-
-            if not pd.api.types.is_categorical_dtype(df[var]):
-                df[var] = df[var].astype("category")
+        if var in categorical_vars:
 
             input_dict[var] = st.selectbox(
                 var,
-                df[var].cat.categories
+                df[var].astype("category").cat.categories
             )
 
         else:
+            numeric_series = pd.to_numeric(df[var], errors="coerce")
+
+            if numeric_series.notna().sum() == 0:
+                st.error(f"{var} cannot be interpreted as numeric.")
+                return
+
             input_dict[var] = st.number_input(
                 var,
-                value=float(df[var].mean())
+                value=float(numeric_series.mean())
             )
 
     if st.button("Predict"):
