@@ -4,165 +4,143 @@ import numpy as np
 import plotly.express as px
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
-from scipy.stats import shapiro, boxcox
+from scipy.stats import boxcox, shapiro
 from scipy.special import inv_boxcox
 
 st.set_page_config(layout="wide")
-st.title("General Linear Model Laboratory")
+st.title("Generalized Linear Model Lab")
 
-# ---------------------------
-# 1. DATA UPLOAD
-# ---------------------------
-st.header("1. Upload Data")
-
+# ----------------------------
+# 1. Upload Data
+# ----------------------------
 uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
-df = None
 
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    st.dataframe(df.head())
+if uploaded_file is None:
+    st.stop()
 
-if df is not None:
+df = pd.read_csv(uploaded_file)
+st.dataframe(df.head())
 
-    # ---------------------------
-    # 2. VARIABLE SELECTION
-    # ---------------------------
-    st.header("2. Variable Selection")
+# ----------------------------
+# 2. Variable Selection
+# ----------------------------
+response = st.selectbox("Response Variable", df.columns)
+predictors = st.multiselect(
+    "Predictor Variables",
+    [c for c in df.columns if c != response]
+)
 
-    response = st.selectbox("Response Variable", df.columns)
-    predictors = st.multiselect(
-        "Predictor Variables",
-        [col for col in df.columns if col != response]
-    )
+categorical_vars = st.multiselect("Categorical Variables", predictors)
 
-    categorical_vars = st.multiselect(
-        "Categorical Variables (Factors)",
-        predictors
-    )
+for col in categorical_vars:
+    df[col] = df[col].astype("category")
 
-    for col in categorical_vars:
-        df[col] = df[col].astype("category")
+if not predictors:
+    st.stop()
 
-    if predictors:
+formula = response + " ~ " + " + ".join(predictors)
 
-        formula = response + " ~ " + " + ".join(predictors)
+# ----------------------------
+# 3. Choose Model
+# ----------------------------
+model_choice = st.radio(
+    "Choose Model Type",
+    ["Gaussian Linear Model (OLS)",
+     "Box-Cox Transformation + OLS",
+     "Gamma GLM (Log Link)"]
+)
 
-        # ---------------------------
-        # 3. MODEL TYPE
-        # ---------------------------
-        st.header("3. Model Type")
+# ====================================================
+# 1️⃣ GAUSSIAN OLS
+# ====================================================
+if model_choice == "Gaussian Linear Model (OLS)":
 
-        model_type = st.radio(
-            "Choose Model",
-            ["OLS (Gaussian)", "Box-Cox OLS", "Gamma GLM (log link)"]
-        )
+    model = smf.ols(formula=formula, data=df).fit()
+    st.text(model.summary())
 
-        # ---------------------------
-        # 4. FIT MODELS
-        # ---------------------------
-        if model_type == "OLS (Gaussian)":
-            model = smf.ols(formula=formula, data=df).fit()
+    st.subheader("Diagnostics")
+    residuals = model.resid
 
-        elif model_type == "Box-Cox OLS":
+    fig = px.scatter(x=model.fittedvalues,
+                     y=residuals,
+                     labels={"x": "Fitted", "y": "Residuals"})
+    st.plotly_chart(fig)
 
-            if (df[response] <= 0).any():
-                st.error("Box-Cox requires strictly positive response.")
-                st.stop()
+    stat, p = shapiro(residuals)
+    st.write(f"Shapiro-Wilk p-value: {p:.4f}")
 
-            y_transformed, lambda_bc = boxcox(df[response])
-            df["y_boxcox"] = y_transformed
+    # Prediction
+    st.subheader("Prediction")
+    input_dict = {}
+    for var in predictors:
+        if var in categorical_vars:
+            input_dict[var] = st.selectbox(var, df[var].cat.categories)
+        else:
+            input_dict[var] = st.number_input(var, float(df[var].mean()))
 
-            formula_bc = "y_boxcox ~ " + " + ".join(predictors)
-            model = smf.ols(formula=formula_bc, data=df).fit()
+    if st.button("Predict"):
+        new_df = pd.DataFrame([input_dict])
+        pred = model.predict(new_df)[0]
+        st.success(f"Predicted {response}: {pred:.4f}")
 
-            st.write(f"Estimated λ (Box-Cox): {lambda_bc:.4f}")
 
-        elif model_type == "Gamma GLM (log link)":
-            model = smf.glm(
-                formula=formula,
-                data=df,
-                family=sm.families.Gamma(sm.families.links.log())
-            ).fit()
+# ====================================================
+# 2️⃣ BOX-COX
+# ====================================================
+elif model_choice == "Box-Cox Transformation + OLS":
 
-        # ---------------------------
-        # 5. MODEL SUMMARY
-        # ---------------------------
-        st.header("4. Model Summary")
-        st.text(model.summary())
+    if (df[response] <= 0).any():
+        st.error("Box-Cox requires strictly positive response.")
+        st.stop()
 
-        st.subheader("Model Fit Metrics")
+    y_transformed, lambda_bc = boxcox(df[response])
+    df["y_bc"] = y_transformed
 
-        col1, col2, col3 = st.columns(3)
-        col1.metric("AIC", round(model.aic, 2))
-        col2.metric("BIC", round(model.bic, 2))
-        col3.metric("Log-Likelihood", round(model.llf, 2))
+    formula_bc = "y_bc ~ " + " + ".join(predictors)
+    model = smf.ols(formula=formula_bc, data=df).fit()
 
-        # ---------------------------
-        # 6. DIAGNOSTICS
-        # ---------------------------
-        st.header("5. Diagnostics")
+    st.write(f"Estimated λ: {lambda_bc:.4f}")
+    st.text(model.summary())
 
-        residuals = model.resid_response if hasattr(model, "resid_response") else model.resid
+    # Prediction
+    st.subheader("Prediction")
+    input_dict = {}
+    for var in predictors:
+        if var in categorical_vars:
+            input_dict[var] = st.selectbox(var, df[var].cat.categories)
+        else:
+            input_dict[var] = st.number_input(var, float(df[var].mean()))
 
-        fig_resid = px.scatter(
-            x=model.fittedvalues,
-            y=residuals,
-            labels={"x": "Fitted", "y": "Residuals"},
-            title="Residuals vs Fitted"
-        )
-        st.plotly_chart(fig_resid)
+    if st.button("Predict"):
+        new_df = pd.DataFrame([input_dict])
+        pred_trans = model.predict(new_df)[0]
+        pred_original = inv_boxcox(pred_trans, lambda_bc)
+        st.success(f"Predicted {response}: {pred_original:.4f}")
 
-        # Normality test (OLS only)
-        if model_type != "Gamma GLM (log link)":
-            stat, p = shapiro(residuals)
-            st.write(f"Shapiro-Wilk p-value: {p:.4f}")
 
-        # ---------------------------
-        # 7. MODEL COMPARISON OPTION
-        # ---------------------------
-        st.header("6. Model Comparison (OLS vs Gamma)")
+# ====================================================
+# 3️⃣ GAMMA GLM
+# ====================================================
+elif model_choice == "Gamma GLM (Log Link)":
 
-        if st.button("Fit Both Models for Comparison"):
+    model = smf.glm(
+        formula=formula,
+        data=df,
+        family=sm.families.Gamma(sm.families.links.log())
+    ).fit()
 
-            ols_model = smf.ols(formula=formula, data=df).fit()
-            gamma_model = smf.glm(
-                formula=formula,
-                data=df,
-                family=sm.families.Gamma(sm.families.links.log())
-            ).fit()
+    st.text(model.summary())
 
-            comparison_df = pd.DataFrame({
-                "Model": ["OLS", "Gamma"],
-                "AIC": [ols_model.aic, gamma_model.aic],
-                "BIC": [ols_model.bic, gamma_model.bic],
-                "LogLik": [ols_model.llf, gamma_model.llf]
-            })
+    st.subheader("Prediction")
 
-            st.dataframe(comparison_df)
+    input_dict = {}
+    for var in predictors:
+        if var in categorical_vars:
+            input_dict[var] = st.selectbox(var, df[var].cat.categories)
+        else:
+            input_dict[var] = st.number_input(var, float(df[var].mean()))
 
-        # ---------------------------
-        # 8. PREDICTION
-        # ---------------------------
-        st.header("7. Prediction")
-
-        input_dict = {}
-
-        for var in predictors:
-            if var in categorical_vars:
-                input_dict[var] = st.selectbox(
-                    f"{var}", df[var].cat.categories
-                )
-            else:
-                input_dict[var] = st.number_input(
-                    f"{var}",
-                    value=float(df[var].mean())
-                )
-
-        if st.button("Predict"):
-            new_df = pd.DataFrame([input_dict])
-            pred = model.predict(new_df)[0]
-
-            if model_type == "Box-Cox OLS":
-                pred = inv_boxcox(pred, lambda_bc)
-
-            st.success(f"Predicted {response}: {pred:.4f}")
+    if st.button("Predict"):
+        new_df = pd.DataFrame([input_dict])
+        pred = model.predict(new_df)[0]
+        st.success(f"Predicted {response}: {pred:.4f}")
