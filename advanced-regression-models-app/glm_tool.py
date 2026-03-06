@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
@@ -86,13 +85,8 @@ def run():
     st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
     st.write(f"p-value: {p:.4f}")
 
-    if p > 0.05:
-        st.success("Response appears normally distributed.")
-    else:
-        st.warning("Response does NOT appear normally distributed.")
-
     # ======================================================
-    # 4. BUILD FORMULA WITH REFERENCE LEVELS
+    # 4. BUILD FORMULA
     # ======================================================
 
     terms = []
@@ -118,154 +112,66 @@ def run():
     st.text(model.summary())
 
     # ======================================================
-    # 6. MODEL FIT EVALUATION
+    # 6. MODEL FIT (LogLik + AIC + BIC)
     # ======================================================
 
     st.header("4️⃣ Model Fit Evaluation")
 
-    loglik = model.llf
-    aic = model.aic
-    bic = model.bic
-    f_pvalue = model.f_pvalue
+    col1, col2, col3 = st.columns(3)
 
-    st.subheader("Log-Likelihood")
+    col1.metric("Log-Likelihood", round(model.llf, 2))
+    col2.metric("AIC", round(model.aic, 2))
+    col3.metric("BIC", round(model.bic, 2))
 
-    st.write(f"Log-Likelihood: **{loglik:.4f}**")
-
-    st.markdown("""
-The log-likelihood measures how probable the observed data are given the fitted model parameters.
-
-A higher log-likelihood indicates a better fit.
-
-However, the value itself is not directly interpretable.  
-It is mainly useful when comparing competing models fitted to the same dataset.
-""")
-
-    st.subheader("Information Criteria")
-
-    col1, col2 = st.columns(2)
-    col1.metric("AIC", round(aic, 2))
-    col2.metric("BIC", round(bic, 2))
-
-    st.markdown("""
-AIC and BIC penalize model complexity.
-
-Lower values indicate a better balance between goodness of fit and model complexity.
-""")
-
-    st.subheader("Overall Model Significance (F-test)")
-
-    st.write(f"F-statistic p-value: **{f_pvalue:.6f}**")
-
-    if f_pvalue < 0.05:
-        st.success(
-            "At the 5% level of significance, we reject the null hypothesis "
-            "that all slope coefficients are zero. "
-            "The fitted model significantly improves over an intercept-only model."
-        )
-    else:
-        st.warning(
-            "At the 5% level of significance, we fail to reject the null hypothesis. "
-            "The model does not significantly improve over an intercept-only model."
-        )
+    st.write(f"Overall F-test p-value: {model.f_pvalue:.6f}")
 
     # ======================================================
-    # 7. MATHEMATICAL EQUATION
+    # 7. PREDICTION (SAFE VERSION)
     # ======================================================
 
-    def build_equation(model, response):
+    st.header("5️⃣ Prediction")
 
-        params = model.params
-        equation = f"\\hat{{{response}}} = {round(params['Intercept'],4)}"
+    input_dict = {}
 
-        for name in params.index:
+    for var in predictors:
 
-            if name == "Intercept":
-                continue
+        # Non-numeric → dropdown
+        if not pd.api.types.is_numeric_dtype(df[var]):
 
-            coef = round(params[name], 4)
-            sign = "+" if coef >= 0 else "-"
+            if not pd.api.types.is_categorical_dtype(df[var]):
+                df[var] = df[var].astype("category")
 
-            if "C(" in name:
-                var_name = name.split("[")[0]
-                var_name = var_name.replace("C(", "").split(",")[0]
-                level = name.split("T.")[1].replace("]", "")
-                equation += f" {sign} {abs(coef)} D_{{{var_name}={level}}}"
-            else:
-                equation += f" {sign} {abs(coef)} \\cdot {name}"
-
-        return equation
-
-    st.subheader("Fitted Regression Equation")
-    st.latex(build_equation(model, response))
-
-    # ======================================================
-    # 8. INTERPRETATION
-    # ======================================================
-
-    st.subheader("Interpretation of Coefficients")
-
-    for name, coef in model.params.items():
-
-        if name == "Intercept":
-            continue
-
-        coef = round(coef, 4)
-
-        if "C(" in name:
-            var_name = name.split("[")[0]
-            var_name = var_name.replace("C(", "").split(",")[0]
-            level = name.split("T.")[1].replace("]", "")
-            ref = reference_dict[var_name]
-
-            direction = "increases" if coef > 0 else "decreases"
-
-            st.write(
-                f"For **{var_name} = {level}**, expected **{response}** "
-                f"{direction} by **{abs(coef)} units** compared to "
-                f"reference group (**{ref}**), holding other variables constant."
+            input_dict[var] = st.selectbox(
+                var,
+                df[var].cat.categories
             )
+
         else:
-            direction = "increases" if coef > 0 else "decreases"
-
-            st.write(
-                f"For each one-unit increase in **{name}**, expected "
-                f"**{response}** {direction} by **{abs(coef)} units**, "
-                "holding other variables constant."
+            input_dict[var] = st.number_input(
+                var,
+                value=float(df[var].mean())
             )
 
- # ======================================================
-# 9. PREDICTION
-# ======================================================
+    if st.button("Predict"):
 
-st.header("5️⃣ Prediction")
+        new_df = pd.DataFrame([input_dict])
+        prediction = model.predict(new_df)[0]
 
-input_dict = {}
+        st.success(f"Predicted {response}: {prediction:.4f}")
 
-for var in predictors:
+    # ======================================================
+    # 8. PREDICTED VS ACTUAL
+    # ======================================================
 
-    # If categorical OR non-numeric → dropdown
-    if var in categorical_vars or not pd.api.types.is_numeric_dtype(df[var]):
+    st.header("6️⃣ Predicted vs Actual")
 
-        # Ensure categorical conversion
-        if not pd.api.types.is_categorical_dtype(df[var]):
-            df[var] = df[var].astype("category")
+    predicted_vals = model.predict(df)
 
-        input_dict[var] = st.selectbox(
-            var,
-            df[var].cat.categories
-        )
+    fig2 = px.scatter(
+        x=predicted_vals,
+        y=df[response],
+        labels={'x': 'Predicted', 'y': 'Actual'},
+        title="Predicted vs Actual Values"
+    )
 
-    # If numeric → number input
-    else:
-        input_dict[var] = st.number_input(
-            var,
-            value=float(df[var].mean())
-        )
-
-if st.button("Predict"):
-
-    new_df = pd.DataFrame([input_dict])
-    prediction = model.predict(new_df)[0]
-
-    st.success(f"Predicted {response}: {prediction:.4f}")
+    st.plotly_chart(fig2)
