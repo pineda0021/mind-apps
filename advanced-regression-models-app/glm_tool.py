@@ -253,21 +253,33 @@ def run():
     # 11. PREDICTION
     # ======================================================
 
-    st.header("5️⃣ Prediction")
+     st.header("5️⃣ Prediction")
 
     input_dict = {}
 
     for var in predictors:
 
+        # If user marked it categorical
         if var in categorical_vars:
+
             input_dict[var] = st.selectbox(
                 var,
-                df[var].cat.categories
+                df[var].astype("category").cat.categories
             )
+
         else:
+            # Force numeric conversion safely
+            numeric_series = pd.to_numeric(df[var], errors="coerce")
+
+            if numeric_series.notna().sum() == 0:
+                st.error(f"{var} cannot be interpreted as numeric.")
+                return
+
+            mean_value = numeric_series.mean()
+
             input_dict[var] = st.number_input(
                 var,
-                value=float(df[var].mean())
+                value=float(mean_value)
             )
 
     if st.button("Predict"):
