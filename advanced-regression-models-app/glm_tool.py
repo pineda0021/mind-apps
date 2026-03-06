@@ -5,7 +5,7 @@ import plotly.express as px
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from scipy.stats import shapiro
-from statsmodels.stats.outliers_influence import variance_inflation_factor
+
 
 def run():
 
@@ -56,7 +56,7 @@ def run():
         reference_dict[col] = ref
 
     # ======================================================
-    # 3. RESPONSE NORMALITY
+    # 3. RESPONSE NORMALITY CHECK
     # ======================================================
 
     st.header("2️⃣ Response Normality Check")
@@ -65,9 +65,12 @@ def run():
         st.error("Response must be numeric.")
         return
 
-    fig = px.histogram(df, x=response,
-                       title=f"Histogram of {response}",
-                       marginal="box")
+    fig = px.histogram(
+        df,
+        x=response,
+        title=f"Histogram of {response}",
+        marginal="box"
+    )
     st.plotly_chart(fig)
 
     qq_fig = sm.qqplot(df[response].dropna(), line='s')
@@ -78,8 +81,13 @@ def run():
     st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
     st.write(f"p-value: {p:.4f}")
 
+    if p > 0.05:
+        st.success("Response appears normally distributed.")
+    else:
+        st.warning("Response does NOT appear normally distributed.")
+
     # ======================================================
-    # 4. BUILD FORMULA
+    # 4. BUILD FORMULA WITH REFERENCES
     # ======================================================
 
     terms = []
@@ -105,42 +113,69 @@ def run():
     st.text(model.summary())
 
     # ======================================================
-    # 6. RESIDUAL NORMALITY
+    # 6. MATHEMATICAL EQUATION
     # ======================================================
 
-    st.header("4️⃣ Residual Normality Check")
+    def build_equation(model, response):
 
-    residuals = model.resid
+        params = model.params
+        equation = f"\\hat{{{response}}} = {round(params['Intercept'],4)}"
 
-    fig_res = px.histogram(x=residuals,
-                           title="Histogram of Residuals",
-                           marginal="box")
-    st.plotly_chart(fig_res)
+        for name in params.index:
 
-    qq_res = sm.qqplot(residuals, line='s')
-    st.pyplot(qq_res.figure)
+            if name == "Intercept":
+                continue
 
-    stat_res, p_res = shapiro(residuals)
+            coef = round(params[name], 4)
+            sign = "+" if coef >= 0 else "-"
 
-    st.write(f"Shapiro-Wilk Statistic: {stat_res:.4f}")
-    st.write(f"p-value: {p_res:.4f}")
+            if "C(" in name:
+                var_name = name.split("[")[0]
+                var_name = var_name.replace("C(", "").split(",")[0]
+                level = name.split("T.")[1].replace("]", "")
+                equation += f" {sign} {abs(coef)} D_{{{var_name}={level}}}"
+            else:
+                equation += f" {sign} {abs(coef)} \\cdot {name}"
+
+        return equation
+
+    st.subheader("Fitted Regression Equation")
+    st.latex(build_equation(model, response))
 
     # ======================================================
-    # 7. VIF
+    # 7. INTERPRETATION
     # ======================================================
 
-    st.header("5️⃣ Multicollinearity Diagnostics (VIF)")
+    st.subheader("Interpretation of Coefficients")
 
-    X = model.model.exog
-    vif_data = pd.DataFrame()
-    vif_data["Variable"] = model.model.exog_names
-    vif_data["VIF"] = [
-        variance_inflation_factor(X, i)
-        for i in range(X.shape[1])
-    ]
+    for name, coef in model.params.items():
 
-    vif_data = vif_data[vif_data["Variable"] != "Intercept"]
-    st.dataframe(vif_data.round(3))
+        if name == "Intercept":
+            continue
+
+        coef = round(coef, 4)
+
+        if "C(" in name:
+            var_name = name.split("[")[0]
+            var_name = var_name.replace("C(", "").split(",")[0]
+            level = name.split("T.")[1].replace("]", "")
+            ref = reference_dict[var_name]
+
+            direction = "increases" if coef > 0 else "decreases"
+
+            st.write(
+                f"For **{var_name} = {level}**, expected **{response}** "
+                f"{direction} by **{abs(coef)} units** compared to "
+                f"reference group (**{ref}**), holding other variables constant."
+            )
+        else:
+            direction = "increases" if coef > 0 else "decreases"
+
+            st.write(
+                f"For each one-unit increase in **{name}**, expected "
+                f"**{response}** {direction} by **{abs(coef)} units**, "
+                "holding other variables constant."
+            )
 
     # ======================================================
     # 8. PREDICTION
@@ -163,3 +198,20 @@ def run():
         new_df = pd.DataFrame([input_dict])
         prediction = model.predict(new_df)[0]
         st.success(f"Predicted {response}: {prediction:.4f}")
+
+    # ======================================================
+    # 9. PREDICTED VS ACTUAL
+    # ======================================================
+
+    st.header("7️⃣ Predicted vs Actual")
+
+    predicted_vals = model.predict(df)
+
+    fig2 = px.scatter(
+        x=predicted_vals,
+        y=df[response],
+        labels={'x': 'Predicted', 'y': 'Actual'},
+        title="Predicted vs Actual Values"
+    )
+
+    st.plotly_chart(fig2)
