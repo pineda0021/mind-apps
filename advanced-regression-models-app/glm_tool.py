@@ -209,26 +209,26 @@ def run():
     # 8.1 REFIT REDUCED MODEL 
     # ======================================================
 
-  def refit_reduced_model(full_model, alpha=0.05):
+    def refit_reduced_model(full_model, alpha=0.05):
 
-    pvals = full_model.pvalues.drop("Intercept")
-    significant_terms = pvals[pvals < alpha].index.tolist()
+        pvals = full_model.pvalues.drop("Intercept")
+        significant_terms = pvals[pvals < alpha].index.tolist()
 
-    if not significant_terms:
-        return None
+        if not significant_terms:
+            return None
 
-    keep_predictors = set()
+        keep_predictors = set()
 
-    for term in significant_terms:
+        for term in significant_terms:
 
         # If categorical dummy (like gender[T.M])
-        if "[" in term:
-            base_var = term.split("[")[0]
-            keep_predictors.add(base_var)
+            if "[" in term:
+                base_var = term.split("[")[0]
+                keep_predictors.add(base_var)
 
         # Otherwise numeric
-        else:
-            keep_predictors.add(term)
+            else:
+                keep_predictors.add(term)
 
     new_terms = []
 
@@ -253,6 +253,8 @@ def run():
     ).fit()
 
     return reduced_model
+
+ 
       
     # ======================================================
     # 8.3 DISPLAY EQUATIONS
