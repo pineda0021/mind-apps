@@ -24,6 +24,7 @@ def run():
         return
 
     df = pd.read_csv(uploaded_file)
+
     st.subheader("Data Preview")
     st.dataframe(df.head())
 
@@ -106,14 +107,14 @@ def run():
     formula = response + " ~ " + " + ".join(terms)
 
     # ======================================================
-    # 5. FIT MODEL
+    # 5. FIT FULL MODEL
     # ======================================================
 
     st.header("3️⃣ Fit General Linear Model")
 
     model = smf.ols(formula=formula, data=df).fit()
 
-    st.subheader("Model Summary")
+    st.subheader("Full Model Summary")
     st.text(model.summary())
 
     # ======================================================
@@ -123,13 +124,12 @@ def run():
     st.header("4️⃣ Model Fit Evaluation")
 
     n = df.shape[0]
-    k = int(model.df_model) + 1  # includes intercept
+    k = int(model.df_model) + 1
 
     loglik = model.llf
     aic = model.aic
     bic = model.bic
 
-    # AICc
     if (n - k - 1) > 0:
         aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
     else:
@@ -141,23 +141,13 @@ def run():
     col3.metric("AICc", round(aicc, 2))
     col4.metric("BIC", round(bic, 2))
 
-    st.markdown("""
-**Interpretation**
-
-- Log-Likelihood measures how well the model explains the observed data.
-- AIC, AICc, and BIC penalize model complexity.
-- Lower values indicate better balance between fit and complexity.
-- AICc is recommended when the sample size is small relative to the number of parameters.
-""")
-
     # ======================================================
-    # 7. LIKELIHOOD RATIO (DEVIANCE) TEST
+    # 7. LIKELIHOOD RATIO TEST
     # ======================================================
 
     st.subheader("Likelihood Ratio (Deviance) Test")
 
-    null_formula = response + " ~ 1"
-    null_model = smf.ols(formula=null_formula, data=df).fit()
+    null_model = smf.ols(f"{response} ~ 1", data=df).fit()
 
     lr_stat = -2 * (null_model.llf - model.llf)
     df_diff = int(model.df_model)
@@ -167,21 +157,10 @@ def run():
     st.write(f"Degrees of Freedom: {df_diff}")
     st.write(f"p-value: {p_value_lr:.6f}")
 
-    if p_value_lr < 0.05:
-        st.success(
-            "At α = 0.05, the full model significantly improves "
-            "over the intercept-only model."
-        )
-    else:
-        st.warning(
-            "The model does not significantly improve over "
-            "the intercept-only model."
-        )
+    # ======================================================
+    # 8. BUILD EQUATION FUNCTION
+    # ======================================================
 
-    # ======================================================
-    # 8. MATHEMATICAL EQUATION
-    # ======================================================
- 
     def build_equation(model, response):
 
         params = model.params
@@ -195,7 +174,7 @@ def run():
             coef = round(params[name], 4)
             sign = "+" if coef >= 0 else "-"
 
-            if "C(" in name:
+            if name.startswith("C("):
                 var_name = name.split("[")[0]
                 var_name = var_name.replace("C(", "").split(",")[0]
                 level = name.split("T.")[1].replace("]", "")
@@ -205,178 +184,86 @@ def run():
 
         return equation
 
+    # ======================================================
+    # 9. REFIT REDUCED MODEL
+    # ======================================================
 
-    def refit_reduced_model(full_model, df, response, predictors, categorical_vars, reference_dict, alpha=0.05):
+    def refit_reduced_model(full_model, alpha=0.05):
 
-        pvalues = full_model.pvalues.drop("Intercept")
+        pvals = full_model.pvalues.drop("Intercept")
+        significant_terms = pvals[pvals < alpha].index.tolist()
 
-        # Identify significant terms
-        significant = pvalues[pvalues < alpha].index.tolist()
-
-        if not significant:
+        if not significant_terms:
             return None
 
-        # Determine which original predictors to keep
         keep_predictors = set()
 
-        for name in significant:
+        for term in significant_terms:
 
-            if "C(" in name:
-                var_name = name.split("[")[0]
+            if term.startswith("C("):
+                var_name = term.split("[")[0]
                 var_name = var_name.replace("C(", "").split(",")[0]
                 keep_predictors.add(var_name)
             else:
-                keep_predictors.add(name)
+                keep_predictors.add(term)
 
-        if not keep_predictors:
-            return None
-
-        # Rebuild formula properly
         new_terms = []
 
         for var in predictors:
             if var in keep_predictors:
                 if var in categorical_vars:
                     ref = reference_dict[var]
-                    new_terms.append(f'C({var}, Treatment(reference="{ref}"))')
+                    new_terms.append(
+                        f'C({var}, Treatment(reference="{ref}"))'
+                    )
                 else:
                     new_terms.append(var)
 
+        if not new_terms:
+            return None
+
         reduced_formula = response + " ~ " + " + ".join(new_terms)
 
-        reduced_model = smf.ols(formula=reduced_formula, data=df).fit()
+        reduced_model = smf.ols(
+            formula=reduced_formula,
+            data=df
+        ).fit()
 
         return reduced_model
 
-def refit_reduced_model(full_model, df, response, predictors,
-                        categorical_vars, reference_dict, alpha=0.05):
+    # ======================================================
+    # 10. DISPLAY EQUATIONS
+    # ======================================================
 
-    pvalues = full_model.pvalues
-
-    # Drop intercept
-    pvalues = pvalues.drop("Intercept")
-
-    # Find significant coefficient names
-    significant_terms = pvalues[pvalues < alpha].index.tolist()
-
-    if not significant_terms:
-        return None
-
-    keep_predictors = set()
-
-    for term in significant_terms:
-
-        # Categorical case
-        if term.startswith("C("):
-            var_name = term.split("[")[0]
-            var_name = var_name.replace("C(", "").split(",")[0]
-            keep_predictors.add(var_name)
-
-        # Numeric case
-        else:
-            keep_predictors.add(term)
-
-    if not keep_predictors:
-        return None
-
-    # Rebuild formula properly
-    new_terms = []
-
-    for var in predictors:
-
-        if var in keep_predictors:
-
-            if var in categorical_vars:
-                ref = reference_dict[var]
-                new_terms.append(
-                    f'C({var}, Treatment(reference="{ref}"))'
-                )
-            else:
-                new_terms.append(var)
-
-    if not new_terms:
-        return None
-
-    reduced_formula = response + " ~ " + " + ".join(new_terms)
-
-    reduced_model = smf.ols(
-        formula=reduced_formula,
-        data=df
-    ).fit()
-
-    return reduced_model
     st.subheader("Fitted Regression Equation (Full Model)")
     st.latex(build_equation(model, response))
 
-    reduced_model = refit_reduced_model(
-        model,
-        df,
-        response,
-        predictors,
-        categorical_vars,
-        reference_dict
-    )
+    reduced_model = refit_reduced_model(model)
 
     if reduced_model is not None:
         st.subheader("Reduced Model (Refit Using Significant Predictors)")
         st.latex(build_equation(reduced_model, response))
+
+        st.subheader("Reduced Model Summary")
+        st.text(reduced_model.summary())
     else:
         st.warning("No predictors are statistically significant at α = 0.05.")
 
     # ======================================================
-    # 9. INTERPRETATION OF COEFFICIENTS
+    # 11. PREDICTION
     # ======================================================
 
-    st.header("5️⃣ Interpretation of Coefficients")
-
-    for name, coef in model.params.items():
-
-        if name == "Intercept":
-            continue
-
-        coef = round(coef, 4)
-
-        if "C(" in name:
-            var_name = name.split("[")[0]
-            var_name = var_name.replace("C(", "").split(",")[0]
-            level = name.split("T.")[1].replace("]", "")
-            ref = reference_dict[var_name]
-
-            direction = "increase" if coef > 0 else "decrease"
-
-            st.write(
-                f"For **{var_name} = {level}**, the expected **{response}** "
-                f"shows a **{direction} of {abs(coef)} units** compared to "
-                f"the reference group (**{ref}**), holding other variables constant."
-            )
-
-        else:
-            st.write(
-                f"For each one-unit increase in **{name}**, "
-                f"the expected **{response}** changes by "
-                f"{coef} units, holding other variables constant."
-            )
-
-    # ======================================================
-    # 10. PREDICTION
-    # ======================================================
-
-    st.header("6️⃣ Prediction")
+    st.header("5️⃣ Prediction")
 
     input_dict = {}
 
     for var in predictors:
 
-        if not pd.api.types.is_numeric_dtype(df[var]):
-
-            if not pd.api.types.is_categorical_dtype(df[var]):
-                df[var] = df[var].astype("category")
-
+        if var in categorical_vars:
             input_dict[var] = st.selectbox(
                 var,
                 df[var].cat.categories
             )
-
         else:
             input_dict[var] = st.number_input(
                 var,
@@ -389,10 +276,10 @@ def refit_reduced_model(full_model, df, response, predictors,
         st.success(f"Predicted {response}: {prediction:.4f}")
 
     # ======================================================
-    # 11. PREDICTED VS ACTUAL
+    # 12. PREDICTED VS ACTUAL
     # ======================================================
 
-    st.header("7️⃣ Predicted vs Actual")
+    st.header("6️⃣ Predicted vs Actual")
 
     predicted_vals = model.predict(df)
 
