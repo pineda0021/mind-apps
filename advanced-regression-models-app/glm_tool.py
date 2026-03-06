@@ -303,7 +303,7 @@ def run():
         else:
             st.write(
                 f"For each one-unit increase in **{name}**, "
-                f"the expected **{response}** changes by "
+                f"the expected estimated mean **{response}** changes by "
                 f"{coef} units, holding other variables constant."
             )
 
