@@ -181,7 +181,6 @@ def run():
     # ======================================================
     # 8. MATHEMATICAL EQUATION
     # ======================================================
-
  
     def build_equation(model, response):
 
@@ -249,7 +248,63 @@ def run():
 
         return reduced_model
 
+def refit_reduced_model(full_model, df, response, predictors,
+                        categorical_vars, reference_dict, alpha=0.05):
 
+    pvalues = full_model.pvalues
+
+    # Drop intercept
+    pvalues = pvalues.drop("Intercept")
+
+    # Find significant coefficient names
+    significant_terms = pvalues[pvalues < alpha].index.tolist()
+
+    if not significant_terms:
+        return None
+
+    keep_predictors = set()
+
+    for term in significant_terms:
+
+        # Categorical case
+        if term.startswith("C("):
+            var_name = term.split("[")[0]
+            var_name = var_name.replace("C(", "").split(",")[0]
+            keep_predictors.add(var_name)
+
+        # Numeric case
+        else:
+            keep_predictors.add(term)
+
+    if not keep_predictors:
+        return None
+
+    # Rebuild formula properly
+    new_terms = []
+
+    for var in predictors:
+
+        if var in keep_predictors:
+
+            if var in categorical_vars:
+                ref = reference_dict[var]
+                new_terms.append(
+                    f'C({var}, Treatment(reference="{ref}"))'
+                )
+            else:
+                new_terms.append(var)
+
+    if not new_terms:
+        return None
+
+    reduced_formula = response + " ~ " + " + ".join(new_terms)
+
+    reduced_model = smf.ols(
+        formula=reduced_formula,
+        data=df
+    ).fit()
+
+    return reduced_model
     st.subheader("Fitted Regression Equation (Full Model)")
     st.latex(build_equation(model, response))
 
