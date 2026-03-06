@@ -206,52 +206,54 @@ def run():
         return equation
 
     # ======================================================
-    # 8.1 REFIT REDUCED MODEL (FIXED)
+    # 8.1 REFIT REDUCED MODEL 
     # ======================================================
 
-    def refit_reduced_model(full_model, alpha=0.05):
+  def refit_reduced_model(full_model, alpha=0.05):
 
-        pvals = full_model.pvalues.drop("Intercept")
-        significant_terms = pvals[pvals < alpha].index.tolist()
+    pvals = full_model.pvalues.drop("Intercept")
+    significant_terms = pvals[pvals < alpha].index.tolist()
 
-        if not significant_terms:
-            return None
+    if not significant_terms:
+        return None
 
-        keep_predictors = set()
+    keep_predictors = set()
 
-        for term in significant_terms:
+    for term in significant_terms:
 
-            if term.startswith("C("):
-                var_name = term.split("[")[0]
-                var_name = var_name.replace("C(", "").split(",")[0]
-                keep_predictors.add(var_name)
+        # If categorical dummy (like gender[T.M])
+        if "[" in term:
+            base_var = term.split("[")[0]
+            keep_predictors.add(base_var)
+
+        # Otherwise numeric
+        else:
+            keep_predictors.add(term)
+
+    new_terms = []
+
+    for var in predictors:
+        if var in keep_predictors:
+            if var in categorical_vars:
+                ref = reference_dict[var]
+                new_terms.append(
+                    f'C({var}, Treatment(reference="{ref}"))'
+                )
             else:
-                keep_predictors.add(term.strip())
+                new_terms.append(var)
 
-        new_terms = []
+    if not new_terms:
+        return None
 
-        for var in predictors:
-            if var in keep_predictors:
-                if var in categorical_vars:
-                    ref = reference_dict[var]
-                    new_terms.append(
-                        f'C({var}, Treatment(reference="{ref}"))'
-                    )
-                else:
-                    new_terms.append(var)
+    reduced_formula = response + " ~ " + " + ".join(new_terms)
 
-        if not new_terms:
-            return None
+    reduced_model = smf.ols(
+        formula=reduced_formula,
+        data=df
+    ).fit()
 
-        reduced_formula = response + " ~ " + " + ".join(new_terms)
-
-        reduced_model = smf.ols(
-            formula=reduced_formula,
-            data=df
-        ).fit()
-
-        return reduced_model
-
+    return reduced_model
+      
     # ======================================================
     # 8.3 DISPLAY EQUATIONS
     # ======================================================
