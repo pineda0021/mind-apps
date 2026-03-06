@@ -304,8 +304,8 @@ def run():
                 f"{coef} units, holding other variables constant."
             )
 
-    # ======================================================
-    # 10. PREDICTION (FIXED PROPERLY)
+       # ======================================================
+    # 10. PREDICTION 
     # ======================================================
 
     st.header("6️⃣ Prediction")
@@ -314,7 +314,7 @@ def run():
 
     for var in predictors:
 
-        # If user selected it as categorical, treat it as categorical
+        # If user explicitly selected categorical
         if var in categorical_vars:
 
             input_dict[var] = st.selectbox(
@@ -322,24 +322,32 @@ def run():
                 df[var].astype("category").cat.categories
             )
 
-        # Otherwise treat as numeric
         else:
+            # Attempt numeric conversion safely
             numeric_series = pd.to_numeric(df[var], errors="coerce")
 
-            if numeric_series.notna().sum() == 0:
-                st.error(f"{var} cannot be interpreted as numeric.")
-                return
+            # If numeric conversion works, treat as numeric
+            if numeric_series.notna().sum() > 0:
 
-            input_dict[var] = st.number_input(
-                var,
-                value=float(numeric_series.mean())
-            )
+                input_dict[var] = st.number_input(
+                    var,
+                    value=float(numeric_series.mean())
+                )
+
+            # Otherwise automatically treat as categorical
+            else:
+
+                df[var] = df[var].astype("category")
+
+                input_dict[var] = st.selectbox(
+                    var,
+                    df[var].cat.categories
+                )
 
     if st.button("Predict"):
         new_df = pd.DataFrame([input_dict])
         prediction = model.predict(new_df)[0]
         st.success(f"Predicted {response}: {prediction:.4f}")
-        
     # ======================================================
     # 11. PREDICTED VS ACTUAL
     # ======================================================
