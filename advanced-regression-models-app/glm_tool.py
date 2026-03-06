@@ -305,7 +305,7 @@ def run():
             )
 
     # ======================================================
-    # 10. PREDICTION (FIXED)
+    # 10. PREDICTION (FIXED PROPERLY)
     # ======================================================
 
     st.header("6️⃣ Prediction")
@@ -314,6 +314,7 @@ def run():
 
     for var in predictors:
 
+        # If user selected it as categorical, treat it as categorical
         if var in categorical_vars:
 
             input_dict[var] = st.selectbox(
@@ -321,6 +322,7 @@ def run():
                 df[var].astype("category").cat.categories
             )
 
+        # Otherwise treat as numeric
         else:
             numeric_series = pd.to_numeric(df[var], errors="coerce")
 
@@ -337,7 +339,7 @@ def run():
         new_df = pd.DataFrame([input_dict])
         prediction = model.predict(new_df)[0]
         st.success(f"Predicted {response}: {prediction:.4f}")
-
+        
     # ======================================================
     # 11. PREDICTED VS ACTUAL
     # ======================================================
