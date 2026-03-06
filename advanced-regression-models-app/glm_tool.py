@@ -182,10 +182,11 @@ def run():
     # 8. MATHEMATICAL EQUATION
     # ======================================================
 
+ 
     def build_equation(model, response):
 
         params = model.params
-        equation = f"\E\hat{{{response}}} = {round(params['Intercept'],4)}"
+        equation = f"\\widehat{{\\mathbb{{E}}}}({response}) = {round(params['Intercept'],4)}"
 
         for name in params.index:
 
@@ -205,8 +206,67 @@ def run():
 
         return equation
 
-    st.subheader("Fitted Regression Equation")
+
+    def refit_reduced_model(full_model, df, response, predictors, categorical_vars, reference_dict, alpha=0.05):
+
+        pvalues = full_model.pvalues.drop("Intercept")
+
+        # Identify significant terms
+        significant = pvalues[pvalues < alpha].index.tolist()
+
+        if not significant:
+            return None
+
+        # Determine which original predictors to keep
+        keep_predictors = set()
+
+        for name in significant:
+
+            if "C(" in name:
+                var_name = name.split("[")[0]
+                var_name = var_name.replace("C(", "").split(",")[0]
+                keep_predictors.add(var_name)
+            else:
+                keep_predictors.add(name)
+
+        if not keep_predictors:
+            return None
+
+        # Rebuild formula properly
+        new_terms = []
+
+        for var in predictors:
+            if var in keep_predictors:
+                if var in categorical_vars:
+                    ref = reference_dict[var]
+                    new_terms.append(f'C({var}, Treatment(reference="{ref}"))')
+                else:
+                    new_terms.append(var)
+
+        reduced_formula = response + " ~ " + " + ".join(new_terms)
+
+        reduced_model = smf.ols(formula=reduced_formula, data=df).fit()
+
+        return reduced_model
+
+
+    st.subheader("Fitted Regression Equation (Full Model)")
     st.latex(build_equation(model, response))
+
+    reduced_model = refit_reduced_model(
+        model,
+        df,
+        response,
+        predictors,
+        categorical_vars,
+        reference_dict
+    )
+
+    if reduced_model is not None:
+        st.subheader("Reduced Model (Refit Using Significant Predictors)")
+        st.latex(build_equation(reduced_model, response))
+    else:
+        st.warning("No predictors are statistically significant at α = 0.05.")
 
     # ======================================================
     # 9. INTERPRETATION OF COEFFICIENTS
