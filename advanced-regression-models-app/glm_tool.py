@@ -205,8 +205,8 @@ def run():
 
         return equation
 
-     # ======================================================
-    # 8.1 REFIT REDUCED MODEL 
+ # ======================================================
+    # 8.1 REFIT REDUCED MODEL (FIXED)
     # ======================================================
 
     def refit_reduced_model(full_model, alpha=0.05):
@@ -221,12 +221,14 @@ def run():
 
         for term in significant_terms:
 
-            # If categorical dummy (like gender[T.M])
-            if "[" in term:
+            if term.startswith("C("):
+                base_var = term.split("(")[1].split(",")[0]
+                keep_predictors.add(base_var)
+
+            elif "[" in term:
                 base_var = term.split("[")[0]
                 keep_predictors.add(base_var)
 
-            # Otherwise numeric
             else:
                 keep_predictors.add(term)
 
@@ -253,7 +255,6 @@ def run():
         ).fit()
 
         return reduced_model
- 
     # ======================================================
     # 8.3 DISPLAY EQUATIONS
     # ======================================================
