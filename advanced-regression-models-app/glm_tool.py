@@ -185,7 +185,7 @@ def run():
     def build_equation(model, response):
 
         params = model.params
-        equation = f"\\hat{E{{response}}} = {round(params['Intercept'],4)}"
+        equation = f"\E\hat{{{response}}} = {round(params['Intercept'],4)}"
 
         for name in params.index:
 
