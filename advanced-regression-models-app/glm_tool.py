@@ -85,6 +85,11 @@ def run():
     st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
     st.write(f"p-value: {p:.4f}")
 
+    if p > 0.05:
+        st.success("Response appears normally distributed.")
+    else:
+        st.warning("Response does NOT appear normally distributed.")
+
     # ======================================================
     # 4. BUILD FORMULA
     # ======================================================
