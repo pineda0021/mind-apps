@@ -205,7 +205,7 @@ def run():
 
         return equation
 
-    # ======================================================
+     # ======================================================
     # 8.1 REFIT REDUCED MODEL 
     # ======================================================
 
@@ -221,41 +221,39 @@ def run():
 
         for term in significant_terms:
 
-        # If categorical dummy (like gender[T.M])
+            # If categorical dummy (like gender[T.M])
             if "[" in term:
                 base_var = term.split("[")[0]
                 keep_predictors.add(base_var)
 
-        # Otherwise numeric
+            # Otherwise numeric
             else:
                 keep_predictors.add(term)
 
-    new_terms = []
+        new_terms = []
 
-    for var in predictors:
-        if var in keep_predictors:
-            if var in categorical_vars:
-                ref = reference_dict[var]
-                new_terms.append(
-                    f'C({var}, Treatment(reference="{ref}"))'
-                )
-            else:
-                new_terms.append(var)
+        for var in predictors:
+            if var in keep_predictors:
+                if var in categorical_vars:
+                    ref = reference_dict[var]
+                    new_terms.append(
+                        f'C({var}, Treatment(reference="{ref}"))'
+                    )
+                else:
+                    new_terms.append(var)
 
-    if not new_terms:
-        return None
+        if not new_terms:
+            return None
 
-    reduced_formula = response + " ~ " + " + ".join(new_terms)
+        reduced_formula = response + " ~ " + " + ".join(new_terms)
 
-    reduced_model = smf.ols(
-        formula=reduced_formula,
-        data=df
-    ).fit()
+        reduced_model = smf.ols(
+            formula=reduced_formula,
+            data=df
+        ).fit()
 
-    return reduced_model
-
+        return reduced_model
  
-      
     # ======================================================
     # 8.3 DISPLAY EQUATIONS
     # ======================================================
