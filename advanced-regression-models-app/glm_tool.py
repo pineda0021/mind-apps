@@ -7,61 +7,63 @@ import statsmodels.formula.api as smf
 from scipy.stats import shapiro
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-st.set_page_config(layout="wide")
-st.title("General Linear Regression Model Lab")
+def run():
 
-# ======================================================
-# 1. DATA UPLOAD
-# ======================================================
+    st.title("General Linear Regression Model Lab")
 
-uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
+    # ======================================================
+    # 1. DATA UPLOAD
+    # ======================================================
 
-if uploaded_file is None:
-    st.stop()
+    uploaded_file = st.file_uploader("Upload CSV file", type=["csv"], key="glm_upload")
 
-df = pd.read_csv(uploaded_file)
-st.subheader("Data Preview")
-st.dataframe(df.head())
+    if uploaded_file is None:
+        return
 
-# ======================================================
-# 2. VARIABLE SELECTION
-# ======================================================
+    df = pd.read_csv(uploaded_file)
+    st.subheader("Data Preview")
+    st.dataframe(df.head())
 
-st.header("1️⃣ Select Variables")
+    # ======================================================
+    # 2. VARIABLE SELECTION
+    # ======================================================
 
-response = st.selectbox("Select Response Variable (Y)", df.columns)
-predictors = st.multiselect(
-    "Select Predictor Variables (X)",
-    [col for col in df.columns if col != response]
-)
+    st.header("1️⃣ Select Variables")
 
-if not predictors:
-    st.stop()
-
-categorical_vars = st.multiselect(
-    "Select Categorical Variables (Factors)",
-    predictors
-)
-
-# Convert to category
-reference_dict = {}
-
-for col in categorical_vars:
-    df[col] = df[col].astype("category")
-    ref = st.selectbox(
-        f"Select reference level for {col}",
-        df[col].cat.categories,
-        key=f"ref_{col}"
+    response = st.selectbox("Select Response Variable (Y)", df.columns)
+    predictors = st.multiselect(
+        "Select Predictor Variables (X)",
+        [col for col in df.columns if col != response]
     )
-    reference_dict[col] = ref
 
-# ======================================================
-# 3. NORMALITY CHECK – RESPONSE
-# ======================================================
+    if not predictors:
+        return
 
-st.header("2️⃣ Response Normality Check")
+    categorical_vars = st.multiselect(
+        "Select Categorical Variables (Factors)",
+        predictors
+    )
 
-if pd.api.types.is_numeric_dtype(df[response]):
+    reference_dict = {}
+
+    for col in categorical_vars:
+        df[col] = df[col].astype("category")
+        ref = st.selectbox(
+            f"Select reference level for {col}",
+            df[col].cat.categories,
+            key=f"ref_{col}"
+        )
+        reference_dict[col] = ref
+
+    # ======================================================
+    # 3. RESPONSE NORMALITY
+    # ======================================================
+
+    st.header("2️⃣ Response Normality Check")
+
+    if not pd.api.types.is_numeric_dtype(df[response]):
+        st.error("Response must be numeric.")
+        return
 
     fig = px.histogram(df, x=response,
                        title=f"Histogram of {response}",
@@ -76,181 +78,88 @@ if pd.api.types.is_numeric_dtype(df[response]):
     st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
     st.write(f"p-value: {p:.4f}")
 
-    if p > 0.05:
-        st.success("Response appears normally distributed.")
-    else:
-        st.warning("Response does NOT appear normally distributed.")
+    # ======================================================
+    # 4. BUILD FORMULA
+    # ======================================================
 
-else:
-    st.error("Response must be numeric.")
-    st.stop()
+    terms = []
 
-# ======================================================
-# 4. BUILD FORMULA WITH REFERENCES
-# ======================================================
-
-terms = []
-
-for var in predictors:
-    if var in categorical_vars:
-        ref = reference_dict[var]
-        terms.append(f'C({var}, Treatment(reference="{ref}"))')
-    else:
-        terms.append(var)
-
-formula = response + " ~ " + " + ".join(terms)
-
-# ======================================================
-# 5. FIT MODEL
-# ======================================================
-
-st.header("3️⃣ Fit General Linear Model")
-
-model = smf.ols(formula=formula, data=df).fit()
-
-st.subheader("Model Summary")
-st.text(model.summary())
-
-# ======================================================
-# 6. MATHEMATICAL EQUATION
-# ======================================================
-
-def build_equation(model, response):
-
-    params = model.params
-    equation = f"\\hat{{{response}}} = {round(params['Intercept'],4)}"
-
-    for name in params.index:
-        if name == "Intercept":
-            continue
-
-        coef = round(params[name], 4)
-        sign = "+" if coef >= 0 else "-"
-
-        if "C(" in name:
-            var_name = name.split("[")[0]
-            var_name = var_name.replace("C(", "").split(",")[0]
-            level = name.split("T.")[1].replace("]", "")
-            equation += f" {sign} {abs(coef)} D_{{{var_name}={level}}}"
+    for var in predictors:
+        if var in categorical_vars:
+            ref = reference_dict[var]
+            terms.append(f'C({var}, Treatment(reference="{ref}"))')
         else:
-            equation += f" {sign} {abs(coef)} \\cdot {name}"
+            terms.append(var)
 
-    return equation
+    formula = response + " ~ " + " + ".join(terms)
 
-st.subheader("Fitted Regression Equation")
-st.latex(build_equation(model, response))
+    # ======================================================
+    # 5. FIT MODEL
+    # ======================================================
 
-# ======================================================
-# 7. INTERPRETATION
-# ======================================================
+    st.header("3️⃣ Fit General Linear Model")
 
-st.subheader("Interpretation of Coefficients")
+    model = smf.ols(formula=formula, data=df).fit()
 
-for name, coef in model.params.items():
+    st.subheader("Model Summary")
+    st.text(model.summary())
 
-    if name == "Intercept":
-        continue
+    # ======================================================
+    # 6. RESIDUAL NORMALITY
+    # ======================================================
 
-    coef = round(coef, 4)
+    st.header("4️⃣ Residual Normality Check")
 
-    if "C(" in name:
-        var_name = name.split("[")[0]
-        var_name = var_name.replace("C(", "").split(",")[0]
-        level = name.split("T.")[1].replace("]", "")
-        ref = reference_dict[var_name]
+    residuals = model.resid
 
-        direction = "increases" if coef > 0 else "decreases"
+    fig_res = px.histogram(x=residuals,
+                           title="Histogram of Residuals",
+                           marginal="box")
+    st.plotly_chart(fig_res)
 
-        st.write(
-            f"For **{var_name} = {level}**, expected **{response}** "
-            f"{direction} by **{abs(coef)} units** compared to "
-            f"reference group (**{ref}**), holding other variables constant."
-        )
-    else:
-        direction = "increases" if coef > 0 else "decreases"
+    qq_res = sm.qqplot(residuals, line='s')
+    st.pyplot(qq_res.figure)
 
-        st.write(
-            f"For each one-unit increase in **{name}**, expected "
-            f"**{response}** {direction} by **{abs(coef)} units**, "
-            "holding other variables constant."
-        )
+    stat_res, p_res = shapiro(residuals)
 
-# ======================================================
-# 8. VIF DIAGNOSTICS
-# ======================================================
+    st.write(f"Shapiro-Wilk Statistic: {stat_res:.4f}")
+    st.write(f"p-value: {p_res:.4f}")
 
-st.header("4️⃣ Multicollinearity Diagnostics (VIF)")
+    # ======================================================
+    # 7. VIF
+    # ======================================================
 
-X = model.model.exog
-vif_data = pd.DataFrame()
-vif_data["Variable"] = model.model.exog_names
-vif_data["VIF"] = [
-    variance_inflation_factor(X, i)
-    for i in range(X.shape[1])
-]
+    st.header("5️⃣ Multicollinearity Diagnostics (VIF)")
 
-vif_data = vif_data[vif_data["Variable"] != "Intercept"]
-st.dataframe(vif_data.round(3))
+    X = model.model.exog
+    vif_data = pd.DataFrame()
+    vif_data["Variable"] = model.model.exog_names
+    vif_data["VIF"] = [
+        variance_inflation_factor(X, i)
+        for i in range(X.shape[1])
+    ]
 
-# ======================================================
-# 9. RESIDUAL NORMALITY CHECK
-# ======================================================
+    vif_data = vif_data[vif_data["Variable"] != "Intercept"]
+    st.dataframe(vif_data.round(3))
 
-st.header("5️⃣ Residual Normality Check")
+    # ======================================================
+    # 8. PREDICTION
+    # ======================================================
 
-residuals = model.resid
+    st.header("6️⃣ Prediction")
 
-fig_res = px.histogram(x=residuals,
-                       title="Histogram of Residuals",
-                       marginal="box")
-st.plotly_chart(fig_res)
+    input_dict = {}
 
-qq_res = sm.qqplot(residuals, line='s')
-st.pyplot(qq_res.figure)
+    for var in predictors:
+        if var in categorical_vars:
+            input_dict[var] = st.selectbox(var, df[var].cat.categories)
+        else:
+            input_dict[var] = st.number_input(
+                var,
+                value=float(df[var].mean())
+            )
 
-stat_res, p_res = shapiro(residuals)
-
-st.write(f"Shapiro-Wilk Statistic: {stat_res:.4f}")
-st.write(f"p-value: {p_res:.4f}")
-
-if p_res > 0.05:
-    st.success("Residuals appear normally distributed.")
-else:
-    st.warning("Residuals may violate normality assumption.")
-
-# ======================================================
-# 10. PREDICTION
-# ======================================================
-
-st.header("6️⃣ Prediction")
-
-input_dict = {}
-
-for var in predictors:
-    if var in categorical_vars:
-        input_dict[var] = st.selectbox(var, df[var].cat.categories)
-    else:
-        input_dict[var] = st.number_input(var,
-                                          value=float(df[var].mean()))
-
-if st.button("Predict"):
-    new_df = pd.DataFrame([input_dict])
-    prediction = model.predict(new_df)[0]
-    st.success(f"Predicted {response}: {prediction:.4f}")
-
-# ======================================================
-# 11. PREDICTED VS ACTUAL
-# ======================================================
-
-st.header("7️⃣ Predicted vs Actual")
-
-predicted_vals = model.predict(df)
-
-fig2 = px.scatter(
-    x=predicted_vals,
-    y=df[response],
-    labels={'x': 'Predicted', 'y': 'Actual'},
-    title="Predicted vs Actual Values"
-)
-
-st.plotly_chart(fig2)
+    if st.button("Predict"):
+        new_df = pd.DataFrame([input_dict])
+        prediction = model.predict(new_df)[0]
+        st.success(f"Predicted {response}: {prediction:.4f}")
