@@ -1,20 +1,24 @@
+import streamlit as st
 import glm_tool
 import boxcox_tool
 import gamma_glm_tool
 
+st.set_page_config(layout="wide")
+
+st.sidebar.title("Select a Concept")
+
 tool = st.sidebar.radio(
     "Choose a tool:",
     [
-        "Descriptive Statistics",
-        ...
-        "Multiple Regression (Advanced)",
         "Gaussian Linear Model (OLS)",
         "Box-Cox Transformation",
         "Gamma GLM"
     ]
 )
 
-elif tool == "Gaussian Linear Model (OLS)":
+st.title(tool)
+
+if tool == "Gaussian Linear Model (OLS)":
     glm_tool.run()
 
 elif tool == "Box-Cox Transformation":
