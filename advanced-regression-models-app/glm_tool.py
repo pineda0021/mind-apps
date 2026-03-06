@@ -234,41 +234,38 @@ Lower values indicate a better balance between goodness of fit and model complex
                 "holding other variables constant."
             )
 
-    # ======================================================
-    # 9. PREDICTION
-    # ======================================================
+ # ======================================================
+# 9. PREDICTION
+# ======================================================
 
-    st.header("5️⃣ Prediction")
+st.header("5️⃣ Prediction")
 
-    input_dict = {}
+input_dict = {}
 
-    for var in predictors:
-        if var in categorical_vars:
-            input_dict[var] = st.selectbox(var, df[var].cat.categories)
-        else:
-            input_dict[var] = st.number_input(
-                var,
-                value=float(df[var].mean())
-            )
+for var in predictors:
 
-    if st.button("Predict"):
-        new_df = pd.DataFrame([input_dict])
-        prediction = model.predict(new_df)[0]
-        st.success(f"Predicted {response}: {prediction:.4f}")
+    # If categorical OR non-numeric → dropdown
+    if var in categorical_vars or not pd.api.types.is_numeric_dtype(df[var]):
 
-    # ======================================================
-    # 10. PREDICTED VS ACTUAL
-    # ======================================================
+        # Ensure categorical conversion
+        if not pd.api.types.is_categorical_dtype(df[var]):
+            df[var] = df[var].astype("category")
 
-    st.header("6️⃣ Predicted vs Actual")
+        input_dict[var] = st.selectbox(
+            var,
+            df[var].cat.categories
+        )
 
-    predicted_vals = model.predict(df)
+    # If numeric → number input
+    else:
+        input_dict[var] = st.number_input(
+            var,
+            value=float(df[var].mean())
+        )
 
-    fig2 = px.scatter(
-        x=predicted_vals,
-        y=df[response],
-        labels={'x': 'Predicted', 'y': 'Actual'},
-        title="Predicted vs Actual Values"
-    )
+if st.button("Predict"):
 
-    st.plotly_chart(fig2)
+    new_df = pd.DataFrame([input_dict])
+    prediction = model.predict(new_df)[0]
+
+    st.success(f"Predicted {response}: {prediction:.4f}")
