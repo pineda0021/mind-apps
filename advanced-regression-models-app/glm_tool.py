@@ -130,10 +130,8 @@ def run():
     aic = model.aic
     bic = model.bic
 
-    # --- Added ---
     sigma_hat = model.mse_resid ** 0.5
     rmse = (model.resid ** 2).mean() ** 0.5
-    # -------------
 
     if (n - k - 1) > 0:
         aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
@@ -187,8 +185,6 @@ def run():
             "the intercept-only model."
         )
 
-    # (Remaining sections unchanged — exactly as in your original code)
-
     # ======================================================
     # 8. MATHEMATICAL EQUATION
     # ======================================================
@@ -217,23 +213,8 @@ def run():
         return equation
 
 
-    # ======================================================
-    # 8.2 DISPLAY EQUATIONS
-    # ======================================================
-
     st.subheader("Fitted Regression Equation (Full Model)")
     st.latex(build_equation(model, response))
-
-    reduced_model = refit_reduced_model(model)
-
-    if reduced_model is not None:
-        st.subheader("Reduced Model (Refit Using Significant Predictors)")
-        st.latex(build_equation(reduced_model, response))
-
-        st.subheader("Reduced Model Summary")
-        st.text(reduced_model.summary())
-    else:
-        st.warning("No predictors are statistically significant at α = 0.05.")
 
     # ======================================================
     # 9. INTERPRETATION OF COEFFICIENTS
@@ -269,7 +250,7 @@ def run():
                 f"{coef} units, holding other variables constant."
             )
 
-       # ======================================================
+    # ======================================================
     # 10. PREDICTION 
     # ======================================================
 
@@ -279,31 +260,21 @@ def run():
 
     for var in predictors:
 
-        # If user explicitly selected categorical
         if var in categorical_vars:
-
             input_dict[var] = st.selectbox(
                 var,
                 df[var].astype("category").cat.categories
             )
-
         else:
-            # Attempt numeric conversion safely
             numeric_series = pd.to_numeric(df[var], errors="coerce")
 
-            # If numeric conversion works, treat as numeric
             if numeric_series.notna().sum() > 0:
-
                 input_dict[var] = st.number_input(
                     var,
                     value=float(numeric_series.mean())
                 )
-
-            # Otherwise automatically treat as categorical
             else:
-
                 df[var] = df[var].astype("category")
-
                 input_dict[var] = st.selectbox(
                     var,
                     df[var].cat.categories
@@ -313,6 +284,7 @@ def run():
         new_df = pd.DataFrame([input_dict])
         prediction = model.predict(new_df)[0]
         st.success(f"Predicted {response}: {prediction:.4f}")
+
     # ======================================================
     # 11. PREDICTED VS ACTUAL
     # ======================================================
