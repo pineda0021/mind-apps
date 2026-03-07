@@ -130,16 +130,23 @@ def run():
     aic = model.aic
     bic = model.bic
 
+    # --- Added ---
+    sigma_hat = model.mse_resid ** 0.5
+    rmse = (model.resid ** 2).mean() ** 0.5
+    # -------------
+
     if (n - k - 1) > 0:
         aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
     else:
         aicc = float("nan")
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     col1.metric("Log-Likelihood", round(loglik, 2))
     col2.metric("AIC", round(aic, 2))
     col3.metric("AICc", round(aicc, 2))
     col4.metric("BIC", round(bic, 2))
+    col5.metric("σ̂ (Residual SD)", round(sigma_hat, 4))
+    col6.metric("RMSE", round(rmse, 4))
 
     st.markdown("""
 **Interpretation**
@@ -148,6 +155,8 @@ def run():
 - AIC, AICc, and BIC penalize model complexity.
 - Lower values indicate better balance between fit and complexity.
 - AICc is recommended when the sample size is small relative to the number of parameters.
+- σ̂ (Residual SD) estimates the standard deviation of the error term.
+- RMSE represents the average prediction error in the units of the response variable.
 """)
 
     # ======================================================
@@ -177,6 +186,8 @@ def run():
             "The model does not significantly improve over "
             "the intercept-only model."
         )
+
+    # (Remaining sections unchanged — exactly as in your original code)
 
     # ======================================================
     # 8. MATHEMATICAL EQUATION
