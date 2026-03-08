@@ -10,7 +10,7 @@ from scipy.stats import shapiro, chi2, boxcox, skew
 
 def run():
 
-    st.title("General Linear Regression Model")
+    st.title("General Linear Regression Model Lab (College-Level)")
 
     # ======================================================
     # 1️⃣ DATA UPLOAD
@@ -69,27 +69,18 @@ def run():
 
     st.header("2️⃣ Response Normality Check")
 
-    if not pd.api.types.is_numeric_dtype(df[response]):
+    y = df[response].dropna()
+
+    if not pd.api.types.is_numeric_dtype(y):
         st.error("Response must be numeric.")
         return
 
-    y = df[response].dropna()
-
-    fig = px.histogram(
-        df,
-        x=response,
-        title=f"Histogram of {response}",
-        marginal="box"
-    )
-    st.plotly_chart(fig)
-
+    st.plotly_chart(px.histogram(df, x=response, marginal="box"))
     qq_fig = sm.qqplot(y, line='s')
     st.pyplot(qq_fig.figure)
 
     stat, p = shapiro(y)
-
-    st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
-    st.write(f"p-value: {p:.4f}")
+    st.write(f"Shapiro-Wilk p-value: {p:.4f}")
 
     if p > 0.05:
         st.success("Response appears normally distributed.")
@@ -97,7 +88,7 @@ def run():
         st.warning("Response does NOT appear normally distributed.")
 
     # ======================================================
-    # 4️⃣ BOX-COX TRANSFORMATION (AUTO IF NEEDED)
+    # 4️⃣ BOX-COX TRANSFORMATION (R-STYLE)
     # ======================================================
 
     st.header("3️⃣ Box-Cox Transformation (If Needed)")
@@ -105,124 +96,106 @@ def run():
     transformed_response = None
     lambda_rec = None
     original_model = None
-    note = ""
 
     if p <= 0.05:
 
-        st.warning(
-            "The response is not normally distributed. "
-            "A Box-Cox transformation will be applied."
+        if (y <= 0).any():
+            st.error("Box-Cox requires strictly positive response values.")
+            return
+
+        # R-style lambda grid
+        lambdas = np.arange(-3, 3.25, 0.25)
+        llf_vals = [boxcox(y, lmbda=l)[1] for l in lambdas]
+
+        boxcox_df = pd.DataFrame({
+            "lambda": lambdas,
+            "logLik": llf_vals
+        })
+
+        ordered_df = boxcox_df.sort_values(by="logLik", ascending=False)
+        lambda_hat = ordered_df.iloc[0]["lambda"]
+
+        st.write(f"Estimated λ (Profile Likelihood): **{lambda_hat:.4f}**")
+        st.write("Top λ values by log-likelihood:")
+        st.dataframe(ordered_df.head())
+
+        # 95% CI
+        max_llf = ordered_df.iloc[0]["logLik"]
+        cutoff = max_llf - 0.5 * chi2.ppf(0.95, df=1)
+
+        ci_vals = boxcox_df[boxcox_df["logLik"] >= cutoff]["lambda"]
+        ci_lower = ci_vals.min()
+        ci_upper = ci_vals.max()
+
+        st.write(f"95% CI for λ: [{ci_lower:.3f}, {ci_upper:.3f}]")
+
+        # Automatic snapping
+        recommended = [-2, -1, -0.5, 0, 0.5, 1, 2]
+        valid = [l for l in recommended if ci_lower <= l <= ci_upper]
+
+        if valid:
+            lambda_rec = min(valid, key=lambda x: abs(x - 1))
+            st.success(f"Using recommended λ = {lambda_rec}")
+        else:
+            lambda_rec = lambda_hat
+            st.warning("Using MLE λ (no recommended value inside CI).")
+
+        # Plot profile likelihood
+        fig_lambda = px.line(
+            boxcox_df,
+            x="lambda",
+            y="logLik",
+            title="Box-Cox Profile Log-Likelihood",
         )
 
-        if (df[response] <= 0).any():
-            st.error("Box-Cox requires strictly positive response values.")
-        else:
-            y_original = y
+        fig_lambda.add_vline(x=lambda_hat, line_dash="dash", line_color="red",
+                             annotation_text=f"λ̂={lambda_hat:.2f}")
+        fig_lambda.add_vline(x=0, line_dash="dot", line_color="blue",
+                             annotation_text="λ=0")
+        fig_lambda.add_vline(x=1, line_dash="dot", line_color="green",
+                             annotation_text="λ=1")
 
-            # R-style grid: seq(-3,3,1/4)
-            lambdas = np.arange(-3, 3.25, 0.25)
-            llf_vals = [boxcox(y_original, lmbda=l)[1] for l in lambdas]
+        fig_lambda.add_vrect(x0=ci_lower, x1=ci_upper,
+                             fillcolor="gray", opacity=0.2, line_width=0)
 
-            lambda_hat = lambdas[np.argmax(llf_vals)]
+        st.plotly_chart(fig_lambda)
 
-            st.write(f"Estimated λ (Grid Search): **{lambda_hat:.4f}**")
+        # Apply transformation
+        y_transformed = boxcox(y, lmbda=lambda_rec)
+        transformed_response = f"{response}_boxcox"
+        df[transformed_response] = y_transformed
 
-            # Snap to recommended λ
-            if -2.5 <= lambda_hat < -1.5:
-                lambda_rec = -2
-                trans_name = "Inverse Square"
-                formula_tex = r"\tilde{y} = \frac{1}{2}\left(1 - \frac{1}{y^2}\right)"
-                note = "Strong compression of large values for extreme right skew."
+        # Skewness comparison
+        st.subheader("Skewness Comparison")
 
-            elif -1.5 <= lambda_hat < -0.75:
-                lambda_rec = -1
-                trans_name = "Reciprocal"
-                formula_tex = r"\tilde{y} = 1 - \frac{1}{y}"
-                note = "Common for rates; reduces influence of large values."
+        skew_before = skew(y)
+        skew_after = skew(y_transformed)
 
-            elif -0.75 <= lambda_hat < -0.25:
-                lambda_rec = -0.5
-                trans_name = "Inverse Square Root"
-                formula_tex = r"\tilde{y} = 2\left(1 - \frac{1}{\sqrt{y}}\right)"
-                note = "Moderately reduces right skewness."
+        col1, col2 = st.columns(2)
 
-            elif -0.25 <= lambda_hat < 0.25:
-                lambda_rec = 0
-                trans_name = "Log Transformation"
-                formula_tex = r"\tilde{y} = \ln(y)"
-                note = "Most common transformation; stabilizes variance."
+        with col1:
+            st.plotly_chart(px.histogram(x=y,
+                                         title=f"Original (Skew={skew_before:.3f})"))
 
-            elif 0.25 <= lambda_hat < 0.75:
-                lambda_rec = 0.5
-                trans_name = "Square Root"
-                formula_tex = r"\tilde{y} = 2(\sqrt{y} - 1)"
-                note = "Useful for count data and moderate skew."
+        with col2:
+            st.plotly_chart(px.histogram(x=y_transformed,
+                                         title=f"Transformed (Skew={skew_after:.3f})"))
 
-            elif 0.75 <= lambda_hat < 1.5:
-                lambda_rec = 1
-                trans_name = "Linear"
-                formula_tex = r"\tilde{y} = y - 1"
-                note = "No transformation needed."
+        response = transformed_response
 
-            else:
-                lambda_rec = 2
-                trans_name = "Square"
-                formula_tex = r"\tilde{y} = \frac{1}{2}(y^2 - 1)"
-                note = "Used for left-skewed data."
-
-            st.write(f"**Recommended λ:** {lambda_rec}")
-            st.write(f"**Transformation:** {trans_name}")
-            st.latex(formula_tex)
-            st.info(f"Teaching Note: {note}")
-
-            # Apply transformation
-            y_transformed = boxcox(y_original, lmbda=lambda_rec)
-            transformed_response = f"{response}_boxcox"
-            df[transformed_response] = y_transformed
-
-            # Skewness comparison
-            st.subheader("Skewness Comparison")
-
-            skew_before = skew(y_original)
-            skew_after = skew(y_transformed)
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.plotly_chart(px.histogram(
-                    x=y_original,
-                    title=f"Original (Skew={skew_before:.3f})"
-                ))
-
-            with col2:
-                st.plotly_chart(px.histogram(
-                    x=y_transformed,
-                    title=f"Transformed (Skew={skew_after:.3f})"
-                ))
-
-            if abs(skew_after) < abs(skew_before):
-                st.success("Skewness reduced after transformation.")
-
-            # Re-check normality
-            stat_bc, p_bc = shapiro(y_transformed)
-            st.write(f"Post-Transformation p-value: {p_bc:.4f}")
-
-            # Fit original model for comparison
-            original_formula = response_original + " ~ " + " + ".join(predictors)
-            original_model = smf.ols(original_formula, data=df).fit()
-
-            response = transformed_response
+        # Fit original model for comparison
+        original_formula = response_original + " ~ " + " + ".join(predictors)
+        original_model = smf.ols(original_formula, data=df).fit()
 
     # ======================================================
     # 5️⃣ BUILD FORMULA
     # ======================================================
 
     terms = []
-
     for var in predictors:
         if var in categorical_vars:
             ref = reference_dict[var]
-            terms.append(f'C({var}, Treatment(reference=\"{ref}\"))')
+            terms.append(f'C({var}, Treatment(reference="{ref}"))')
         else:
             terms.append(var)
 
@@ -235,8 +208,6 @@ def run():
     st.header("4️⃣ Fit General Linear Model")
 
     model = smf.ols(formula=formula, data=df).fit()
-
-    st.subheader("Model Summary")
     st.text(model.summary())
 
     # ======================================================
@@ -262,22 +233,7 @@ def run():
         st.dataframe(comp)
 
     # ======================================================
-    # 8️⃣ FITTED EQUATION
-    # ======================================================
-
-    def build_equation(model, response):
-        params = model.params
-        eq = f"\\hat{{E}}({response}) = {round(params['Intercept'],4)}"
-        for name in params.index:
-            if name != "Intercept":
-                eq += f" + {round(params[name],4)}\\cdot {name}"
-        return eq
-
-    st.subheader("Fitted Regression Equation")
-    st.latex(build_equation(model, response))
-
-    # ======================================================
-    # 9️⃣ INTERPRETATION OF COEFFICIENTS
+    # 8️⃣ INTERPRETATION OF COEFFICIENTS
     # ======================================================
 
     st.header("5️⃣ Interpretation of Coefficients")
@@ -285,11 +241,10 @@ def run():
     for name, coef in model.params.items():
         if name == "Intercept":
             continue
-        coef = round(coef, 4)
         st.write(
             f"For every-unit increase in **{name}**, "
             f"the expected value of **{response_original}** changes by "
-            f"{coef} units, holding other variables constant."
+            f"{round(coef,4)} units (holding others constant)."
         )
 
     # ======================================================
@@ -310,7 +265,7 @@ def run():
         new_df = pd.DataFrame([input_dict])
         pred = model.predict(new_df)[0]
 
-        if lambda_rec is not None and lambda_rec != 1:
+        if lambda_rec is not None:
             if lambda_rec == 0:
                 pred_original = np.exp(pred)
             else:
@@ -336,4 +291,4 @@ def run():
     )
 
     st.plotly_chart(fig2)
-    st.write("Points closer to the diagonal indicate better predictions.")
+    st.write("Points closer to diagonal indicate better predictions.")
