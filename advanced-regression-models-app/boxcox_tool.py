@@ -135,8 +135,6 @@ def run():
     loglik = model.llf
     aic = model.aic
     bic = model.bic
-
-    # ✔ Correct σ̂ and RMSE
     sigma_hat = np.sqrt(model.mse_resid)
     rmse = np.sqrt(np.mean(model.resid ** 2))
 
@@ -155,51 +153,7 @@ def run():
     st.metric("RMSE", round(rmse, 4))
 
     # ======================================================
-    # Interpretation Panel
-    # ======================================================
-
-    st.markdown("**Log-Likelihood (ℓ)**")
-    st.latex(r"\ell(\hat{\beta})")
-    st.markdown("Measures how probable the observed data are under the fitted model.")
-
-    st.markdown("**AIC**")
-    st.latex(r"AIC = -2\ell + 2k")
-    st.markdown("Balances model fit and complexity. Lower values are preferred.")
-
-    st.markdown("**AICc**")
-    st.latex(r"AIC_c = AIC + \frac{2k(k+1)}{n-k-1}")
-    st.markdown("Small-sample corrected AIC. Lower values are preferred.")
-
-    st.markdown("**BIC**")
-    st.latex(r"BIC = -2\ell + k\ln(n)")
-    st.markdown("Penalizes model complexity more strongly than AIC.")
-
-    st.markdown("**Residual Standard Deviation (σ̂)**")
-    st.latex(r"\hat{\sigma} = \sqrt{\frac{SSE}{n-k}}")
-    st.markdown("Estimated standard deviation of the regression errors.")
-
-    st.markdown("**RMSE**")
-    st.latex(r"RMSE = \sqrt{\frac{1}{n}\sum (y_i - \hat{y}_i)^2}")
-    st.markdown("Average magnitude of prediction error.")
-
-    # ======================================================
-    # 7. LIKELIHOOD RATIO TEST
-    # ======================================================
-
-    st.subheader("Likelihood Ratio (Deviance) Test")
-
-    null_model = smf.ols(response + " ~ 1", data=df).fit()
-
-    lr_stat = 2 * (model.llf - null_model.llf)
-    df_diff = int(model.df_model)
-    p_value_lr = chi2.sf(lr_stat, df_diff)
-
-    st.write(f"LR Statistic: {lr_stat:.4f}")
-    st.write(f"Degrees of Freedom: {df_diff}")
-    st.write(f"p-value: {p_value_lr:.6f}")
-
-    # ======================================================
-    # 8. EQUATION BUILDER
+    # 7. EQUATION BUILDER
     # ======================================================
 
     def build_equation(model, response):
@@ -261,7 +215,23 @@ def run():
             )
 
     # ======================================================
-    # 9. PREDICTION
+    # 4️⃣ LIKELIHOOD RATIO (DEVIANCE) TEST
+    # ======================================================
+
+    st.header("4️⃣ Likelihood Ratio (Deviance) Test")
+
+    null_model = smf.ols(response + " ~ 1", data=df).fit()
+
+    lr_stat = 2 * (model.llf - null_model.llf)
+    df_diff = int(model.df_model)
+    p_value_lr = chi2.sf(lr_stat, df_diff)
+
+    st.write(f"LR Statistic: {lr_stat:.4f}")
+    st.write(f"Degrees of Freedom: {df_diff}")
+    st.write(f"p-value: {p_value_lr:.6f}")
+
+    # ======================================================
+    # 6️⃣ Prediction
     # ======================================================
 
     st.header("6️⃣ Prediction")
@@ -269,7 +239,6 @@ def run():
     input_dict = {}
 
     for var in predictors:
-
         if var in categorical_vars:
             input_dict[var] = st.selectbox(var, df[var].cat.categories)
         else:
@@ -290,7 +259,7 @@ def run():
         st.success(f"Predicted {response}: {prediction:.4f}")
 
     # ======================================================
-    # 10. PREDICTED VS ACTUAL
+    # 7️⃣ PREDICTED VS ACTUAL
     # ======================================================
 
     st.header("7️⃣ Predicted vs Actual")
