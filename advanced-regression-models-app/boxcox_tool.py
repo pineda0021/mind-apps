@@ -85,7 +85,6 @@ def run():
         lambda_mle = boxcox_normmax(y_clean)
         st.write(f"MLE λ = {lambda_mle:.4f}")
 
-        # Profile log-likelihood
         lambdas = np.linspace(-2.5, 2.5, 400)
         llf_vals = [boxcox_llf(l, y_clean) for l in lambdas]
 
@@ -104,7 +103,6 @@ def run():
 
         st.plotly_chart(fig_lambda)
 
-        # Rounded classroom λ values
         recommended_lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
         rounded_lambda = recommended_lambdas[
             np.argmin(np.abs(recommended_lambdas - lambda_mle))
@@ -117,16 +115,7 @@ def run():
         if st.checkbox("Apply Box–Cox Transformation"):
 
             transformed = True
-
             chosen_lambda = lambda_mle if use_exact else rounded_lambda
-
-            st.latex(r"""
-            \tilde{y} =
-            \begin{cases}
-            \dfrac{y^{\lambda} - 1}{\lambda}, & \lambda \ne 0 \\
-            \ln y, & \lambda = 0
-            \end{cases}
-            """)
 
             if chosen_lambda == 0:
                 y_transformed = np.log(df[response])
@@ -157,9 +146,6 @@ def run():
 
     st.subheader("Model Summary")
     st.text(model.summary())
-
-    st.subheader("95% Confidence Intervals")
-    st.dataframe(model.conf_int())
 
     # ======================================================
     # Model Comparison
@@ -195,23 +181,8 @@ def run():
     fig_resid.add_hline(y=0)
     st.plotly_chart(fig_resid)
 
-    qq_resid = sm.qqplot(residuals, line='s')
-    st.pyplot(qq_resid.figure)
-
     stat_r, p_r = shapiro(residuals)
     st.write(f"Residual Shapiro-Wilk p-value: {p_r:.4f}")
-
-    # Cook's Distance
-    influence = model.get_influence()
-    cooks = influence.cooks_distance[0]
-
-    fig_cook = px.scatter(
-        x=np.arange(len(cooks)),
-        y=cooks,
-        labels={'x': 'Observation Index', 'y': "Cook's Distance"},
-        title="Cook's Distance"
-    )
-    st.plotly_chart(fig_cook)
 
     # ======================================================
     # Predicted vs Observed
@@ -247,11 +218,12 @@ def run():
 
     st.header("6️⃣ Model Fit Metrics")
 
-    col1, col2, col3, col4 = st.columns(4)
+    sigma_hat = np.sqrt(model.mse_resid)
+
+    col1, col2, col3 = st.columns(3)
     col1.metric("R²", round(model.rsquared, 4))
     col2.metric("Adj R²", round(model.rsquared_adj, 4))
-    col3.metric("AIC", round(model.aic, 2))
-    col4.metric("RMSE", round(np.sqrt(np.mean(residuals**2)), 4))
+    col3.metric("σ̂ (Residual SD)", round(sigma_hat, 4))
 
 
 if __name__ == "__main__":
