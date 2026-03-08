@@ -135,7 +135,10 @@ def run():
     loglik = model.llf
     aic = model.aic
     bic = model.bic
-    sigma_hat = np.sqrt(np.mean(model.resid ** 2))
+
+    # FIXED σ̂ and RMSE
+    sigma_hat = np.sqrt(model.mse_resid)              # Correct residual SD
+    rmse = np.sqrt(np.mean(model.resid ** 2))         # RMSE
 
     if (n - k - 1) > 0:
         aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
@@ -145,10 +148,11 @@ def run():
     col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Log-Likelihood", round(loglik, 2))
     col2.metric("AIC", round(aic, 2))
-    col3.metric("AICC", round(aicc, 2))
+    col3.metric("AICc", round(aicc, 2))
     col4.metric("BIC", round(bic, 2))
+    col5.metric("σ̂", round(sigma_hat, 4))
 
-    st.metric("σ̂", round(rmse, 4))
+    st.metric("RMSE", round(rmse, 4))
 
     # ======================================================
     # Interpretation Panel
@@ -170,9 +174,13 @@ def run():
     st.latex(r"BIC = -2\ell + k\ln(n)")
     st.markdown("Penalizes model complexity more strongly than AIC.")
 
-    st.markdown("**RMSE (σ̂^)**")
+    st.markdown("**Residual Standard Deviation (σ̂)**")
+    st.latex(r"\hat{\sigma} = \sqrt{\frac{SSE}{n-k}}")
+    st.markdown("Estimated standard deviation of the regression errors.")
+
+    st.markdown("**RMSE**")
     st.latex(r"RMSE = \sqrt{\frac{1}{n}\sum (y_i - \hat{y}_i)^2}")
-    st.markdown("Testmated standard devation of the error.")
+    st.markdown("Average magnitude of prediction error.")
 
     # ======================================================
     # 7. LIKELIHOOD RATIO TEST
