@@ -5,12 +5,12 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 import numpy as np
 
-from scipy.stats import shapiro, chi2, boxcox_normmax
+from scipy.stats import shapiro, chi2, boxcox, boxcox_normmax
 
 
 def run():
 
-    st.title("General Linear Regression Model")
+    st.title("General Linear Regression Model Lab (College-Level)")
 
     # ======================================================
     # 1️⃣ DATA UPLOAD
@@ -72,7 +72,12 @@ def run():
         st.error("Response must be numeric.")
         return
 
-    fig = px.histogram(df, x=response, marginal="box")
+    fig = px.histogram(
+        df,
+        x=response,
+        title=f"Histogram of {response}",
+        marginal="box"
+    )
     st.plotly_chart(fig)
 
     qq_fig = sm.qqplot(df[response].dropna(), line='s')
@@ -89,31 +94,75 @@ def run():
         st.warning("Response does NOT appear normally distributed.")
 
     # ======================================================
-    # 4️⃣ TRANSFORMATION (Recommended λ)
+    # 4️⃣ BOX-COX GUIDED TRANSFORMATION
     # ======================================================
 
-    st.header("3️⃣ Transformation (If Needed)")
+    st.header("3️⃣ Box-Cox Transformation (If Needed)")
 
     lambda_hat = None
     transformed = False
 
     if p <= 0.05:
 
+        st.warning("Response not normal. Box-Cox will guide transformation.")
+
         if (df[response] <= 0).any():
-            st.error("Transformation requires strictly positive response values.")
+            st.error("Box-Cox requires strictly positive response values.")
         else:
             y_original = df[response]
 
             lambda_mle = boxcox_normmax(y_original, method="mle")
+
+            lambdas = np.linspace(-2, 2, 200)
+            llf_vals = [boxcox(y_original, lmbda=l)[1] for l in lambdas]
+
+            st.subheader("Lambda Optimization (Profile Log-Likelihood)")
+
+            fig_lambda = px.line(
+                x=lambdas,
+                y=llf_vals,
+                labels={"x": "Lambda (λ)", "y": "Log-Likelihood"},
+                title="Box-Cox Lambda Optimization Curve"
+            )
+
+            fig_lambda.add_vline(
+                x=lambda_mle,
+                line_dash="dash",
+                annotation_text=f"λ̂ = {lambda_mle:.3f}"
+            )
+
+            st.plotly_chart(fig_lambda)
+
             st.write(f"Estimated λ (MLE): **{lambda_mle:.4f}**")
 
-            recommended_lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
-            lambda_hat = recommended_lambdas[np.argmin(abs(recommended_lambdas - lambda_mle))]
+            # ======================================================
+            # Lambda Interpretation Table
+            # ======================================================
+
+            lambda_table = pd.DataFrame({
+                "Recommended λ": [-2, -1, -0.5, 0, 0.5, 1, 2],
+                "Transformation": [
+                    "1 / y²",
+                    "1 / y",
+                    "1 / √y",
+                    "ln(y)",
+                    "√y",
+                    "y",
+                    "y²"
+                ]
+            })
+
+            st.dataframe(lambda_table)
+
+            lambda_hat = lambda_table.iloc[
+                (lambda_table["Recommended λ"] - lambda_mle).abs().argsort()[0]
+            ]["Recommended λ"]
 
             st.info(f"Using Recommended λ = {lambda_hat}")
 
             transformed = True
 
+            # Exact named transformations
             if lambda_hat == -2:
                 df[response] = 1 / (y_original ** 2)
                 st.latex(r"y^* = \frac{1}{y^2}")
@@ -186,95 +235,7 @@ def run():
             equation_terms.append(f"{coef:.4f}({name})")
 
     equation = response + " = " + " + ".join(equation_terms)
-
     st.code(equation)
 
     if transformed:
         st.info("Interpret coefficients on the transformed scale.")
-
-    # ======================================================
-    # 8️⃣ MODEL FIT STATISTICS
-    # ======================================================
-
-    st.subheader("Model Fit Statistics")
-
-    n = df.shape[0]
-    k = int(model.df_model) + 1
-
-    loglik = model.llf
-    aic = model.aic
-    bic = model.bic
-    sigma_hat = np.sqrt(model.mse_resid)
-    rmse = np.sqrt(np.mean(model.resid ** 2))
-
-    if (n - k - 1) > 0:
-        aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
-    else:
-        aicc = float("nan")
-
-    col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("Log-Likelihood", round(loglik, 3))
-    col2.metric("AIC", round(aic, 3))
-    col3.metric("AICc", round(aicc, 3))
-    col4.metric("BIC", round(bic, 3))
-    col5.metric("σ̂ (Residual SD)", round(sigma_hat, 4))
-
-    st.metric("RMSE", round(rmse, 4))
-
-    # ======================================================
-    # 9️⃣ PREDICTION
-    # ======================================================
-
-    st.header("5️⃣ Prediction")
-
-    input_dict = {}
-
-    for var in predictors:
-        if var in categorical_vars:
-            input_dict[var] = st.selectbox(var, df[var].astype("category").cat.categories)
-        else:
-            input_dict[var] = st.number_input(var, value=float(df[var].mean()))
-
-    if st.button("Predict"):
-
-        new_df = pd.DataFrame([input_dict])
-        pred = model.predict(new_df)[0]
-
-        if transformed:
-
-            if lambda_hat == -2:
-                pred_original = 1 / np.sqrt(pred)
-            elif lambda_hat == -1:
-                pred_original = 1 / pred
-            elif lambda_hat == -0.5:
-                pred_original = 1 / (pred ** 2)
-            elif lambda_hat == 0:
-                pred_original = np.exp(pred)
-            elif lambda_hat == 0.5:
-                pred_original = pred ** 2
-            elif lambda_hat == 1:
-                pred_original = pred
-            elif lambda_hat == 2:
-                pred_original = np.sqrt(pred)
-
-            st.success(f"Predicted (transformed scale): {pred:.4f}")
-            st.success(f"Predicted (original scale): {pred_original:.4f}")
-        else:
-            st.success(f"Predicted value: {pred:.4f}")
-
-    # ======================================================
-    # 6️⃣ PREDICTED VS ACTUAL
-    # ======================================================
-
-    st.header("6️⃣ Predicted vs Actual")
-
-    predicted_vals = model.predict(df)
-
-    fig2 = px.scatter(
-        x=predicted_vals,
-        y=df[response],
-        labels={'x': 'Predicted', 'y': 'Actual'},
-        title="Predicted vs Actual Values"
-    )
-
-    st.plotly_chart(fig2)
