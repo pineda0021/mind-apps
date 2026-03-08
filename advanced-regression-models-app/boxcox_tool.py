@@ -5,7 +5,7 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 import numpy as np
 
-from scipy.stats import shapiro, chi2, boxcox, boxcox_normmax
+from scipy.stats import shapiro, chi2, boxcox, boxcox_normmax, skew
 
 
 def run():
@@ -36,7 +36,8 @@ def run():
 
     st.header("1️⃣ Select Variables")
 
-    response = st.selectbox("Select Response Variable (Y)", df.columns)
+    response_original = st.selectbox("Select Response Variable (Y)", df.columns)
+    response = response_original
 
     predictors = st.multiselect(
         "Select Predictor Variables (X)",
@@ -101,7 +102,9 @@ def run():
 
     transformed_response = None
     lambda_hat = None
+    lambda_rec = None
     original_model = None
+    note = ""
 
     if p <= 0.05:
 
@@ -116,79 +119,108 @@ def run():
             y_original = df[response].dropna()
 
             lambda_hat = boxcox_normmax(y_original, method="mle")
-            lambdas = np.linspace(-2, 2, 200)
-            llf_vals = [boxcox(y_original, lmbda=l)[1] for l in lambdas]
-
-            st.subheader("Lambda Optimization (Profile Log-Likelihood)")
-
-            fig_lambda = px.line(
-                x=lambdas,
-                y=llf_vals,
-                labels={"x": "Lambda (λ)", "y": "Log-Likelihood"},
-                title="Box-Cox Lambda Optimization Curve"
-            )
-
-            fig_lambda.add_vline(
-                x=lambda_hat,
-                line_dash="dash",
-                annotation_text=f"λ̂ = {lambda_hat:.3f}"
-            )
-
-            st.plotly_chart(fig_lambda)
-
             st.write(f"Estimated λ (MLE): **{lambda_hat:.4f}**")
 
-            # --- NEW: Show transformation formula ---
-            if abs(lambda_hat) > 1e-6:
-                st.latex(
-                    rf"y^* = \frac{{y^{{{lambda_hat:.3f}}} - 1}}{{{lambda_hat:.3f}}}"
-                )
+            # SNAP TO RECOMMENDED λ (TABLE)
+            if -2.5 <= lambda_hat < -1.5:
+                lambda_rec = -2
+                trans_name = "Inverse Square"
+                formula_tex = r"\tilde{y} = \frac{1}{2}\left(1 - \frac{1}{y^2}\right)"
+                note = "Strong compression of large values for extreme right skew."
+
+            elif -1.5 <= lambda_hat < -0.75:
+                lambda_rec = -1
+                trans_name = "Reciprocal"
+                formula_tex = r"\tilde{y} = 1 - \frac{1}{y}"
+                note = "Common for rates and time variables; reduces influence of large values."
+
+            elif -0.75 <= lambda_hat < -0.25:
+                lambda_rec = -0.5
+                trans_name = "Inverse Square Root"
+                formula_tex = r"\tilde{y} = 2\left(1 - \frac{1}{\sqrt{y}}\right)"
+                note = "Moderately reduces right skewness and stabilizes variance."
+
+            elif -0.25 <= lambda_hat < 0.25:
+                lambda_rec = 0
+                trans_name = "Natural Logarithm"
+                formula_tex = r"\tilde{y} = \ln(y)"
+                note = "Most common transformation; converts multiplicative to additive relationships."
+
+            elif 0.25 <= lambda_hat < 0.75:
+                lambda_rec = 0.5
+                trans_name = "Square Root"
+                formula_tex = r"\tilde{y} = 2(\sqrt{y} - 1)"
+                note = "Useful for count data and moderate skewness."
+
+            elif 0.75 <= lambda_hat < 1.5:
+                lambda_rec = 1
+                trans_name = "Linear (No Transformation)"
+                formula_tex = r"\tilde{y} = y - 1"
+                note = "Response is already approximately normal."
+
             else:
-                st.latex(r"y^* = \ln(y)")
-            # ---------------------------------------
+                lambda_rec = 2
+                trans_name = "Square"
+                formula_tex = r"\tilde{y} = \frac{1}{2}(y^2 - 1)"
+                note = "Used for left-skewed data."
+
+            st.write(f"**Recommended λ:** {lambda_rec}")
+            st.write(f"**Transformation Name:** {trans_name}")
+            st.latex(formula_tex)
+            st.info(f"**Teaching Note:** {note}")
 
             # Apply transformation
-            y_transformed = boxcox(y_original, lmbda=lambda_hat)
+            y_transformed = boxcox(y_original, lmbda=lambda_rec)
             transformed_response = f"{response}_boxcox"
             df[transformed_response] = y_transformed
 
+            # Skewness Comparison
+            st.subheader("Skewness Comparison: Before vs After")
+
+            skew_before = skew(y_original)
+            skew_after = skew(y_transformed)
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                fig_before = px.histogram(
+                    x=y_original,
+                    title=f"Original {response} (Skew = {skew_before:.3f})",
+                    marginal="box"
+                )
+                st.plotly_chart(fig_before)
+
+            with col2:
+                fig_after = px.histogram(
+                    x=y_transformed,
+                    title=f"Transformed {response} (Skew = {skew_after:.3f})",
+                    marginal="box"
+                )
+                st.plotly_chart(fig_after)
+
+            st.write(
+                f"Skewness before: **{skew_before:.3f}**  \n"
+                f"Skewness after: **{skew_after:.3f}**"
+            )
+
+            if abs(skew_after) < abs(skew_before):
+                st.success("Transformation reduced skewness and improved symmetry.")
+            else:
+                st.warning("Transformation did not significantly reduce skewness.")
+
             # Re-check normality
             st.subheader("Normality Check After Box-Cox")
-
-            fig_bc = px.histogram(
-                df,
-                x=transformed_response,
-                title=f"Histogram of Box-Cox Transformed {response}",
-                marginal="box"
-            )
-            st.plotly_chart(fig_bc)
 
             qq_fig_bc = sm.qqplot(y_transformed, line='s')
             st.pyplot(qq_fig_bc.figure)
 
             stat_bc, p_bc = shapiro(y_transformed)
+            st.write(f"Shapiro-Wilk p-value after transformation: {p_bc:.4f}")
 
-            st.write(f"Shapiro-Wilk Statistic: {stat_bc:.4f}")
-            st.write(f"p-value: {p_bc:.4f}")
-
-            if p_bc > 0.05:
-                st.success("The transformed response now appears normally distributed.")
-            else:
-                st.warning("The transformed response still deviates from normality.")
-
-            # Save original model for comparison later
-            original_formula_terms = []
-            for var in predictors:
-                if var in categorical_vars:
-                    ref = reference_dict[var]
-                    original_formula_terms.append(f'C({var}, Treatment(reference=\"{ref}\"))')
-                else:
-                    original_formula_terms.append(var)
-
-            original_formula = df.columns[df.columns.get_loc(response)] + " ~ " + " + ".join(original_formula_terms)
+            # Fit original model for comparison
+            original_formula = response_original + " ~ " + " + ".join(predictors)
             original_model = smf.ols(formula=original_formula, data=df).fit()
 
-            # Use transformed response moving forward
             response = transformed_response
 
     # ======================================================
@@ -245,24 +277,15 @@ def run():
     col5.metric("σ̂ (Residual SD)", round(sigma_hat, 4))
     col6.metric("RMSE", round(rmse, 4))
 
-    # --- NEW: AIC Comparison ---
     if original_model is not None:
         st.subheader("Model Comparison: Original vs Box-Cox")
-
         comparison = pd.DataFrame({
             "Model": ["Original", "Box-Cox"],
             "AIC": [original_model.aic, model.aic],
             "BIC": [original_model.bic, model.bic],
             "Log-Likelihood": [original_model.llf, model.llf]
         })
-
         st.dataframe(comparison)
-
-        if model.aic < original_model.aic:
-            st.success("Box-Cox model shows improved fit (lower AIC).")
-        else:
-            st.info("Original model may be preferable based on AIC.")
-    # ---------------------------------------
 
     # ======================================================
     # 8️⃣ PREDICTION
@@ -288,18 +311,17 @@ def run():
         new_df = pd.DataFrame([input_dict])
         pred_transformed = model.predict(new_df)[0]
 
-        # --- NEW: Back-transformation ---
-        if lambda_hat is not None:
-            if abs(lambda_hat) > 1e-6:
-                pred_original = (lambda_hat * pred_transformed + 1) ** (1 / lambda_hat)
-            else:
+        if lambda_rec is not None and lambda_rec != 1:
+            if lambda_rec == 0:
                 pred_original = np.exp(pred_transformed)
+            else:
+                pred_original = (lambda_rec * pred_transformed + 1) ** (1 / lambda_rec)
 
-            st.success(f"Predicted {response} (transformed): {pred_transformed:.4f}")
-            st.success(f"Predicted original scale: {pred_original:.4f}")
+            st.success(f"Predicted (Transformed Scale): {pred_transformed:.4f}")
+            st.success(f"Predicted (Original Scale): {pred_original:.4f}")
+            st.write("Prediction shown above has been back-transformed for interpretability.")
         else:
             st.success(f"Predicted {response}: {pred_transformed:.4f}")
-        # --------------------------------
 
     # ======================================================
     # 9️⃣ PREDICTED VS ACTUAL
@@ -317,3 +339,8 @@ def run():
     )
 
     st.plotly_chart(fig2)
+
+    st.write(
+        "Points close to the diagonal indicate good predictive accuracy. "
+        "Systematic patterns may suggest model assumption violations."
+    )
