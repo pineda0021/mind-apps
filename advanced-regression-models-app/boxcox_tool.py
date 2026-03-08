@@ -10,7 +10,7 @@ from scipy.stats import shapiro, chi2, boxcox, boxcox_normmax, skew
 
 def run():
 
-    st.title("General Linear Regression Model Lab (College-Level)")
+    st.title("General Linear Regression Model")
 
     # ======================================================
     # 1️⃣ DATA UPLOAD
