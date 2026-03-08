@@ -5,7 +5,7 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 import numpy as np
 
-from scipy.stats import shapiro, chi2, boxcox, skew
+from scipy.stats import shapiro, chi2, skew
 
 
 def run():
@@ -119,15 +119,78 @@ def run():
         else:
             y_original = y
 
-            # R-style grid: seq(-3,3,1/4)
-            lambdas = np.arange(-3, 3.25, 0.25)
-            llf_vals = [boxcox(y_original, lmbda=l)[1] for l in lambdas]
+            # -------------------------------
+            # MASS-style Profile Likelihood
+            # -------------------------------
 
-            lambda_hat = lambdas[np.argmax(llf_vals)]
+            st.subheader("Profile Log-Likelihood for λ (MASS-Style)")
 
-            st.write(f"Estimated λ (Grid Search): **{lambda_hat:.4f}**")
+            lambdas = np.arange(-3, 3.01, 0.25)
+            loglik_values = []
 
+            for lam in lambdas:
+
+                if lam == 0:
+                    y_temp = np.log(y_original)
+                else:
+                    y_temp = (y_original**lam - 1) / lam
+
+                df_temp = df.copy()
+                df_temp["_temp_y"] = y_temp
+
+                temp_formula = "_temp_y ~ " + " + ".join(predictors)
+                temp_model = smf.ols(temp_formula, data=df_temp).fit()
+
+                loglik_values.append(temp_model.llf)
+
+            profile_df = pd.DataFrame({
+                "lambda": lambdas,
+                "loglik": loglik_values
+            })
+
+            idx_max = profile_df["loglik"].idxmax()
+            lambda_hat = profile_df.loc[idx_max, "lambda"]
+            max_loglik = profile_df.loc[idx_max, "loglik"]
+
+            st.write(f"Estimated λ (Profile MLE): **{lambda_hat:.4f}**")
+
+            cutoff = max_loglik - 0.5 * 3.84
+
+            fig_profile = px.line(
+                profile_df,
+                x="lambda",
+                y="loglik",
+                title="Box–Cox Profile Log-Likelihood"
+            )
+
+            fig_profile.add_vline(
+                x=lambda_hat,
+                line_dash="dash",
+                annotation_text="MLE λ"
+            )
+
+            fig_profile.add_hline(
+                y=cutoff,
+                line_dash="dash",
+                annotation_text="95% CI cutoff"
+            )
+
+            st.plotly_chart(fig_profile)
+
+            ci_lambdas = profile_df.loc[
+                profile_df["loglik"] >= cutoff, "lambda"
+            ]
+
+            if not ci_lambdas.empty:
+                st.write(
+                    f"Approximate 95% CI for λ: "
+                    f"({ci_lambdas.min():.2f}, {ci_lambdas.max():.2f})"
+                )
+
+            # --------------------------------------------------
             # Snap to recommended λ
+            # --------------------------------------------------
+
             if -2.5 <= lambda_hat < -1.5:
                 lambda_rec = -2
                 trans_name = "Inverse Square"
@@ -176,9 +239,13 @@ def run():
             st.info(f"Teaching Note: {note}")
 
             # Apply transformation
-            y_transformed = boxcox(y_original, lmbda=lambda_rec)
+            if lambda_rec == 0:
+                y_transformed = np.log(y_original)
+            else:
+                y_transformed = (y_original**lambda_rec - 1) / lambda_rec
+
             transformed_response = f"{response}_boxcox"
-            df[transformed_response] = y_transformed
+            df.loc[y_original.index, transformed_response] = y_transformed
 
             # Skewness comparison
             st.subheader("Skewness Comparison")
@@ -199,9 +266,6 @@ def run():
                     x=y_transformed,
                     title=f"Transformed (Skew={skew_after:.3f})"
                 ))
-
-            if abs(skew_after) < abs(skew_before):
-                st.success("Skewness reduced after transformation.")
 
             stat_bc, p_bc = shapiro(y_transformed)
             st.write(f"Post-Transformation p-value: {p_bc:.4f}")
@@ -295,11 +359,25 @@ def run():
 
     preds = model.predict(df)
 
+    if lambda_rec is not None:
+        if lambda_rec == 0:
+            preds = np.exp(preds)
+        elif lambda_rec != 1:
+            preds = (lambda_rec * preds + 1) ** (1 / lambda_rec)
+
+        y_actual = df[response_original]
+    else:
+        y_actual = df[response_original]
+
     fig2 = px.scatter(
         x=preds,
-        y=df[response],
+        y=y_actual,
         labels={'x': 'Predicted', 'y': 'Actual'}
     )
 
     st.plotly_chart(fig2)
     st.write("Points closer to the diagonal indicate better predictions.")
+
+
+if __name__ == "__main__":
+    run()
