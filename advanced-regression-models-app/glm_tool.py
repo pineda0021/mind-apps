@@ -78,11 +78,13 @@ def run():
     )
     st.plotly_chart(fig)
 
-    if len(df[response].dropna()) >= 3:
-        qq_fig = sm.qqplot(df[response].dropna(), line='s')
+    y_clean = df[response].dropna()
+
+    if len(y_clean) >= 3:
+        qq_fig = sm.qqplot(y_clean, line='s')
         st.pyplot(qq_fig.figure)
 
-        stat, p = shapiro(df[response].dropna())
+        stat, p = shapiro(y_clean)
 
         st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
         st.write(f"p-value: {p:.4f}")
@@ -127,7 +129,7 @@ def run():
     st.header("4️⃣ Model Fit Evaluation")
 
     n = int(model.nobs)
-    k = int(model.df_model) + 1  # includes intercept
+    k = int(model.df_model) + 1
 
     loglik = model.llf
     aic = model.aic
@@ -150,7 +152,7 @@ def run():
 
     st.subheader("Likelihood Ratio (Deviance) Test")
 
-    null_model = smf.ols(formula=response + " ~ 1", data=df).fit()
+    null_model = smf.ols(response + " ~ 1", data=df).fit()
 
     lr_stat = -2 * (null_model.llf - model.llf)
     df_diff = int(model.df_model)
@@ -193,19 +195,42 @@ def run():
         return equation
 
     # ======================================================
-    # 9. REDUCED MODEL
+    # 9. REDUCED MODEL (FIXED)
     # ======================================================
 
-    def refit_reduced_model(model, alpha=0.05):
+    def refit_reduced_model(model, predictors, categorical_vars, reference_dict, alpha=0.05):
 
         pvals = model.pvalues.drop("Intercept", errors="ignore")
-        significant_terms = pvals[pvals < alpha].index.tolist()
 
-        if not significant_terms:
+        significant_predictors = set()
+
+        for param_name, pval in pvals.items():
+            if pval < alpha:
+
+                if param_name.startswith("C("):
+                    var_name = param_name.split("[")[0]
+                    var_name = var_name.replace("C(", "").split(",")[0]
+                    significant_predictors.add(var_name)
+                else:
+                    significant_predictors.add(param_name)
+
+        if not significant_predictors:
             return None
 
-        response = model.model.endog_names
-        reduced_formula = response + " ~ " + " + ".join(significant_terms)
+        terms = []
+
+        for var in predictors:
+            if var in significant_predictors:
+                if var in categorical_vars:
+                    ref = reference_dict[var]
+                    terms.append(f'C({var}, Treatment(reference="{ref}"))')
+                else:
+                    terms.append(var)
+
+        if not terms:
+            return None
+
+        reduced_formula = response + " ~ " + " + ".join(terms)
 
         return smf.ols(
             formula=reduced_formula,
@@ -215,7 +240,12 @@ def run():
     st.subheader("Fitted Regression Equation (Full Model)")
     st.latex(build_equation(model, response))
 
-    reduced_model = refit_reduced_model(model)
+    reduced_model = refit_reduced_model(
+        model,
+        predictors,
+        categorical_vars,
+        reference_dict
+    )
 
     if reduced_model is not None:
         st.subheader("Reduced Model Equation")
@@ -237,12 +267,10 @@ def run():
     for var in predictors:
 
         if var in categorical_vars:
-
             input_dict[var] = st.selectbox(
                 var,
-                df[var].astype("category").cat.categories
+                df[var].cat.categories
             )
-
         else:
             numeric_series = pd.to_numeric(df[var], errors="coerce")
 
@@ -263,7 +291,10 @@ def run():
         new_df = pd.DataFrame([input_dict])
 
         for var in categorical_vars:
-            new_df[var] = new_df[var].astype("category")
+            new_df[var] = pd.Categorical(
+                new_df[var],
+                categories=df[var].cat.categories
+            )
 
         prediction = model.predict(new_df)[0]
         st.success(f"Predicted {response}: {prediction:.4f}")
