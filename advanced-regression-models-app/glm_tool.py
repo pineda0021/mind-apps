@@ -156,25 +156,48 @@ def run():
     # Interpretation Panel
     # ======================================================
 
-    st.subheader("Interpretation of Model Fit Metrics")
-
-    st.markdown("**Log-Likelihood (ℓ)**")
+   st.markdown("**Log-Likelihood (ℓ)**")
     st.latex(r"\ell(\hat{\beta})")
+    st.markdown(
+    "Measures how probable the observed data are under the fitted model. "
+    "Larger values indicate better model fit."
+    )
 
     st.markdown("**AIC**")
     st.latex(r"AIC = -2\ell + 2k")
+    st.markdown(
+    "Balances model fit and model complexity. "
+    "Lower AIC values indicate a better trade-off between goodness-of-fit and number of parameters."
+    )
 
     st.markdown("**AICc**")
     st.latex(r"AIC_c = AIC + \frac{2k(k+1)}{n-k-1}")
+    st.markdown(
+    "Small-sample corrected AIC. "
+    "Recommended when the ratio n/k is small. "
+    "Lower values are preferred."
+    )
 
     st.markdown("**BIC**")
     st.latex(r"BIC = -2\ell + k\ln(n)")
+    st.markdown(
+    "Similar to AIC but penalizes model complexity more strongly. "
+    "Often favors more parsimonious (simpler) models."
+    )
 
     st.markdown("**Residual Standard Deviation (σ̂)**")
     st.latex(r"\hat{\sigma} = \sqrt{\frac{SSE}{n-k}}")
+    st.markdown(
+    "Estimates the standard deviation of the regression errors. "
+    "Represents the typical size of unexplained variation in the response variable."
+    )
 
     st.markdown("**RMSE**")
     st.latex(r"RMSE = \sqrt{\frac{1}{n}\sum (y_i - \hat{y}_i)^2}")
+    st.markdown(
+    "Measures the average magnitude of prediction error on the response scale. "
+    "Lower RMSE indicates better predictive accuracy."
+    )
 
     # ======================================================
     # 7. LIKELIHOOD RATIO TEST
