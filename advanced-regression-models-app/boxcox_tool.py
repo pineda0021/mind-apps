@@ -95,6 +95,7 @@ def run():
     st.header("3️⃣ Transformation (If Needed)")
 
     lambda_hat = None
+    transformed = False
 
     if p <= 0.05:
 
@@ -110,6 +111,8 @@ def run():
             lambda_hat = recommended_lambdas[np.argmin(abs(recommended_lambdas - lambda_mle))]
 
             st.info(f"Using Recommended λ = {lambda_hat}")
+
+            transformed = True
 
             if lambda_hat == -2:
                 df[response] = 1 / (y_original ** 2)
@@ -165,7 +168,32 @@ def run():
     st.text(model.summary())
 
     # ======================================================
-    # 7️⃣ MODEL FIT STATISTICS
+    # 7️⃣ FITTED REGRESSION EQUATION
+    # ======================================================
+
+    if transformed:
+        st.subheader("Fitted Regression Equation (on Transformed Scale)")
+    else:
+        st.subheader("Fitted Regression Equation")
+
+    coefs = model.params
+    equation_terms = []
+
+    for name, coef in coefs.items():
+        if name == "Intercept":
+            equation_terms.append(f"{coef:.4f}")
+        else:
+            equation_terms.append(f"{coef:.4f}({name})")
+
+    equation = response + " = " + " + ".join(equation_terms)
+
+    st.code(equation)
+
+    if transformed:
+        st.info("Interpret coefficients on the transformed scale.")
+
+    # ======================================================
+    # 8️⃣ MODEL FIT STATISTICS
     # ======================================================
 
     st.subheader("Model Fit Statistics")
@@ -194,31 +222,7 @@ def run():
     st.metric("RMSE", round(rmse, 4))
 
     # ======================================================
-    # 📘 INTERPRETATION (Same Style, Cleaner Rendering)
-    # ======================================================
-
-    st.subheader("Interpretation of Model Fit Metrics")
-
-    st.markdown("**Log-Likelihood (ℓ)**")
-    st.latex(r"\ell(\hat{\beta})")
-
-    st.markdown("**AIC**")
-    st.latex(r"AIC = -2\ell + 2k")
-
-    st.markdown("**AICc**")
-    st.latex(r"AICc = AIC + \frac{2k(k+1)}{n-k-1}")
-
-    st.markdown("**BIC**")
-    st.latex(r"BIC = -2\ell + k\ln(n)")
-
-    st.markdown("**Residual Standard Deviation (σ̂)**")
-    st.latex(r"\hat{\sigma} = \sqrt{\frac{SSE}{n-k}}")
-
-    st.markdown("**RMSE**")
-    st.latex(r"RMSE = \sqrt{\frac{1}{n} \sum (y_i - \hat{y}_i)^2}")
-
-    # ======================================================
-    # 5️⃣ PREDICTION
+    # 9️⃣ PREDICTION
     # ======================================================
 
     st.header("5️⃣ Prediction")
@@ -227,22 +231,16 @@ def run():
 
     for var in predictors:
         if var in categorical_vars:
-            input_dict[var] = st.selectbox(
-                var,
-                df[var].astype("category").cat.categories
-            )
+            input_dict[var] = st.selectbox(var, df[var].astype("category").cat.categories)
         else:
-            input_dict[var] = st.number_input(
-                var,
-                value=float(df[var].mean())
-            )
+            input_dict[var] = st.number_input(var, value=float(df[var].mean()))
 
     if st.button("Predict"):
 
         new_df = pd.DataFrame([input_dict])
         pred = model.predict(new_df)[0]
 
-        if lambda_hat is not None:
+        if transformed:
 
             if lambda_hat == -2:
                 pred_original = 1 / np.sqrt(pred)
