@@ -1,30 +1,42 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
-from scipy.stats import shapiro, chi2, boxcox, boxcox_normmax
-import numpy as np
+from scipy.stats import shapiro, boxcox, boxcox_normmax, boxcox_llf
 
+# ======================================================
+# APP
+# ======================================================
 
 def run():
 
-    st.title("General Linear Regression Model")
+    st.title("📘 Ordinary Least Squares (OLS) Regression Lab")
+    st.markdown("""
+    This lab walks through the full statistical workflow:
+
+    1. Specify model  
+    2. Check assumptions  
+    3. Consider Box–Cox transformation  
+    4. Fit model  
+    5. Diagnose residuals  
+    6. Interpret results  
+
+    ⚠ This is an **OLS linear model with normal errors**, not a generalized linear model.
+    """)
 
     # ======================================================
     # 1. DATA UPLOAD
     # ======================================================
 
-    uploaded_file = st.file_uploader(
-        "Upload CSV file",
-        type=["csv"],
-        key="glm_upload"
-    )
+    uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
 
     if uploaded_file is None:
         return
 
-    df = pd.read_csv(uploaded_file)
+    df_original = pd.read_csv(uploaded_file)
+    df = df_original.copy()
 
     st.subheader("Data Preview")
     st.dataframe(df.head())
@@ -33,7 +45,7 @@ def run():
     # 2. VARIABLE SELECTION
     # ======================================================
 
-    st.header("1️⃣ Select Variables")
+    st.header("1️⃣ Model Specification")
 
     response = st.selectbox("Select Response Variable (Y)", df.columns)
 
@@ -46,7 +58,7 @@ def run():
         return
 
     categorical_vars = st.multiselect(
-        "Select Categorical Variables (Factors)",
+        "Select Categorical Predictors",
         predictors
     )
 
@@ -55,75 +67,74 @@ def run():
     for col in categorical_vars:
         df[col] = df[col].astype("category")
         ref = st.selectbox(
-            f"Select reference level for {col}",
+            f"Reference level for {col}",
             df[col].cat.categories,
             key=f"ref_{col}"
         )
         reference_dict[col] = ref
 
+    # Build formula
+    terms = []
+    for var in predictors:
+        if var in categorical_vars:
+            ref = reference_dict[var]
+            terms.append(f'C({var}, Treatment(reference="{ref}"))')
+        else:
+            terms.append(var)
+
+    formula = response + " ~ " + " + ".join(terms)
+
+    st.code(formula)
+
     # ======================================================
-    # 3. RESPONSE NORMALITY CHECK
+    # 3. RESPONSE NORMALITY
     # ======================================================
 
-    st.header("2️⃣ Response Normality Check")
+    st.header("2️⃣ Response Distribution")
 
     if not pd.api.types.is_numeric_dtype(df[response]):
         st.error("Response must be numeric.")
         return
 
-    fig = px.histogram(df, x=response, marginal="box")
-    st.plotly_chart(fig)
-
     y_clean = df[response].dropna()
+
+    fig_hist = px.histogram(df, x=response, marginal="box")
+    st.plotly_chart(fig_hist)
 
     if len(y_clean) >= 3:
         qq_fig = sm.qqplot(y_clean, line='s')
         st.pyplot(qq_fig.figure)
 
         stat, p = shapiro(y_clean)
-        st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
-        st.write(f"p-value: {p:.4f}")
+        st.write(f"Shapiro-Wilk p-value: {p:.4f}")
 
         if p > 0.05:
-            st.success("Response appears normally distributed.")
+            st.success("No strong evidence against normality.")
         else:
-            st.warning("Response does NOT appear normally distributed.")
-    else:
-        st.warning("Not enough data for Shapiro-Wilk test.")
+            st.warning("Evidence of non-normality detected.")
 
     # ======================================================
-    # 3B. BOX-COX FOLLOW-UP
+    # 4. BOX-COX
     # ======================================================
 
-    st.subheader("Box-Cox Transformation Follow-Up")
+    st.header("3️⃣ Box–Cox Transformation (Optional)")
 
     transformed = False
-    lambda_hat = None
+    df_model = df.copy()
 
-    terms = []
-    for var in predictors:
-        if var in categorical_vars:
-            ref = reference_dict[var]
-            terms.append(f'C({var}, Treatment(reference=\"{ref}\"))')
-        else:
-            terms.append(var)
+    if (y_clean > 0).all():
 
-    formula = response + " ~ " + " + ".join(terms)
-    original_model = smf.ols(formula=formula, data=df).fit()
-
-    if len(y_clean) >= 3 and (y_clean > 0).all():
-
-        lambda_mle = boxcox_normmax(y_clean, method="mle")
-        st.write(f"Estimated λ (MLE): {lambda_mle:.4f}")
+        lambda_mle = boxcox_normmax(y_clean)
+        st.write(f"MLE λ = {lambda_mle:.4f}")
 
         lambdas = np.linspace(-2, 2, 200)
-        llf_vals = [boxcox(y_clean, lmbda=l)[1] for l in lambdas]
+        llf_vals = [boxcox_llf(l, y_clean) for l in lambdas]
 
         fig_lambda = px.line(
             x=lambdas,
             y=llf_vals,
             labels={"x": "Lambda (λ)", "y": "Log-Likelihood"},
-            title="Box-Cox Profile Log-Likelihood"
+            title="Box–Cox Profile Log-Likelihood"
         )
 
         fig_lambda.add_vline(
@@ -134,132 +145,152 @@ def run():
 
         st.plotly_chart(fig_lambda)
 
-        suggested_lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
-        suggested = suggested_lambdas[np.argmin(abs(suggested_lambdas - lambda_mle))]
-        st.write(f"Suggested transformation λ ≈ {suggested}")
+        use_exact = st.checkbox("Use exact MLE λ")
 
-        if st.checkbox("Apply Suggested Transformation"):
+        if st.checkbox("Apply Box–Cox Transformation"):
 
             transformed = True
-            lambda_hat = suggested
             y_original = df[response].copy()
 
-            if suggested == -2:
-                y_transformed = 1 / (y_original ** 2)
-                st.latex(r"y^* = \frac{1}{y^2}")
-            elif suggested == -1:
-                y_transformed = 1 / y_original
-                st.latex(r"y^* = \frac{1}{y}")
-            elif suggested == -0.5:
-                y_transformed = 1 / np.sqrt(y_original)
-                st.latex(r"y^* = \frac{1}{\sqrt{y}}")
-            elif suggested == 0:
-                y_transformed = np.log(y_original)
-                st.latex(r"y^* = \ln(y)")
-            elif suggested == 0.5:
-                y_transformed = np.sqrt(y_original)
-                st.latex(r"y^* = \sqrt{y}")
-            elif suggested == 2:
-                y_transformed = y_original ** 2
-                st.latex(r"y^* = y^2")
+            if use_exact:
+                y_transformed = boxcox(y_original, lmbda=lambda_mle)
+                st.write(f"Using exact λ = {lambda_mle:.4f}")
+            else:
+                rounded = round(lambda_mle, 1)
+                y_transformed = boxcox(y_original, lmbda=rounded)
+                st.write(f"Using rounded λ = {rounded}")
 
-            df[response] = y_transformed
+            df_model[response] = y_transformed
 
-            # Side-by-side histograms
-            st.subheader("Original vs Transformed Distribution")
             col1, col2 = st.columns(2)
-
             with col1:
-                st.plotly_chart(px.histogram(x=y_original, title="Original", marginal="box"))
-
+                st.plotly_chart(px.histogram(x=y_original, title="Original"))
             with col2:
-                st.plotly_chart(px.histogram(x=y_transformed, title="Transformed", marginal="box"))
+                st.plotly_chart(px.histogram(x=y_transformed, title="Transformed"))
 
-            # Shapiro again
-            st.subheader("Normality Test After Transformation")
-            stat_t, p_t = shapiro(y_transformed.dropna())
-            st.write(f"Shapiro-Wilk Statistic: {stat_t:.4f}")
-            st.write(f"p-value: {p_t:.4f}")
-
-            if p_t > 0.05:
-                st.success("Transformed response appears normally distributed.")
-            else:
-                st.warning("Transformed response still deviates from normality.")
-
-            st.subheader("Interpretation Guidance")
-            if suggested == 0:
-                st.markdown("Log transformation: coefficients approximate % change.")
-            elif suggested == -1:
-                st.markdown("Reciprocal transformation: inverse relationship.")
-            elif suggested == 0.5:
-                st.markdown("Square-root transformation: nonlinear interpretation.")
-            else:
-                st.markdown("Power transformation: interpretation on transformed scale.")
+    else:
+        st.info("Box–Cox requires strictly positive response values.")
 
     # ======================================================
-    # 4. FIT MODEL
+    # 5. FIT MODEL
     # ======================================================
 
-    st.header("3️⃣ Fit General Linear Model")
+    st.header("4️⃣ Fit OLS Model")
 
-    model = smf.ols(formula=formula, data=df).fit()
+    model_original = smf.ols(formula=formula, data=df).fit()
+    model = smf.ols(formula=formula, data=df_model).fit()
+
     st.subheader("Model Summary")
     st.text(model.summary())
 
-    # Model comparison
+    # Confidence intervals
+    st.subheader("95% Confidence Intervals")
+    st.dataframe(model.conf_int())
+
+    # ======================================================
+    # 6. MODEL COMPARISON
+    # ======================================================
+
     if transformed:
-        st.header("Model Comparison: Original vs Transformed")
+        st.subheader("Model Comparison")
 
         comparison_df = pd.DataFrame({
             "Model": ["Original", "Transformed"],
-            "Log-Likelihood": [original_model.llf, model.llf],
-            "AIC": [original_model.aic, model.aic],
-            "BIC": [original_model.bic, model.bic]
+            "Log-Likelihood": [model_original.llf, model.llf],
+            "AIC": [model_original.aic, model.aic],
+            "BIC": [model_original.bic, model.bic]
         })
 
         st.dataframe(comparison_df)
 
-        if model.aic < original_model.aic:
-            st.success("Transformed model improves fit based on AIC.")
-        else:
-            st.info("Original model may be preferable based on AIC.")
+        st.caption("Note: AIC comparison across transformed responses should be interpreted cautiously.")
 
     # ======================================================
-    # 5. MODEL FIT STATISTICS
+    # 7. RESIDUAL DIAGNOSTICS
     # ======================================================
 
-    st.header("4️⃣ Model Fit Evaluation")
+    st.header("5️⃣ Assumption Checks")
 
-    n = int(model.nobs)
-    k = int(model.df_model) + 1
+    residuals = model.resid
+    fitted = model.fittedvalues
 
-    loglik = model.llf
-    aic = model.aic
-    bic = model.bic
-    sigma_hat = np.sqrt(model.mse_resid)
-    rmse = np.sqrt(np.mean(model.resid ** 2))
+    # Residual vs Fitted
+    fig_resid = px.scatter(
+        x=fitted,
+        y=residuals,
+        labels={'x': 'Fitted Values', 'y': 'Residuals'},
+        title="Residuals vs Fitted"
+    )
+    fig_resid.add_hline(y=0)
+    st.plotly_chart(fig_resid)
 
-    col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("Log-Likelihood", round(loglik, 2))
-    col2.metric("AIC", round(aic, 2))
-    col3.metric("BIC", round(bic, 2))
-    col4.metric("σ̂", round(sigma_hat, 4))
-    col5.metric("RMSE", round(rmse, 4))
+    # Residual QQ
+    qq_resid = sm.qqplot(residuals, line='s')
+    st.pyplot(qq_resid.figure)
+
+    stat_r, p_r = shapiro(residuals)
+    st.write(f"Residual Shapiro-Wilk p-value: {p_r:.4f}")
+
+    # Cook's Distance
+    influence = model.get_influence()
+    cooks = influence.cooks_distance[0]
+
+    fig_cook = px.scatter(
+        x=np.arange(len(cooks)),
+        y=cooks,
+        labels={'x': 'Observation Index', 'y': "Cook's Distance"},
+        title="Cook's Distance"
+    )
+    st.plotly_chart(fig_cook)
 
     # ======================================================
-    # 6. PREDICTED VS ACTUAL
+    # 8. PREDICTED VS ACTUAL
     # ======================================================
 
-    st.header("5️⃣ Predicted vs Actual")
+    st.header("6️⃣ Predicted vs Actual")
 
-    predicted_vals = model.predict(df)
+    predicted_vals = model.predict(df_model)
+
     fig2 = px.scatter(
         x=predicted_vals,
-        y=df[response],
-        labels={'x': 'Predicted', 'y': 'Actual'},
-        title="Predicted vs Actual Values"
+        y=df_model[response],
+        labels={'x': 'Predicted', 'y': 'Observed'},
+        title="Predicted vs Observed"
     )
+
+    min_val = min(predicted_vals.min(), df_model[response].min())
+    max_val = max(predicted_vals.max(), df_model[response].max())
+
+    fig2.add_shape(
+        type="line",
+        x0=min_val,
+        y0=min_val,
+        x1=max_val,
+        y1=max_val
+    )
+
     st.plotly_chart(fig2)
+
+    # ======================================================
+    # 9. FIT STATISTICS
+    # ======================================================
+
+    st.header("7️⃣ Model Fit Metrics")
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("R²", round(model.rsquared, 4))
+    col2.metric("Adj R²", round(model.rsquared_adj, 4))
+    col3.metric("AIC", round(model.aic, 2))
+    col4.metric("RMSE", round(np.sqrt(np.mean(residuals**2)), 4))
+
+    st.markdown("""
+    ### Interpretation Guide
+
+    - **R²**: Proportion of variance explained.
+    - **Residual vs Fitted**: Look for random scatter.
+    - **QQ Plot**: Points should follow straight line.
+    - **Cook's Distance**: Values > 4/n may indicate influential points.
+    """)
 
 
 if __name__ == "__main__":
