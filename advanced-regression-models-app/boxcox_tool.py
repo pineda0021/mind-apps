@@ -116,8 +116,10 @@ def run():
             st.error("Box-Cox requires strictly positive response values.")
         else:
             y_original = df[response].dropna()
-
-            lambda_hat = boxcox_normmax(y_original, method="mle")
+            lambdas = np.arange(-3, 3.25, 0.25)
+            llf_vals = [boxcox(y_original, lmbda=l)[1] for l in lambdas]
+            lambda_hat = lambdas[np.argmax(llf_vals)]
+            lambda_hat = boxcox_normmax(y_original, method=lambda_rec)
             st.write(f"Estimated λ (MLE): **{lambda_hat:.4f}**")
 
             # Snap to recommended λ
