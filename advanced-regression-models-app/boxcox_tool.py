@@ -87,17 +87,17 @@ def run():
     st.code(formula)
 
     # ======================================================
-# 3️⃣ Box–Cox Transformation (Using Standard Formula)
-# ======================================================
+    # 3️⃣ Box–Cox Transformation (Using Standard Formula)
+    # ======================================================
 
-st.header("3️⃣ Box–Cox Transformation (Optional)")
+    st.header("3️⃣ Box–Cox Transformation (Optional)")
 
-transformed = False
-df_model = df.copy()
+    transformed = False
+    df_model = df.copy()
 
-y_clean = df[response].dropna()
+    y_clean = df[response].dropna()
 
-if (y_clean > 0).all():
+    if (y_clean > 0).all():
 
     lambda_mle = boxcox_normmax(y_clean)
     st.write(f"MLE λ = {lambda_mle:.4f}")
