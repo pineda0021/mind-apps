@@ -114,7 +114,7 @@ def run():
             "A Box-Cox transformation will be applied."
         )
 
-        if (y <= 0).any():
+        if (df[response] <= 0).any():
             st.error("Box-Cox requires strictly positive response values.")
         else:
             y_original = y
@@ -203,9 +203,11 @@ def run():
             if abs(skew_after) < abs(skew_before):
                 st.success("Skewness reduced after transformation.")
 
+            # Re-check normality
             stat_bc, p_bc = shapiro(y_transformed)
             st.write(f"Post-Transformation p-value: {p_bc:.4f}")
 
+            # Fit original model for comparison
             original_formula = response_original + " ~ " + " + ".join(predictors)
             original_model = smf.ols(original_formula, data=df).fit()
 
@@ -216,10 +218,11 @@ def run():
     # ======================================================
 
     terms = []
+
     for var in predictors:
         if var in categorical_vars:
             ref = reference_dict[var]
-            terms.append(f'C({var}, Treatment(reference="{ref}"))')
+            terms.append(f'C({var}, Treatment(reference=\"{ref}\"))')
         else:
             terms.append(var)
 
@@ -259,7 +262,38 @@ def run():
         st.dataframe(comp)
 
     # ======================================================
-    # 8️⃣ PREDICTION
+    # 8️⃣ FITTED EQUATION
+    # ======================================================
+
+    def build_equation(model, response):
+        params = model.params
+        eq = f"\\hat{{E}}({response}) = {round(params['Intercept'],4)}"
+        for name in params.index:
+            if name != "Intercept":
+                eq += f" + {round(params[name],4)}\\cdot {name}"
+        return eq
+
+    st.subheader("Fitted Regression Equation")
+    st.latex(build_equation(model, response))
+
+    # ======================================================
+    # 9️⃣ INTERPRETATION OF COEFFICIENTS
+    # ======================================================
+
+    st.header("5️⃣ Interpretation of Coefficients")
+
+    for name, coef in model.params.items():
+        if name == "Intercept":
+            continue
+        coef = round(coef, 4)
+        st.write(
+            f"For every-unit increase in **{name}**, "
+            f"the expected value of **{response_original}** changes by "
+            f"{coef} units, holding other variables constant."
+        )
+
+    # ======================================================
+    # 🔟 PREDICTION
     # ======================================================
 
     st.header("6️⃣ Prediction")
@@ -288,7 +322,7 @@ def run():
             st.success(f"Predicted {response_original}: {pred:.4f}")
 
     # ======================================================
-    # 9️⃣ PREDICTED VS ACTUAL
+    # 1️⃣1️⃣ PREDICTED VS ACTUAL
     # ======================================================
 
     st.header("7️⃣ Predicted vs Actual")
