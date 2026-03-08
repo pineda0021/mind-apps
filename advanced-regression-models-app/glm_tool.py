@@ -156,48 +156,29 @@ def run():
     # Interpretation Panel
     # ======================================================
 
-   st.markdown("**Log-Likelihood (ℓ)**")
+    st.markdown("**Log-Likelihood (ℓ)**")
     st.latex(r"\ell(\hat{\beta})")
-    st.markdown(
-    "Measures how probable the observed data are under the fitted model. "
-    "Larger values indicate better model fit."
-    )
+    st.markdown("Measures how probable the observed data are under the fitted model.")
 
     st.markdown("**AIC**")
     st.latex(r"AIC = -2\ell + 2k")
-    st.markdown(
-    "Balances model fit and model complexity. "
-    "Lower AIC values indicate a better trade-off between goodness-of-fit and number of parameters."
-    )
+    st.markdown("Balances model fit and complexity. Lower values are preferred.")
 
     st.markdown("**AICc**")
     st.latex(r"AIC_c = AIC + \frac{2k(k+1)}{n-k-1}")
-    st.markdown(
-    "Small-sample corrected AIC. "
-    "Recommended when the ratio n/k is small. "
-    "Lower values are preferred."
-    )
+    st.markdown("Small-sample corrected AIC. Lower values are preferred.")
 
     st.markdown("**BIC**")
     st.latex(r"BIC = -2\ell + k\ln(n)")
-    st.markdown(
-    "Similar to AIC but penalizes model complexity more strongly. "
-    "Often favors more parsimonious (simpler) models."
-    )
+    st.markdown("Penalizes model complexity more strongly than AIC.")
 
     st.markdown("**Residual Standard Deviation (σ̂)**")
     st.latex(r"\hat{\sigma} = \sqrt{\frac{SSE}{n-k}}")
-    st.markdown(
-    "Estimates the standard deviation of the regression errors. "
-    "Represents the typical size of unexplained variation in the response variable."
-    )
+    st.markdown("Typical size of unexplained variation in the response.")
 
     st.markdown("**RMSE**")
     st.latex(r"RMSE = \sqrt{\frac{1}{n}\sum (y_i - \hat{y}_i)^2}")
-    st.markdown(
-    "Measures the average magnitude of prediction error on the response scale. "
-    "Lower RMSE indicates better predictive accuracy."
-    )
+    st.markdown("Average magnitude of prediction error.")
 
     # ======================================================
     # 7. LIKELIHOOD RATIO TEST
@@ -214,11 +195,6 @@ def run():
     st.write(f"LR Statistic: {lr_stat:.4f}")
     st.write(f"Degrees of Freedom: {df_diff}")
     st.write(f"p-value: {p_value_lr:.6f}")
-
-    if p_value_lr < 0.05:
-        st.success("Full model significantly improves over intercept-only model.")
-    else:
-        st.warning("Model does not significantly improve over intercept-only model.")
 
     # ======================================================
     # 8. EQUATION BUILDER
@@ -251,6 +227,38 @@ def run():
     st.latex(build_equation(model, response))
 
     # ======================================================
+    # Coefficient Interpretation
+    # ======================================================
+
+    st.subheader("Coefficient Interpretation")
+
+    for name in model.params.index:
+
+        coef = round(model.params[name], 4)
+        pval = model.pvalues[name]
+
+        if name == "Intercept":
+            st.markdown(
+                f"**Intercept ({coef})**: Estimated mean of {response} "
+                f"when all predictors are at their reference levels or equal to zero."
+            )
+        elif name.startswith("C(") and "T." in name:
+            var_name = name.split("[")[0]
+            var_name = var_name.replace("C(", "").split(",")[0]
+            level = name.split("T.")[1].rstrip("]")
+            st.markdown(
+                f"**{var_name} = {level} (β = {coef})**: Mean difference in {response} "
+                f"between {level} and the reference level, holding other variables constant. "
+                f"{'Statistically significant.' if pval < 0.05 else 'Not statistically significant.'}"
+            )
+        else:
+            st.markdown(
+                f"**{name} (β = {coef})**: For each one-unit increase in {name}, "
+                f"{response} changes by {coef} units, holding other predictors constant. "
+                f"{'Statistically significant.' if pval < 0.05 else 'Not statistically significant.'}"
+            )
+
+    # ======================================================
     # 9. PREDICTION
     # ======================================================
 
@@ -264,18 +272,7 @@ def run():
             input_dict[var] = st.selectbox(var, df[var].cat.categories)
         else:
             numeric_series = pd.to_numeric(df[var], errors="coerce")
-
-            if numeric_series.notna().sum() > 0:
-                input_dict[var] = st.number_input(
-                    var,
-                    value=float(numeric_series.mean())
-                )
-            else:
-                df[var] = df[var].astype("category")
-                input_dict[var] = st.selectbox(
-                    var,
-                    df[var].cat.categories
-                )
+            input_dict[var] = st.number_input(var, value=float(numeric_series.mean()))
 
     if st.button("Predict"):
 
