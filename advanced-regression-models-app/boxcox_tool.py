@@ -94,22 +94,25 @@ def run():
         st.warning("Response does NOT appear normally distributed.")
 
     # ======================================================
-    # 4️⃣ BOX-COX TRANSFORMATION
+    # 4️⃣ BOX-COX TRANSFORMATION (AUTO IF NEEDED)
     # ======================================================
 
-    st.header("3️⃣ Box-Cox Transformation (Optional)")
+    st.header("3️⃣ Box-Cox Transformation (If Needed)")
 
     transformed_response = None
+    lambda_hat = None
     original_model = None
 
-    if (df[response] <= 0).any():
-        st.warning("Box-Cox requires strictly positive response values.")
-    else:
+    if p <= 0.05:
 
-        apply_boxcox = st.checkbox("Apply Box-Cox Transformation")
+        st.warning(
+            "The response is not normally distributed. "
+            "A Box-Cox transformation will be applied."
+        )
 
-        if apply_boxcox:
-
+        if (df[response] <= 0).any():
+            st.error("Box-Cox requires strictly positive response values.")
+        else:
             y_original = df[response].dropna()
 
             lambda_hat = boxcox_normmax(y_original, method="mle")
@@ -135,13 +138,22 @@ def run():
 
             st.write(f"Estimated λ (MLE): **{lambda_hat:.4f}**")
 
-            # Transform
+            # --- NEW: Show transformation formula ---
+            if abs(lambda_hat) > 1e-6:
+                st.latex(
+                    rf"y^* = \frac{{y^{{{lambda_hat:.3f}}} - 1}}{{{lambda_hat:.3f}}}"
+                )
+            else:
+                st.latex(r"y^* = \ln(y)")
+            # ---------------------------------------
+
+            # Apply transformation
             y_transformed = boxcox(y_original, lmbda=lambda_hat)
             transformed_response = f"{response}_boxcox"
             df[transformed_response] = y_transformed
 
-            # Diagnostics
-            st.subheader("Transformed Response Diagnostics")
+            # Re-check normality
+            st.subheader("Normality Check After Box-Cox")
 
             fig_bc = px.histogram(
                 df,
@@ -160,14 +172,24 @@ def run():
             st.write(f"p-value: {p_bc:.4f}")
 
             if p_bc > 0.05:
-                st.success("Transformed response appears normally distributed.")
+                st.success("The transformed response now appears normally distributed.")
             else:
-                st.warning("Transformed response still deviates from normality.")
+                st.warning("The transformed response still deviates from normality.")
 
-            use_transformed = st.checkbox("Use transformed response in model")
+            # Save original model for comparison later
+            original_formula_terms = []
+            for var in predictors:
+                if var in categorical_vars:
+                    ref = reference_dict[var]
+                    original_formula_terms.append(f'C({var}, Treatment(reference=\"{ref}\"))')
+                else:
+                    original_formula_terms.append(var)
 
-            if use_transformed:
-                response = transformed_response
+            original_formula = df.columns[df.columns.get_loc(response)] + " ~ " + " + ".join(original_formula_terms)
+            original_model = smf.ols(formula=original_formula, data=df).fit()
+
+            # Use transformed response moving forward
+            response = transformed_response
 
     # ======================================================
     # 5️⃣ BUILD FORMULA
@@ -178,7 +200,7 @@ def run():
     for var in predictors:
         if var in categorical_vars:
             ref = reference_dict[var]
-            terms.append(f'C({var}, Treatment(reference="{ref}"))')
+            terms.append(f'C({var}, Treatment(reference=\"{ref}\"))')
         else:
             terms.append(var)
 
@@ -194,11 +216,6 @@ def run():
 
     st.subheader("Model Summary")
     st.text(model.summary())
-
-    # Fit original model for AIC comparison if needed
-    if transformed_response is not None:
-        original_formula = df.columns[0] + " ~ " + " + ".join(terms)
-        original_model = smf.ols(formula=original_formula, data=df).fit()
 
     # ======================================================
     # 7️⃣ MODEL FIT STATISTICS
@@ -228,9 +245,9 @@ def run():
     col5.metric("σ̂ (Residual SD)", round(sigma_hat, 4))
     col6.metric("RMSE", round(rmse, 4))
 
-    # AIC comparison table
+    # --- NEW: AIC Comparison ---
     if original_model is not None:
-        st.subheader("AIC Comparison: Original vs Box-Cox")
+        st.subheader("Model Comparison: Original vs Box-Cox")
 
         comparison = pd.DataFrame({
             "Model": ["Original", "Box-Cox"],
@@ -241,48 +258,14 @@ def run():
 
         st.dataframe(comparison)
 
-    # ======================================================
-    # 8️⃣ LIKELIHOOD RATIO TEST
-    # ======================================================
-
-    st.subheader("Likelihood Ratio (Deviance) Test")
-
-    null_formula = response + " ~ 1"
-    null_model = smf.ols(formula=null_formula, data=df).fit()
-
-    lr_stat = -2 * (null_model.llf - model.llf)
-    df_diff = int(model.df_model)
-    p_value_lr = chi2.sf(lr_stat, df_diff)
-
-    st.write(f"LR Statistic: {lr_stat:.4f}")
-    st.write(f"Degrees of Freedom: {df_diff}")
-    st.write(f"p-value: {p_value_lr:.6f}")
+        if model.aic < original_model.aic:
+            st.success("Box-Cox model shows improved fit (lower AIC).")
+        else:
+            st.info("Original model may be preferable based on AIC.")
+    # ---------------------------------------
 
     # ======================================================
-    # 9️⃣ REGRESSION EQUATION
-    # ======================================================
-
-    def build_equation(model, response):
-
-        params = model.params
-        equation = f"\\widehat{{\\mathbb{{E}}}}({response}) = {round(params['Intercept'],4)}"
-
-        for name in params.index:
-            if name == "Intercept":
-                continue
-
-            coef = round(params[name], 4)
-            sign = "+" if coef >= 0 else "-"
-
-            equation += f" {sign} {abs(coef)} \\cdot {name}"
-
-        return equation
-
-    st.subheader("Fitted Regression Equation")
-    st.latex(build_equation(model, response))
-
-    # ======================================================
-    # 🔟 PREDICTION
+    # 8️⃣ PREDICTION
     # ======================================================
 
     st.header("6️⃣ Prediction")
@@ -303,11 +286,23 @@ def run():
 
     if st.button("Predict"):
         new_df = pd.DataFrame([input_dict])
-        prediction = model.predict(new_df)[0]
-        st.success(f"Predicted {response}: {prediction:.4f}")
+        pred_transformed = model.predict(new_df)[0]
+
+        # --- NEW: Back-transformation ---
+        if lambda_hat is not None:
+            if abs(lambda_hat) > 1e-6:
+                pred_original = (lambda_hat * pred_transformed + 1) ** (1 / lambda_hat)
+            else:
+                pred_original = np.exp(pred_transformed)
+
+            st.success(f"Predicted {response} (transformed): {pred_transformed:.4f}")
+            st.success(f"Predicted original scale: {pred_original:.4f}")
+        else:
+            st.success(f"Predicted {response}: {pred_transformed:.4f}")
+        # --------------------------------
 
     # ======================================================
-    # 1️⃣1️⃣ PREDICTED VS ACTUAL
+    # 9️⃣ PREDICTED VS ACTUAL
     # ======================================================
 
     st.header("7️⃣ Predicted vs Actual")
