@@ -1,38 +1,76 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from scipy.stats import shapiro, chi2
 
 
+# ======================================================
+# PROFILE LIKELIHOOD BOX–COX (MASS-STYLE)
+# ======================================================
+
+def boxcox_profile_mle(df, response, formula, lambda_grid=None):
+
+    if lambda_grid is None:
+        lambda_grid = np.arange(-3, 3.25, 0.25)
+
+    y = df[response]
+
+    if (y <= 0).any():
+        shift = abs(y.min()) + 1
+        y = y + shift
+    else:
+        shift = 0
+
+    log_likelihoods = []
+
+    for lam in lambda_grid:
+
+        if lam == 0:
+            y_trans = np.log(y)
+        else:
+            y_trans = (y**lam - 1) / lam
+
+        df_temp = df.copy()
+        df_temp[response] = y_trans
+
+        model = smf.ols(formula=formula, data=df_temp).fit()
+        log_likelihoods.append(model.llf)
+
+    results = pd.DataFrame({
+        "lambda": lambda_grid,
+        "log_likelihood": log_likelihoods
+    })
+
+    best_row = results.loc[results["log_likelihood"].idxmax()]
+
+    return best_row["lambda"], results, shift
+
+
+# ======================================================
+# MAIN APP
+# ======================================================
+
 def run():
 
     st.title("General Linear Regression Model Lab")
 
-    # ======================================================
-    # 1. DATA UPLOAD
-    # ======================================================
-
-    uploaded_file = st.file_uploader(
-        "Upload CSV file",
-        type=["csv"],
-        key="glm_upload"
-    )
+    uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
 
     if uploaded_file is None:
         return
 
     df = pd.read_csv(uploaded_file)
 
-    # Prevent Patsy formula errors from spaces/special characters
     df.columns = df.columns.str.replace(r"[^\w]", "_", regex=True)
 
     st.subheader("Data Preview")
     st.dataframe(df.head())
 
     # ======================================================
-    # 2. VARIABLE SELECTION
+    # VARIABLE SELECTION
     # ======================================================
 
     st.header("1️⃣ Select Variables")
@@ -47,266 +85,132 @@ def run():
     if not predictors:
         return
 
-    categorical_vars = st.multiselect(
-        "Select Categorical Variables (Factors)",
-        predictors
-    )
+    formula = response + " ~ " + " + ".join(predictors)
 
-    reference_dict = {}
+    # ======================================================
+    # ORIGINAL MODEL
+    # ======================================================
 
-    for col in categorical_vars:
-        df[col] = df[col].astype("category")
-        ref = st.selectbox(
-            f"Select reference level for {col}",
-            df[col].cat.categories,
-            key=f"ref_{col}"
+    st.header("2️⃣ Original Model")
+
+    original_model = smf.ols(formula=formula, data=df).fit()
+
+    st.text(original_model.summary())
+
+    # ======================================================
+    # BOX–COX PROFILE LIKELIHOOD
+    # ======================================================
+
+    st.header("3️⃣ Box–Cox Profile Likelihood")
+
+    if st.checkbox("Estimate λ via Profile Likelihood (MASS-style)"):
+
+        lambda_opt, profile_table, shift = boxcox_profile_mle(
+            df, response, formula
         )
-        reference_dict[col] = ref
 
-    # ======================================================
-    # 3. RESPONSE NORMALITY CHECK
-    # ======================================================
+        st.write(f"Optimal λ = {round(lambda_opt,4)}")
 
-    st.header("2️⃣ Response Normality Check")
+        fig = px.line(
+            profile_table,
+            x="lambda",
+            y="log_likelihood",
+            title="Box–Cox Profile Log-Likelihood"
+        )
 
-    if not pd.api.types.is_numeric_dtype(df[response]):
-        st.error("Response must be numeric.")
-        return
+        st.plotly_chart(fig)
 
-    fig = px.histogram(
-        df,
-        x=response,
-        title=f"Histogram of {response}",
-        marginal="box"
-    )
-    st.plotly_chart(fig)
+        # ======================================================
+        # REFIT TRANSFORMED MODEL
+        # ======================================================
 
-    y_clean = df[response].dropna()
+        y = df[response]
 
-    if len(y_clean) >= 3:
-        qq_fig = sm.qqplot(y_clean, line='s')
-        st.pyplot(qq_fig.figure)
+        if shift != 0:
+            y = y + shift
 
-        stat, p = shapiro(y_clean)
-
-        st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
-        st.write(f"p-value: {p:.4f}")
-
-        if p > 0.05:
-            st.success("Response appears normally distributed.")
+        if lambda_opt == 0:
+            y_trans = np.log(y)
         else:
-            st.warning("Response does NOT appear normally distributed.")
-    else:
-        st.warning("Not enough data for Shapiro-Wilk test.")
+            y_trans = (y**lambda_opt - 1) / lambda_opt
 
-    # ======================================================
-    # BOX–COX TRANSFORMATION (THEORY SECTION)
-    # ======================================================
+        df_trans = df.copy()
+        df_trans[response] = y_trans
 
-    st.header("📘 Box–Cox Power Transformation")
+        transformed_model = smf.ols(formula=formula, data=df_trans).fit()
 
-    st.markdown(
-        """
-If the response variable is right-skewed, a transformation may be applied
-to improve normality and stabilize variance.
+        st.header("4️⃣ Transformed Model")
 
-The Box–Cox transformation is defined as:
-"""
-    )
+        st.text(transformed_model.summary())
 
-    st.latex(r"""
-    \tilde{y} =
-    \begin{cases}
-    \dfrac{y^\lambda - 1}{\lambda}, & \lambda \neq 0 \\
-    \ln(y), & \lambda = 0
-    \end{cases}
-    """)
+        # AIC Comparison
+        st.subheader("AIC Comparison")
+        col1, col2 = st.columns(2)
+        col1.metric("Original AIC", round(original_model.aic,2))
+        col2.metric("Transformed AIC", round(transformed_model.aic,2))
 
-    st.markdown(
-        """
-The transformation is continuous in $\\lambda$. Using L’Hôpital’s Rule:
-"""
-    )
+        # ======================================================
+        # TRANSFORMED EQUATION
+        # ======================================================
 
-    st.latex(r"""
-    \lim_{\lambda \to 0}
-    \frac{y^\lambda - 1}{\lambda}
-    =
-    \ln(y)
-    """)
+        st.subheader("Estimated Regression Equation (Transformed Scale)")
 
-    st.markdown(
-        """
-Common recommended values of $\\lambda$ include:
-
-- $\\lambda = -1$ → Reciprocal
-- $\\lambda = 0$ → Logarithm
-- $\\lambda = 0.5$ → Square root
-- $\\lambda = 1$ → Linear (no transformation)
-- $\\lambda = 2$ → Square
-"""
-    )
-
-    # ======================================================
-    # 4. BUILD FORMULA
-    # ======================================================
-
-    terms = []
-
-    for var in predictors:
-        if var in categorical_vars:
-            ref = reference_dict[var]
-            terms.append(f'C({var}, Treatment(reference="{ref}"))')
-        else:
-            terms.append(var)
-
-    formula = response + " ~ " + " + ".join(terms)
-
-    # ======================================================
-    # 5. FIT MODEL
-    # ======================================================
-
-    st.header("3️⃣ Fit General Linear Model")
-
-    model = smf.ols(formula=formula, data=df).fit()
-
-    st.subheader("Model Summary")
-    st.text(model.summary())
-
-    # ======================================================
-    # 6. MODEL FIT STATISTICS
-    # ======================================================
-
-    st.header("4️⃣ Model Fit Evaluation")
-
-    n = int(model.nobs)
-    k = int(model.df_model) + 1
-
-    loglik = model.llf
-    aic = model.aic
-    bic = model.bic
-
-    if (n - k - 1) > 0:
-        aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
-    else:
-        aicc = float("nan")
-
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Log-Likelihood", round(loglik, 2))
-    col2.metric("AIC", round(aic, 2))
-    col3.metric("AICc", round(aicc, 2))
-    col4.metric("BIC", round(bic, 2))
-
-    # ======================================================
-    # 7. LIKELIHOOD RATIO TEST
-    # ======================================================
-
-    st.subheader("Likelihood Ratio (Deviance) Test")
-
-    null_model = smf.ols(response + " ~ 1", data=df).fit()
-
-    lr_stat = -2 * (null_model.llf - model.llf)
-    df_diff = int(model.df_model)
-    p_value_lr = chi2.sf(lr_stat, df_diff)
-
-    st.write(f"LR Statistic: {lr_stat:.4f}")
-    st.write(f"Degrees of Freedom: {df_diff}")
-    st.write(f"p-value: {p_value_lr:.6f}")
-
-    # ======================================================
-    # 8. MATHEMATICAL EQUATION
-    # ======================================================
-
-    def build_equation(model, response):
-
-        params = model.params
-        equation = f"\\widehat{{\\mathbb{{E}}}}({response}) = {round(params['Intercept'],4)}"
+        params = transformed_model.params
+        eq = r"\widehat{\tilde{y}} = " + str(round(params["Intercept"],4))
 
         for name in params.index:
             if name == "Intercept":
                 continue
-
-            coef = round(params[name], 4)
+            coef = round(params[name],4)
             sign = "+" if coef >= 0 else "-"
+            eq += f" {sign} {abs(coef)} \\cdot {name}"
 
-            if name.startswith("C(") and "T." in name:
-                var_name = name.split("[")[0]
-                var_name = var_name.replace("C(", "").split(",")[0]
-                level = name.split("T.")[1].rstrip("]")
-                equation += f" {sign} {abs(coef)} D_{{{var_name}={level}}}"
-            else:
-                equation += f" {sign} {abs(coef)} \\cdot {name}"
+        st.latex(eq)
 
-        return equation
+        # ======================================================
+        # BACK-TRANSFORMATION
+        # ======================================================
 
-    st.subheader("Fitted Regression Equation (Full Model)")
-    st.latex(build_equation(model, response))
+        st.subheader("Back-Transformation to Original Scale")
 
-    # ======================================================
-    # 9. INTERPRETATION OF COEFFICIENTS
-    # ======================================================
+        st.latex(r"""
+        \hat{y}
+        =
+        \begin{cases}
+        (\lambda \widehat{\tilde{y}} + 1)^{1/\lambda}, & \lambda \neq 0 \\
+        \exp(\widehat{\tilde{y}}), & \lambda = 0
+        \end{cases}
+        """)
 
-    st.header("5️⃣ Interpretation of Coefficients")
+        # ======================================================
+        # PREDICTION
+        # ======================================================
 
-    for name, coef in model.params.items():
-        if name == "Intercept":
-            continue
+        st.header("5️⃣ Prediction")
 
-        coef = round(coef, 4)
+        input_dict = {}
 
-        st.write(
-            f"For every one-unit increase in **{name}**, "
-            f"the estimated mean **{response}** changes by "
-            f"{coef} units, holding other variables constant."
-        )
-
-    # ======================================================
-    # 10. PREDICTION
-    # ======================================================
-
-    st.header("6️⃣ Prediction")
-
-    input_dict = {}
-
-    for var in predictors:
-
-        if var in categorical_vars:
-            input_dict[var] = st.selectbox(var, df[var].cat.categories)
-        else:
+        for var in predictors:
             input_dict[var] = st.number_input(
                 var,
-                value=float(pd.to_numeric(df[var], errors="coerce").mean())
+                value=float(df[var].mean())
             )
 
-    if st.button("Predict"):
+        if st.button("Predict"):
 
-        new_df = pd.DataFrame([input_dict])
+            new_df = pd.DataFrame([input_dict])
 
-        for var in categorical_vars:
-            new_df[var] = pd.Categorical(
-                new_df[var],
-                categories=df[var].cat.categories
-            )
+            y_pred_trans = transformed_model.predict(new_df)[0]
 
-        prediction = model.predict(new_df)[0]
-        st.success(f"Predicted {response}: {prediction:.4f}")
+            if lambda_opt == 0:
+                y_pred = np.exp(y_pred_trans)
+            else:
+                y_pred = (lambda_opt * y_pred_trans + 1)**(1/lambda_opt)
 
-    # ======================================================
-    # 11. PREDICTED VS ACTUAL
-    # ======================================================
+            if shift != 0:
+                y_pred -= shift
 
-    st.header("7️⃣ Predicted vs Actual")
-
-    predicted_vals = model.predict(df)
-
-    fig2 = px.scatter(
-        x=predicted_vals,
-        y=df[response],
-        labels={'x': 'Predicted', 'y': 'Actual'},
-        title="Predicted vs Actual Values"
-    )
-
-    st.plotly_chart(fig2)
+            st.success(f"Predicted {response} (back-transformed): {round(y_pred,4)}")
 
 
 if __name__ == "__main__":
