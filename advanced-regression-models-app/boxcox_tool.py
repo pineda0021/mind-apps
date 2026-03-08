@@ -73,30 +73,27 @@ def run():
         st.error("Response must be numeric.")
         return
 
-    fig = px.histogram(
-        df,
-        x=response,
-        title=f"Histogram of {response}",
-        marginal="box"
-    )
+    y = df[response].dropna()
+
+    fig = px.histogram(df, x=response, marginal="box",
+                       title=f"Histogram of {response}")
     st.plotly_chart(fig)
 
-    qq_fig = sm.qqplot(df[response].dropna(), line='s')
+    qq_fig = sm.qqplot(y, line='s')
     st.pyplot(qq_fig.figure)
 
-    stat, p = shapiro(df[response].dropna())
+    stat, p = shapiro(y)
 
-    st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
-    st.write(f"p-value: {p:.4f}")
+    st.write(f"Shapiro-Wilk p-value: {p:.4f}")
 
     if p > 0.05:
         st.success("Response appears normally distributed.")
     else:
         st.warning("Response does NOT appear normally distributed.")
 
-   # ======================================================
-   # 4️⃣ BOX-COX TRANSFORMATION (AUTO IF NEEDED)
-   # ======================================================
+    # ======================================================
+    # 4️⃣ BOX-COX TRANSFORMATION (AUTO IF NEEDED)
+    # ======================================================
 
     st.header("3️⃣ Box-Cox Transformation (If Needed)")
 
@@ -251,51 +248,23 @@ def run():
     col1.metric("σ̂ (Residual SD)", round(sigma_hat, 4))
     col2.metric("RMSE", round(rmse, 4))
 
-    if original_model is not None:
-        st.subheader("Model Comparison")
-        comp = pd.DataFrame({
-            "Model": ["Original", "Box-Cox"],
-            "AIC": [original_model.aic, model.aic],
-            "BIC": [original_model.bic, model.bic]
-        })
-        st.dataframe(comp)
-
     # ======================================================
-    # 8️⃣ FITTED EQUATION
-    # ======================================================
-
-    def build_equation(model, response):
-        params = model.params
-        eq = f"\\hat{{E}}({response}) = {round(params['Intercept'],4)}"
-        for name in params.index:
-            if name != "Intercept":
-                eq += f" + {round(params[name],4)}\\cdot {name}"
-        return eq
-
-    st.subheader("Fitted Regression Equation")
-    st.latex(build_equation(model, response))
-
-    # ======================================================
-    # 9️⃣ INTERPRETATION OF COEFFICIENTS
+    # 8️⃣ INTERPRETATION OF COEFFICIENTS
     # ======================================================
 
     st.header("5️⃣ Interpretation of Coefficients")
 
     for name, coef in model.params.items():
-
         if name == "Intercept":
             continue
-
-        coef = round(coef, 4)
-
         st.write(
-            f"For every-unit increase in **{name}**, "
+            f"For every unit increase in **{name}**, "
             f"the expected value of **{response_original}** changes by "
-            f"{coef} units, holding other variables constant."
+            f"{round(coef,4)} units (holding others constant)."
         )
 
     # ======================================================
-    # 🔟 PREDICTION
+    # 9️⃣ PREDICTION
     # ======================================================
 
     st.header("6️⃣ Prediction")
@@ -312,7 +281,7 @@ def run():
         new_df = pd.DataFrame([input_dict])
         pred = model.predict(new_df)[0]
 
-        if lambda_rec is not None and lambda_rec != 1:
+        if lambda_rec is not None:
             if lambda_rec == 0:
                 pred_original = np.exp(pred)
             else:
@@ -324,7 +293,7 @@ def run():
             st.success(f"Predicted {response_original}: {pred:.4f}")
 
     # ======================================================
-    # 1️⃣1️⃣ PREDICTED VS ACTUAL
+    # 🔟 PREDICTED VS ACTUAL
     # ======================================================
 
     st.header("7️⃣ Predicted vs Actual")
@@ -338,4 +307,4 @@ def run():
     )
 
     st.plotly_chart(fig2)
-    st.write("Points closer to the diagonal indicate better predictions.")
+    st.write("Points closer to diagonal indicate stronger predictive accuracy.")
