@@ -89,75 +89,54 @@ def run():
         st.warning("Response does NOT appear normally distributed.")
 
     # ======================================================
-    # 4️⃣ TRANSFORMATION (GUIDED BY BOX-COX λ̂)
+    # 4️⃣ TRANSFORMATION (Guided by λ̂)
     # ======================================================
 
     st.header("3️⃣ Transformation (If Needed)")
 
     lambda_hat = None
-    transformed_response = None
 
     if p <= 0.05:
 
         if (df[response] <= 0).any():
             st.error("Transformation requires strictly positive response values.")
         else:
-            y_original = df[response].dropna()
+            y_original = df[response]
 
-            # Compute MLE lambda (only to guide selection)
             lambda_mle = boxcox_normmax(y_original, method="mle")
             st.write(f"Estimated λ (MLE): **{lambda_mle:.4f}**")
 
-            lambda_table = pd.DataFrame({
-                "Recommended λ": [-2, -1, -0.5, 0, 0.5, 1, 2],
-                "Transformation": [
-                    "1 / y²",
-                    "1 / y",
-                    "1 / √y",
-                    "ln(y)",
-                    "√y",
-                    "y",
-                    "y²"
-                ]
-            })
-
-            closest_index = (lambda_table["Recommended λ"] - lambda_mle).abs().argsort()[0]
-            lambda_hat = lambda_table.iloc[closest_index]["Recommended λ"]
+            recommended_lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
+            lambda_hat = recommended_lambdas[np.argmin(abs(recommended_lambdas - lambda_mle))]
 
             st.info(f"Using Recommended λ = {lambda_hat} for interpretability.")
 
-            # Exact named transformations
             if lambda_hat == -2:
-                y_transformed = 1 / (y_original ** 2)
+                df[response] = 1 / (y_original ** 2)
                 st.latex(r"y^* = \frac{1}{y^2}")
 
             elif lambda_hat == -1:
-                y_transformed = 1 / y_original
+                df[response] = 1 / y_original
                 st.latex(r"y^* = \frac{1}{y}")
 
             elif lambda_hat == -0.5:
-                y_transformed = 1 / np.sqrt(y_original)
+                df[response] = 1 / np.sqrt(y_original)
                 st.latex(r"y^* = \frac{1}{\sqrt{y}}")
 
             elif lambda_hat == 0:
-                y_transformed = np.log(y_original)
+                df[response] = np.log(y_original)
                 st.latex(r"y^* = \ln(y)")
 
             elif lambda_hat == 0.5:
-                y_transformed = np.sqrt(y_original)
+                df[response] = np.sqrt(y_original)
                 st.latex(r"y^* = \sqrt{y}")
 
             elif lambda_hat == 1:
-                y_transformed = y_original
                 st.latex(r"y^* = y")
 
             elif lambda_hat == 2:
-                y_transformed = y_original ** 2
+                df[response] = y_original ** 2
                 st.latex(r"y^* = y^2")
-
-            transformed_response = f"{response}_transformed"
-            df[transformed_response] = y_transformed
-            response = transformed_response
 
     # ======================================================
     # 5️⃣ BUILD FORMULA
@@ -205,7 +184,9 @@ def run():
     else:
         aicc = np.nan
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3 = st.columns(3)
+    col4, col5 = st.columns(2)
+
     col1.metric("Log-Likelihood", round(loglik, 3))
     col2.metric("AIC", round(aic, 3))
     col3.metric("AICc", round(aicc, 3))
@@ -215,63 +196,30 @@ def run():
     st.metric("RMSE", round(rmse, 4))
 
     # ======================================================
-    # 📘 MODEL FIT METRICS EXPLANATION (CLEAN FORMAT)
+    # 📘 CLEAN METRIC EXPLANATIONS
     # ======================================================
 
     st.subheader("Interpretation of Model Fit Metrics")
 
     with st.expander("View Mathematical Definitions and Interpretation"):
 
-    st.markdown("### Log-Likelihood (ℓ)")
-    st.latex(r"\ell(\hat{\beta})")
-    st.markdown(
-        "Measures how probable the observed data are under the fitted model.  "
-        "Higher values indicate better model fit."
-    )
+        st.markdown("### Log-Likelihood (ℓ)")
+        st.latex(r"\ell(\hat{\beta})")
 
-    st.markdown("---")
+        st.markdown("### AIC")
+        st.latex(r"AIC = -2\ell + 2k")
 
-    st.markdown("### AIC (Akaike Information Criterion)")
-    st.latex(r"AIC = -2\ell + 2k")
-    st.markdown(
-        "Balances goodness-of-fit and model complexity.  "
-        "Lower values indicate better trade-off."
-    )
+        st.markdown("### AICc")
+        st.latex(r"AIC_c = AIC + \frac{2k(k+1)}{n-k-1}")
 
-    st.markdown("---")
+        st.markdown("### BIC")
+        st.latex(r"BIC = -2\ell + k\ln(n)")
 
-    st.markdown("### AICc (Corrected AIC)")
-    st.latex(r"AIC_c = AIC + \frac{2k(k+1)}{n-k-1}")
-    st.markdown(
-        "Adjusted AIC for small sample sizes.  "
-        "Recommended when the ratio n/k is small."
-    )
+        st.markdown("### Residual Standard Deviation (σ̂)")
+        st.latex(r"\hat{\sigma} = \sqrt{\frac{SSE}{n-k}}")
 
-    st.markdown("---")
-
-    st.markdown("### BIC (Bayesian Information Criterion)")
-    st.latex(r"BIC = -2\ell + k\ln(n)")
-    st.markdown(
-        "Stronger penalty for model complexity than AIC.  "
-        "More conservative — favors simpler models."
-    )
-
-    st.markdown("---")
-
-    st.markdown("### Residual Standard Deviation (σ̂)")
-    st.latex(r"\hat{\sigma} = \sqrt{\frac{SSE}{n-k}}")
-    st.markdown(
-        "Estimates the standard deviation of model errors.  "
-        "Represents unexplained variability in the response."
-    )
-
-    st.markdown("---")
-
-    st.markdown("### RMSE (Root Mean Square Error)")
-    st.latex(r"RMSE = \sqrt{\frac{1}{n} \sum_{i=1}^{n}(y_i - \hat{y}_i)^2}")
-    st.markdown(
-        "Average magnitude of prediction error on the response scale."
-    )
+        st.markdown("### RMSE")
+        st.latex(r"RMSE = \sqrt{\frac{1}{n} \sum_{i=1}^{n}(y_i - \hat{y}_i)^2}")
 
     # ======================================================
     # 5️⃣ PREDICTION
@@ -293,6 +241,7 @@ def run():
         pred = model.predict(new_df)[0]
 
         if lambda_hat is not None:
+
             if lambda_hat == -2:
                 pred_original = 1 / np.sqrt(pred)
             elif lambda_hat == -1:
