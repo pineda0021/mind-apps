@@ -89,12 +89,13 @@ def run():
         st.warning("Response does NOT appear normally distributed.")
 
     # ======================================================
-    # 4️⃣ TRANSFORMATION (Guided by λ̂)
+    # 4️⃣ TRANSFORMATION (Recommended λ)
     # ======================================================
 
     st.header("3️⃣ Transformation (If Needed)")
 
     lambda_hat = None
+    transformed = False
 
     if p <= 0.05:
 
@@ -109,7 +110,9 @@ def run():
             recommended_lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
             lambda_hat = recommended_lambdas[np.argmin(abs(recommended_lambdas - lambda_mle))]
 
-            st.info(f"Using Recommended λ = {lambda_hat} for interpretability.")
+            st.info(f"Using Recommended λ = {lambda_hat}")
+
+            transformed = True
 
             if lambda_hat == -2:
                 df[response] = 1 / (y_original ** 2)
@@ -147,7 +150,7 @@ def run():
     for var in predictors:
         if var in categorical_vars:
             ref = reference_dict[var]
-            terms.append(f'C({var}, Treatment(reference="{ref}"))')
+            terms.append(f'C({var}, Treatment(reference=\"{ref}\"))')
         else:
             terms.append(var)
 
@@ -165,7 +168,30 @@ def run():
     st.text(model.summary())
 
     # ======================================================
-    # 7️⃣ MODEL FIT STATISTICS
+    # 7️⃣ FITTED REGRESSION EQUATION
+    # ======================================================
+
+    st.subheader("Fitted Regression Equation")
+
+    coefs = model.params
+    equation_terms = []
+
+    for name, coef in coefs.items():
+        if name == "Intercept":
+            equation_terms.append(f"{coef:.4f}")
+        else:
+            equation_terms.append(f"{coef:.4f}({name})")
+
+    equation = response + " = " + " + ".join(equation_terms)
+
+    if transformed:
+        st.code(equation)
+        st.warning("Equation is on the transformed scale.")
+    else:
+        st.code(equation)
+
+    # ======================================================
+    # 8️⃣ MODEL FIT STATISTICS
     # ======================================================
 
     st.subheader("Model Fit Statistics")
@@ -182,44 +208,37 @@ def run():
     if (n - k - 1) > 0:
         aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
     else:
-        aicc = np.nan
+        aicc = float("nan")
 
-    col1, col2, col3 = st.columns(3)
-    col4, col5 = st.columns(2)
-
+    col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Log-Likelihood", round(loglik, 3))
     col2.metric("AIC", round(aic, 3))
     col3.metric("AICc", round(aicc, 3))
     col4.metric("BIC", round(bic, 3))
-    col5.metric("σ̂", round(sigma_hat, 4))
+    col5.metric("σ̂ (Residual SD)", round(sigma_hat, 4))
 
     st.metric("RMSE", round(rmse, 4))
 
     # ======================================================
-    # 📘 CLEAN METRIC EXPLANATIONS
+    # 9️⃣ INTERPRETATION
     # ======================================================
 
     st.subheader("Interpretation of Model Fit Metrics")
 
-    with st.expander("View Mathematical Definitions and Interpretation"):
+    st.markdown("**AIC** balances model fit and complexity.")
+    st.latex(r"AIC = -2\ell + 2k")
 
-        st.markdown("### Log-Likelihood (ℓ)")
-        st.latex(r"\ell(\hat{\beta})")
+    st.markdown("**AICc** adjusts AIC for small samples.")
+    st.latex(r"AICc = AIC + \frac{2k(k+1)}{n-k-1}")
 
-        st.markdown("### AIC")
-        st.latex(r"AIC = -2\ell + 2k")
+    st.markdown("**BIC** penalizes complexity more strongly.")
+    st.latex(r"BIC = -2\ell + k\ln(n)")
 
-        st.markdown("### AICc")
-        st.latex(r"AIC_c = AIC + \frac{2k(k+1)}{n-k-1}")
+    st.markdown("**Residual Standard Deviation (σ̂)** measures unexplained variability.")
+    st.latex(r"\hat{\sigma} = \sqrt{\frac{SSE}{n-k}}")
 
-        st.markdown("### BIC")
-        st.latex(r"BIC = -2\ell + k\ln(n)")
-
-        st.markdown("### Residual Standard Deviation (σ̂)")
-        st.latex(r"\hat{\sigma} = \sqrt{\frac{SSE}{n-k}}")
-
-        st.markdown("### RMSE")
-        st.latex(r"RMSE = \sqrt{\frac{1}{n} \sum_{i=1}^{n}(y_i - \hat{y}_i)^2}")
+    st.markdown("**RMSE** is the average prediction error magnitude.")
+    st.latex(r"RMSE = \sqrt{\frac{1}{n} \sum (y_i - \hat{y}_i)^2}")
 
     # ======================================================
     # 5️⃣ PREDICTION
@@ -240,7 +259,7 @@ def run():
         new_df = pd.DataFrame([input_dict])
         pred = model.predict(new_df)[0]
 
-        if lambda_hat is not None:
+        if transformed:
 
             if lambda_hat == -2:
                 pred_original = 1 / np.sqrt(pred)
@@ -273,63 +292,8 @@ def run():
     fig2 = px.scatter(
         x=predicted_vals,
         y=df[response],
-        labels={'x': 'Predicted', 'y': 'Actual'}
-    )
-
-    st.plotly_chart(fig2)
-
-    # ======================================================
-    # 5️⃣ PREDICTION
-    # ======================================================
-
-    st.header("5️⃣ Prediction")
-
-    input_dict = {}
-
-    for var in predictors:
-        if var in categorical_vars:
-            input_dict[var] = st.selectbox(var, df[var].astype("category").cat.categories)
-        else:
-            input_dict[var] = st.number_input(var, value=float(df[var].mean()))
-
-    if st.button("Predict"):
-
-        new_df = pd.DataFrame([input_dict])
-        pred = model.predict(new_df)[0]
-
-        if lambda_hat is not None:
-            if lambda_hat == -2:
-                pred_original = 1 / np.sqrt(pred)
-            elif lambda_hat == -1:
-                pred_original = 1 / pred
-            elif lambda_hat == -0.5:
-                pred_original = 1 / (pred ** 2)
-            elif lambda_hat == 0:
-                pred_original = np.exp(pred)
-            elif lambda_hat == 0.5:
-                pred_original = pred ** 2
-            elif lambda_hat == 1:
-                pred_original = pred
-            elif lambda_hat == 2:
-                pred_original = np.sqrt(pred)
-
-            st.success(f"Predicted (transformed scale): {pred:.4f}")
-            st.success(f"Predicted (original scale): {pred_original:.4f}")
-        else:
-            st.success(f"Predicted value: {pred:.4f}")
-
-    # ======================================================
-    # 6️⃣ PREDICTED VS ACTUAL
-    # ======================================================
-
-    st.header("6️⃣ Predicted vs Actual")
-
-    predicted_vals = model.predict(df)
-
-    fig2 = px.scatter(
-        x=predicted_vals,
-        y=df[response],
-        labels={'x': 'Predicted', 'y': 'Actual'}
+        labels={'x': 'Predicted', 'y': 'Actual'},
+        title="Predicted vs Actual Values"
     )
 
     st.plotly_chart(fig2)
