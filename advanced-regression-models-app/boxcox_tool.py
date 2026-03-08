@@ -139,7 +139,7 @@ def run():
             st.write(f"Estimated λ (MLE): **{lambda_hat:.4f}**")
 
             # ======================================================
-            # 🔟 Lambda Interpretation Guide (With Formulas)
+            # 5️⃣ Lambda Interpretation Guide (With Formulas)
             # ======================================================
 
             st.subheader("Lambda Interpretation Guide")
@@ -274,17 +274,67 @@ def run():
     loglik = model.llf
     aic = model.aic
     bic = model.bic
+    sigma_hat = model.mse_resid ** 0.5
+    rmse = (model.resid ** 2).mean() ** 0.5
 
     if (n - k - 1) > 0:
         aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
     else:
         aicc = float("nan")
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Log-Likelihood", round(loglik, 3))
     col2.metric("AIC", round(aic, 3))
     col3.metric("AICc", round(aicc, 3))
     col4.metric("BIC", round(bic, 3))
+    col5.metric("σ̂ (Residual SD)", round(sigma_hat, 4))
+
+    st.metric("RMSE", round(rmse, 4))
+
+    # ======================================================
+    # 📘 INFORMATION CRITERIA EXPLANATION
+    # ======================================================
+
+    st.subheader("Interpretation of Model Fit Metrics")
+
+    st.markdown("""
+    **Log-Likelihood (ℓ)**  
+    Measures how probable the observed data are under the fitted model.  
+    Higher values indicate better model fit.
+
+    **AIC (Akaike Information Criterion)**  
+    \[
+    AIC = -2\ell + 2k
+    \]  
+    Balances model fit and complexity. Lower values are preferred. Penalizes number of parameters.
+
+    **AICc (Corrected AIC)**  
+    \[
+    AICc = AIC + \frac{2k(k+1)}{n-k-1}
+    \]  
+    Adjusted version of AIC for small sample sizes.  
+    Use AICc when \( n/k \) is small.
+
+    **BIC (Bayesian Information Criterion)**  
+    \[
+    BIC = -2\ell + k \ln(n)
+    \]  
+    Stronger penalty for complexity than AIC.  
+    More conservative — favors simpler models.
+
+    **σ̂ (Residual Standard Deviation)**  
+    \[
+    \hat{\sigma} = \sqrt{\frac{SSE}{n - k}}
+    \]  
+    Estimates the standard deviation of model errors.  
+    Measures unexplained variability in the response.
+
+    **RMSE (Root Mean Square Error)**  
+    \[
+    RMSE = \sqrt{\frac{1}{n} \sum (y_i - \hat{y}_i)^2}
+    \]  
+    Average magnitude of prediction error on the response scale.
+    """)
 
     # ======================================================
     # 8️⃣ LIKELIHOOD RATIO (DEVIANCE TEST)
