@@ -78,18 +78,21 @@ def run():
     )
     st.plotly_chart(fig)
 
-    qq_fig = sm.qqplot(df[response].dropna(), line='s')
-    st.pyplot(qq_fig.figure)
+    if len(df[response].dropna()) >= 3:
+        qq_fig = sm.qqplot(df[response].dropna(), line='s')
+        st.pyplot(qq_fig.figure)
 
-    stat, p = shapiro(df[response].dropna())
+        stat, p = shapiro(df[response].dropna())
 
-    st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
-    st.write(f"p-value: {p:.4f}")
+        st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
+        st.write(f"p-value: {p:.4f}")
 
-    if p > 0.05:
-        st.success("Response appears normally distributed.")
+        if p > 0.05:
+            st.success("Response appears normally distributed.")
+        else:
+            st.warning("Response does NOT appear normally distributed.")
     else:
-        st.warning("Response does NOT appear normally distributed.")
+        st.warning("Not enough data for Shapiro-Wilk test.")
 
     # ======================================================
     # 4. BUILD FORMULA
@@ -123,8 +126,8 @@ def run():
 
     st.header("4️⃣ Model Fit Evaluation")
 
-    n = df.shape[0]
-    k = int(model.df_model) + 1
+    n = int(model.nobs)
+    k = int(model.df_model) + 1  # includes intercept
 
     loglik = model.llf
     aic = model.aic
@@ -141,23 +144,13 @@ def run():
     col3.metric("AICc", round(aicc, 2))
     col4.metric("BIC", round(bic, 2))
 
-    st.markdown("""
-**Interpretation**
-
-- Log-Likelihood measures how well the model explains the observed data.
-- AIC, AICc, and BIC penalize model complexity.
-- Lower values indicate better balance between fit and complexity.
-- AICc is recommended when the sample size is small relative to the number of parameters.
-""")
-
     # ======================================================
     # 7. LIKELIHOOD RATIO TEST
     # ======================================================
 
     st.subheader("Likelihood Ratio (Deviance) Test")
 
-    null_formula = response + " ~ 1"
-    null_model = smf.ols(formula=null_formula, data=df).fit()
+    null_model = smf.ols(formula=response + " ~ 1", data=df).fit()
 
     lr_stat = -2 * (null_model.llf - model.llf)
     df_diff = int(model.df_model)
@@ -168,18 +161,12 @@ def run():
     st.write(f"p-value: {p_value_lr:.6f}")
 
     if p_value_lr < 0.05:
-        st.success(
-            "At α = 0.05, the full model significantly improves "
-            "over the intercept-only model."
-        )
+        st.success("Full model significantly improves over intercept-only model.")
     else:
-        st.warning(
-            "The model does not significantly improve over "
-            "the intercept-only model."
-        )
+        st.warning("Model does not significantly improve over intercept-only model.")
 
     # ======================================================
-    # 8. MATHEMATICAL EQUATION
+    # 8. EQUATION BUILDER
     # ======================================================
 
     def build_equation(model, response):
@@ -195,20 +182,35 @@ def run():
             coef = round(params[name], 4)
             sign = "+" if coef >= 0 else "-"
 
-            if name.startswith("C("):
+            if name.startswith("C(") and "T." in name:
                 var_name = name.split("[")[0]
                 var_name = var_name.replace("C(", "").split(",")[0]
-                level = name.split("T.")[1].replace("]", "")
+                level = name.split("T.")[1].rstrip("]")
                 equation += f" {sign} {abs(coef)} D_{{{var_name}={level}}}"
             else:
                 equation += f" {sign} {abs(coef)} \\cdot {name}"
 
         return equation
 
+    # ======================================================
+    # 9. REDUCED MODEL
+    # ======================================================
 
-    # ======================================================
-    # 8.2 DISPLAY EQUATIONS
-    # ======================================================
+    def refit_reduced_model(model, alpha=0.05):
+
+        pvals = model.pvalues.drop("Intercept", errors="ignore")
+        significant_terms = pvals[pvals < alpha].index.tolist()
+
+        if not significant_terms:
+            return None
+
+        response = model.model.endog_names
+        reduced_formula = response + " ~ " + " + ".join(significant_terms)
+
+        return smf.ols(
+            formula=reduced_formula,
+            data=model.model.data.frame
+        ).fit()
 
     st.subheader("Fitted Regression Equation (Full Model)")
     st.latex(build_equation(model, response))
@@ -216,7 +218,7 @@ def run():
     reduced_model = refit_reduced_model(model)
 
     if reduced_model is not None:
-        st.subheader("Reduced Model (Refit Using Significant Predictors)")
+        st.subheader("Reduced Model Equation")
         st.latex(build_equation(reduced_model, response))
 
         st.subheader("Reduced Model Summary")
@@ -225,41 +227,7 @@ def run():
         st.warning("No predictors are statistically significant at α = 0.05.")
 
     # ======================================================
-    # 9. INTERPRETATION OF COEFFICIENTS
-    # ======================================================
-
-    st.header("5️⃣ Interpretation of Coefficients")
-
-    for name, coef in model.params.items():
-
-        if name == "Intercept":
-            continue
-
-        coef = round(coef, 4)
-
-        if name.startswith("C("):
-            var_name = name.split("[")[0]
-            var_name = var_name.replace("C(", "").split(",")[0]
-            level = name.split("T.")[1].replace("]", "")
-            ref = reference_dict[var_name]
-
-            direction = "increase" if coef > 0 else "decrease"
-
-            st.write(
-                f"For **{var_name} = {level}**, the estimated mean **{response}** "
-                f"shows a **{direction} of {abs(coef)} units** compared to "
-                f"the reference group (**{ref}**), holding other variables constant."
-            )
-
-        else:
-            st.write(
-                f"For every-unit increase **{name}**, "
-                f"the estimated mean **{response}** changes by "
-                f"{coef} units, holding other variables constant."
-            )
-
-       # ======================================================
-    # 10. PREDICTION 
+    # 10. PREDICTION
     # ======================================================
 
     st.header("6️⃣ Prediction")
@@ -268,7 +236,6 @@ def run():
 
     for var in predictors:
 
-        # If user explicitly selected categorical
         if var in categorical_vars:
 
             input_dict[var] = st.selectbox(
@@ -277,31 +244,30 @@ def run():
             )
 
         else:
-            # Attempt numeric conversion safely
             numeric_series = pd.to_numeric(df[var], errors="coerce")
 
-            # If numeric conversion works, treat as numeric
             if numeric_series.notna().sum() > 0:
-
                 input_dict[var] = st.number_input(
                     var,
                     value=float(numeric_series.mean())
                 )
-
-            # Otherwise automatically treat as categorical
             else:
-
                 df[var] = df[var].astype("category")
-
                 input_dict[var] = st.selectbox(
                     var,
                     df[var].cat.categories
                 )
 
     if st.button("Predict"):
+
         new_df = pd.DataFrame([input_dict])
+
+        for var in categorical_vars:
+            new_df[var] = new_df[var].astype("category")
+
         prediction = model.predict(new_df)[0]
         st.success(f"Predicted {response}: {prediction:.4f}")
+
     # ======================================================
     # 11. PREDICTED VS ACTUAL
     # ======================================================
@@ -318,6 +284,7 @@ def run():
     )
 
     st.plotly_chart(fig2)
+
 
 if __name__ == "__main__":
     run()
