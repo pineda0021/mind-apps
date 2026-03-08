@@ -26,7 +26,7 @@ def run():
     st.dataframe(df.head())
 
     # ======================================================
-    # Model Specification
+    # 1️⃣ Model Specification
     # ======================================================
 
     st.header("1️⃣ Model Specification")
@@ -69,10 +69,18 @@ def run():
     st.code(formula)
 
     # ======================================================
-    # Box–Cox Transformation
+    # 2️⃣ Box–Cox Transformation
     # ======================================================
 
     st.header("2️⃣ Box–Cox Transformation (Optional)")
+
+    st.latex(r"""
+    \tilde{y} =
+    \begin{cases}
+    \dfrac{y^{\lambda} - 1}{\lambda}, & \lambda \ne 0 \\
+    \ln y, & \lambda = 0
+    \end{cases}
+    """)
 
     transformed = False
     df_model = df.copy()
@@ -126,7 +134,7 @@ def run():
         st.warning("Box–Cox requires strictly positive response values.")
 
     # ======================================================
-    # Fit Model
+    # 3️⃣ Fit Model
     # ======================================================
 
     st.header("3️⃣ Fit OLS Model")
@@ -142,18 +150,21 @@ def run():
     # ======================================================
 
     if transformed:
+
         st.subheader("Likelihood Ratio (Deviance) Test")
 
         deviance = 2 * (model.llf - model_original.llf)
-        p_value = 1 - chi2.cdf(deviance, df=1)
+        df_test = 1
+        p_value = 1 - chi2.cdf(deviance, df=df_test)
 
-        st.write(f"Deviance Statistic: {deviance:.4f}")
+        st.write(f"Deviance Statistic (D): {deviance:.4f}")
+        st.write(f"Degrees of Freedom (df): {df_test}")
         st.write(f"p-value: {p_value:.4f}")
 
         if p_value < 0.05:
             st.success("Transformation significantly improves model fit.")
         else:
-            st.info("No significant improvement from transformation.")
+            st.info("No statistically significant improvement.")
 
     # ======================================================
     # Fitted Regression Equation
@@ -162,14 +173,14 @@ def run():
     st.subheader("Fitted Regression Equation")
 
     params = model.params
-    equation = f"{response} = "
+    equation = response + " = "
 
     for i, (name, coef) in enumerate(params.items()):
         if i == 0:
             equation += f"{coef:.4f}"
         else:
             sign = "+" if coef >= 0 else "-"
-            equation += f" {sign} {abs(coef):.4f}·{name}"
+            equation += f" {sign} {abs(coef):.4f}\\,{name}"
 
     st.latex(equation)
 
@@ -182,6 +193,7 @@ def run():
     summary_table = model.summary2().tables[1]
 
     for idx, row in summary_table.iterrows():
+
         if idx == "Intercept":
             continue
 
@@ -201,12 +213,15 @@ def run():
     st.subheader("Prediction")
 
     input_data = {}
+
     for var in predictors:
-        input_data[var] = st.number_input(f"Enter value for {var}")
+        input_data[var] = st.number_input(f"Enter value for {var}", key=f"pred_{var}")
 
     if st.button("Predict"):
+
         new_df = pd.DataFrame([input_data])
         prediction = model.predict(new_df)[0]
+
         st.success(f"Predicted {response} = {prediction:.4f}")
 
     # ======================================================
@@ -252,7 +267,7 @@ def run():
     st.plotly_chart(fig2)
 
     # ======================================================
-    # Fit Metrics
+    # Model Fit Metrics
     # ======================================================
 
     st.header("6️⃣ Model Fit Metrics")
