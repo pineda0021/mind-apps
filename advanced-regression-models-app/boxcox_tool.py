@@ -2,6 +2,7 @@
 # 4️⃣ BOX-COX TRANSFORMATION (AUTO IF NEEDED)
 # ======================================================
 
+def run()
 st.header("3️⃣ Box-Cox Transformation (If Needed)")
 
 transformed_response = None
