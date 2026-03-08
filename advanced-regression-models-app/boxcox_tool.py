@@ -171,7 +171,10 @@ def run():
     # 7️⃣ FITTED REGRESSION EQUATION
     # ======================================================
 
-    st.subheader("Fitted Regression Equation")
+    if transformed:
+        st.subheader("Fitted Regression Equation (on Transformed Scale)")
+    else:
+        st.subheader("Fitted Regression Equation")
 
     coefs = model.params
     equation_terms = []
@@ -184,11 +187,10 @@ def run():
 
     equation = response + " = " + " + ".join(equation_terms)
 
+    st.code(equation)
+
     if transformed:
-        st.code(equation)
-        st.warning("Equation is on the transformed scale.")
-    else:
-        st.code(equation)
+        st.info("Interpret coefficients on the transformed scale.")
 
     # ======================================================
     # 8️⃣ MODEL FIT STATISTICS
@@ -220,28 +222,7 @@ def run():
     st.metric("RMSE", round(rmse, 4))
 
     # ======================================================
-    # 9️⃣ INTERPRETATION
-    # ======================================================
-
-    st.subheader("Interpretation of Model Fit Metrics")
-
-    st.markdown("**AIC** balances model fit and complexity.")
-    st.latex(r"AIC = -2\ell + 2k")
-
-    st.markdown("**AICc** adjusts AIC for small samples.")
-    st.latex(r"AICc = AIC + \frac{2k(k+1)}{n-k-1}")
-
-    st.markdown("**BIC** penalizes complexity more strongly.")
-    st.latex(r"BIC = -2\ell + k\ln(n)")
-
-    st.markdown("**Residual Standard Deviation (σ̂)** measures unexplained variability.")
-    st.latex(r"\hat{\sigma} = \sqrt{\frac{SSE}{n-k}}")
-
-    st.markdown("**RMSE** is the average prediction error magnitude.")
-    st.latex(r"RMSE = \sqrt{\frac{1}{n} \sum (y_i - \hat{y}_i)^2}")
-
-    # ======================================================
-    # 5️⃣ PREDICTION
+    # 9️⃣ PREDICTION
     # ======================================================
 
     st.header("5️⃣ Prediction")
