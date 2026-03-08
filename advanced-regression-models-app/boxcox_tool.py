@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
-from scipy.stats import shapiro, chi2
+from scipy.stats import shapiro, chi2, boxcox, boxcox_normmax
 import numpy as np
 
 
@@ -98,11 +98,17 @@ def run():
         st.warning("Not enough data for Shapiro-Wilk test.")
 
     # ======================================================
-    # 4. BUILD FORMULA
+    # 3B. BOX-COX FOLLOW-UP
     # ======================================================
 
-    terms = []
+    st.subheader("Box-Cox Transformation Follow-Up")
 
+    transformed = False
+    lambda_hat = None
+    original_model = None
+
+    # Build original formula first
+    terms = []
     for var in predictors:
         if var in categorical_vars:
             ref = reference_dict[var]
@@ -112,16 +118,110 @@ def run():
 
     formula = response + " ~ " + " + ".join(terms)
 
+    original_model = smf.ols(formula=formula, data=df).fit()
+
+    if len(y_clean) >= 3 and (y_clean > 0).all():
+
+        lambda_mle = boxcox_normmax(y_clean, method="mle")
+        st.write(f"Estimated λ (MLE): {lambda_mle:.4f}")
+
+        lambdas = np.linspace(-2, 2, 200)
+        llf_vals = [boxcox(y_clean, lmbda=l)[1] for l in lambdas]
+
+        fig_lambda = px.line(
+            x=lambdas,
+            y=llf_vals,
+            labels={"x": "Lambda (λ)", "y": "Log-Likelihood"},
+            title="Box-Cox Profile Log-Likelihood"
+        )
+
+        fig_lambda.add_vline(
+            x=lambda_mle,
+            line_dash="dash",
+            annotation_text=f"λ̂ = {lambda_mle:.3f}"
+        )
+
+        st.plotly_chart(fig_lambda)
+
+        suggested_lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
+        suggested = suggested_lambdas[np.argmin(abs(suggested_lambdas - lambda_mle))]
+
+        st.write(f"Suggested transformation λ ≈ {suggested}")
+
+        if st.checkbox("Apply Suggested Transformation"):
+
+            transformed = True
+            lambda_hat = suggested
+
+            if suggested == -2:
+                df[response] = 1 / (df[response] ** 2)
+                st.latex(r"y^* = \frac{1}{y^2}")
+
+            elif suggested == -1:
+                df[response] = 1 / df[response]
+                st.latex(r"y^* = \frac{1}{y}")
+
+            elif suggested == -0.5:
+                df[response] = 1 / np.sqrt(df[response])
+                st.latex(r"y^* = \frac{1}{\sqrt{y}}")
+
+            elif suggested == 0:
+                df[response] = np.log(df[response])
+                st.latex(r"y^* = \ln(y)")
+
+            elif suggested == 0.5:
+                df[response] = np.sqrt(df[response])
+                st.latex(r"y^* = \sqrt{y}")
+
+            elif suggested == 2:
+                df[response] = df[response] ** 2
+                st.latex(r"y^* = y^2")
+
+            st.subheader("Interpretation Guidance")
+
+            if suggested == 0:
+                st.markdown("Log transformation: coefficients approximate % change.")
+            elif suggested == -1:
+                st.markdown("Reciprocal transformation: inverse relationship.")
+            elif suggested == 0.5:
+                st.markdown("Square-root transformation: nonlinear original scale.")
+            else:
+                st.markdown("Power transformation: nonlinear scaling effect.")
+
     # ======================================================
     # 5. FIT MODEL
     # ======================================================
 
-    st.header("3️⃣ Fit General Linear Model")
+    if transformed:
+        st.header("3️⃣ Fit General Linear Model (Transformed Response)")
+    else:
+        st.header("3️⃣ Fit General Linear Model")
 
     model = smf.ols(formula=formula, data=df).fit()
 
     st.subheader("Model Summary")
     st.text(model.summary())
+
+    # ======================================================
+    # Model Comparison
+    # ======================================================
+
+    if transformed:
+        st.header("Model Comparison: Original vs Transformed")
+
+        comparison_df = pd.DataFrame({
+            "Model": ["Original", "Transformed"],
+            "Log-Likelihood": [original_model.llf, model.llf],
+            "AIC": [original_model.aic, model.aic],
+            "BIC": [original_model.bic, model.bic]
+        })
+
+        st.dataframe(comparison_df)
+
+        if model.aic < original_model.aic:
+            st.success("Transformed model improves fit based on AIC.")
+        else:
+            st.info("Original model may be preferable based on AIC.")
 
     # ======================================================
     # 6. MODEL FIT STATISTICS
@@ -153,85 +253,7 @@ def run():
     st.metric("RMSE", round(rmse, 4))
 
     # ======================================================
-    # 7. EQUATION BUILDER
-    # ======================================================
-
-    def build_equation(model, response):
-
-        params = model.params
-        equation = f"\\widehat{{\\mathbb{{E}}}}({response}) = {round(params['Intercept'],4)}"
-
-        for name in params.index:
-
-            if name == "Intercept":
-                continue
-
-            coef = round(params[name], 4)
-            sign = "+" if coef >= 0 else "-"
-
-            if name.startswith("C(") and "T." in name:
-                var_name = name.split("[")[0]
-                var_name = var_name.replace("C(", "").split(",")[0]
-                level = name.split("T.")[1].rstrip("]")
-                equation += f" {sign} {abs(coef)} D_{{{var_name}={level}}}"
-            else:
-                equation += f" {sign} {abs(coef)} \\cdot {name}"
-
-        return equation
-
-    st.subheader("Fitted Regression Equation (Full Model)")
-    st.latex(build_equation(model, response))
-
-    # ======================================================
-    # Coefficient Interpretation
-    # ======================================================
-
-    st.subheader("Coefficient Interpretation")
-
-    for name in model.params.index:
-
-        coef = round(model.params[name], 4)
-        pval = model.pvalues[name]
-
-        if name == "Intercept":
-            st.markdown(
-                f"**Intercept ({coef})**: Estimated mean of {response} "
-                f"when all predictors are at their reference levels or equal to zero."
-            )
-        elif name.startswith("C(") and "T." in name:
-            var_name = name.split("[")[0]
-            var_name = var_name.replace("C(", "").split(",")[0]
-            level = name.split("T.")[1].rstrip("]")
-            st.markdown(
-                f"**{var_name} = {level} (β = {coef})**: The estimated mean difference in {response} "
-                f"between {level} and the reference level, holding other variables constant. "
-                f"{'Statistically significant.' if pval < 0.05 else 'Not statistically significant.'}"
-            )
-        else:
-            st.markdown(
-                f"**{name} (β = {coef})**: For each one-unit increase in {name}, "
-                f"{response} changes by {coef} units, holding other predictors constant. "
-                f"{'Statistically significant.' if pval < 0.05 else 'Not statistically significant.'}"
-            )
-
-    # ======================================================
-    # 4️⃣ LIKELIHOOD RATIO (DEVIANCE) TEST
-    # ======================================================
-
-    st.header("4️⃣ Likelihood Ratio (Deviance) Test")
-
-    null_model = smf.ols(response + " ~ 1", data=df).fit()
-
-    lr_stat = 2 * (model.llf - null_model.llf)
-    df_diff = int(model.df_model)
-    p_value_lr = chi2.sf(lr_stat, df_diff)
-
-    st.write(f"LR Statistic: {lr_stat:.4f}")
-    st.write(f"Degrees of Freedom: {df_diff}")
-    st.write(f"p-value: {p_value_lr:.6f}")
-
-    # ======================================================
-    # 6️⃣ Prediction
+    # 7. PREDICTION
     # ======================================================
 
     st.header("6️⃣ Prediction")
@@ -259,7 +281,7 @@ def run():
         st.success(f"Predicted {response}: {prediction:.4f}")
 
     # ======================================================
-    # 7️⃣ PREDICTED VS ACTUAL
+    # 8. PREDICTED VS ACTUAL
     # ======================================================
 
     st.header("7️⃣ Predicted vs Actual")
