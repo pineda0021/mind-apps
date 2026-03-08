@@ -215,32 +215,63 @@ def run():
     st.metric("RMSE", round(rmse, 4))
 
     # ======================================================
-    # 📘 METRIC EXPLANATIONS
+    # 📘 MODEL FIT METRICS EXPLANATION (CLEAN FORMAT)
     # ======================================================
 
     st.subheader("Interpretation of Model Fit Metrics")
 
-    st.markdown("**Log-Likelihood (ℓ)**  \nMeasures how probable the observed data are under the fitted model. Higher values indicate better fit.")
+    with st.expander("View Mathematical Definitions and Interpretation"):
 
-    st.markdown("**AIC (Akaike Information Criterion)**")
+    st.markdown("### Log-Likelihood (ℓ)")
+    st.latex(r"\ell(\hat{\beta})")
+    st.markdown(
+        "Measures how probable the observed data are under the fitted model.  "
+        "Higher values indicate better model fit."
+    )
+
+    st.markdown("---")
+
+    st.markdown("### AIC (Akaike Information Criterion)")
     st.latex(r"AIC = -2\ell + 2k")
-    st.markdown("Balances model fit and complexity. Lower values are preferred.")
+    st.markdown(
+        "Balances goodness-of-fit and model complexity.  "
+        "Lower values indicate better trade-off."
+    )
 
-    st.markdown("**AICc (Corrected AIC)**")
-    st.latex(r"AICc = AIC + \frac{2k(k+1)}{n-k-1}")
-    st.markdown("Adjusted version of AIC for small samples. Use when n/k is small.")
+    st.markdown("---")
 
-    st.markdown("**BIC (Bayesian Information Criterion)**")
+    st.markdown("### AICc (Corrected AIC)")
+    st.latex(r"AIC_c = AIC + \frac{2k(k+1)}{n-k-1}")
+    st.markdown(
+        "Adjusted AIC for small sample sizes.  "
+        "Recommended when the ratio n/k is small."
+    )
+
+    st.markdown("---")
+
+    st.markdown("### BIC (Bayesian Information Criterion)")
     st.latex(r"BIC = -2\ell + k\ln(n)")
-    st.markdown("Stronger penalty for complexity than AIC. More conservative.")
+    st.markdown(
+        "Stronger penalty for model complexity than AIC.  "
+        "More conservative — favors simpler models."
+    )
 
-    st.markdown("**σ̂ (Residual Standard Deviation)**")
+    st.markdown("---")
+
+    st.markdown("### Residual Standard Deviation (σ̂)")
     st.latex(r"\hat{\sigma} = \sqrt{\frac{SSE}{n-k}}")
-    st.markdown("Estimates variability of model errors.")
+    st.markdown(
+        "Estimates the standard deviation of model errors.  "
+        "Represents unexplained variability in the response."
+    )
 
-    st.markdown("**RMSE (Root Mean Square Error)**")
-    st.latex(r"RMSE = \sqrt{\frac{1}{n}\sum (y_i - \hat{y}_i)^2}")
-    st.markdown("Average magnitude of prediction error.")
+    st.markdown("---")
+
+    st.markdown("### RMSE (Root Mean Square Error)")
+    st.latex(r"RMSE = \sqrt{\frac{1}{n} \sum_{i=1}^{n}(y_i - \hat{y}_i)^2}")
+    st.markdown(
+        "Average magnitude of prediction error on the response scale."
+    )
 
     # ======================================================
     # 5️⃣ PREDICTION
