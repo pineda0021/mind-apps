@@ -87,31 +87,87 @@ def run():
     st.code(formula)
 
     # ======================================================
-    # 3. RESPONSE NORMALITY
-    # ======================================================
+# 3️⃣ Box–Cox Transformation (Using Standard Formula)
+# ======================================================
 
-    st.header("2️⃣ Response Distribution")
+st.header("3️⃣ Box–Cox Transformation (Optional)")
 
-    if not pd.api.types.is_numeric_dtype(df[response]):
-        st.error("Response must be numeric.")
-        return
+transformed = False
+df_model = df.copy()
 
-    y_clean = df[response].dropna()
+y_clean = df[response].dropna()
 
-    fig_hist = px.histogram(df, x=response, marginal="box")
-    st.plotly_chart(fig_hist)
+if (y_clean > 0).all():
 
-    if len(y_clean) >= 3:
-        qq_fig = sm.qqplot(y_clean, line='s')
-        st.pyplot(qq_fig.figure)
+    lambda_mle = boxcox_normmax(y_clean)
+    st.write(f"MLE λ = {lambda_mle:.4f}")
 
-        stat, p = shapiro(y_clean)
-        st.write(f"Shapiro-Wilk p-value: {p:.4f}")
+    # Profile log-likelihood
+    lambdas = np.linspace(-2.5, 2.5, 400)
+    llf_vals = [boxcox_llf(l, y_clean) for l in lambdas]
 
-        if p > 0.05:
-            st.success("No strong evidence against normality.")
+    fig_lambda = px.line(
+        x=lambdas,
+        y=llf_vals,
+        labels={"x": "Lambda (λ)", "y": "Log-Likelihood"},
+        title="Box–Cox Profile Log-Likelihood"
+    )
+
+    fig_lambda.add_vline(
+        x=lambda_mle,
+        line_dash="dash",
+        annotation_text=f"λ̂ = {lambda_mle:.3f}"
+    )
+
+    st.plotly_chart(fig_lambda)
+
+    # Recommended rounding table
+    recommended_lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
+    rounded_lambda = recommended_lambdas[
+        np.argmin(np.abs(recommended_lambdas - lambda_mle))
+    ]
+
+    st.write(f"Recommended rounded λ = {rounded_lambda}")
+
+    use_exact = st.checkbox("Use exact MLE λ instead of rounded")
+
+    if st.checkbox("Apply Box–Cox Transformation"):
+
+        transformed = True
+
+        if use_exact:
+            chosen_lambda = lambda_mle
         else:
-            st.warning("Evidence of non-normality detected.")
+            chosen_lambda = rounded_lambda
+
+        st.latex(r"""
+        \tilde{y} =
+        \begin{cases}
+        \dfrac{y^{\lambda} - 1}{\lambda}, & \lambda \ne 0 \\
+        \ln y, & \lambda = 0
+        \end{cases}
+        """)
+
+        if chosen_lambda == 0:
+            y_transformed = np.log(df[response])
+        else:
+            y_transformed = (df[response] ** chosen_lambda - 1) / chosen_lambda
+
+        df_model[response] = y_transformed
+
+        st.write(f"Using λ = {chosen_lambda:.4f}")
+
+        # Show distributions
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.plotly_chart(px.histogram(x=df[response], title="Original"))
+
+        with col2:
+            st.plotly_chart(px.histogram(x=y_transformed, title="Transformed"))
+
+else:
+    st.warning("Box–Cox requires strictly positive response values.")
 
     # ======================================================
     # 4. BOX-COX
