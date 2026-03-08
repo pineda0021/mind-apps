@@ -95,17 +95,17 @@ def run():
         st.warning("Response does NOT appear normally distributed.")
 
     # ======================================================
-# 4️⃣ BOX-COX TRANSFORMATION (AUTO IF NEEDED)
-# ======================================================
+    # 4️⃣ BOX-COX TRANSFORMATION (AUTO IF NEEDED)
+    # ======================================================
 
-st.header("3️⃣ Box-Cox Transformation (If Needed)")
+    st.header("3️⃣ Box-Cox Transformation (If Needed)")
 
-transformed_response = None
-lambda_rec = None
-original_model = None
-note = ""
+    transformed_response = None
+    lambda_rec = None
+    original_model = None
+    note = ""
 
-if p <= 0.05:
+    if p <= 0.05:
 
     st.warning(
         "The response is not normally distributed. "
