@@ -9,7 +9,7 @@ import numpy as np
 
 def run():
 
-    st.title("General Linear Regression Model Lab")
+    st.title("General Linear Regression Model")
 
     # ======================================================
     # 1. DATA UPLOAD
