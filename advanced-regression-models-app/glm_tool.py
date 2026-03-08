@@ -135,7 +135,6 @@ def run():
     loglik = model.llf
     aic = model.aic
     bic = model.bic
-    sigma_hat = np.sqrt(model.mse_resid)
     sigma_hat = np.sqrt(np.mean(model.resid ** 2))
 
     if (n - k - 1) > 0:
@@ -148,9 +147,8 @@ def run():
     col2.metric("AIC", round(aic, 2))
     col3.metric("AICC", round(aicc, 2))
     col4.metric("BIC", round(bic, 2))
-    col5.metric("σ̂", round(sigma_hat, 4))
 
-    st.metric("RMSE", round(rmse, 4))
+    st.metric("σ̂", round(rmse, 4))
 
     # ======================================================
     # Interpretation Panel
@@ -172,13 +170,9 @@ def run():
     st.latex(r"BIC = -2\ell + k\ln(n)")
     st.markdown("Penalizes model complexity more strongly than AIC.")
 
-    st.markdown("**Residual Standard Deviation (σ̂)**")
-    st.latex(r"\hat{\sigma} = \sqrt{\frac{SSE}{n-k}}")
-    st.markdown("Typical size of unexplained variation in the response.")
-
-    st.markdown("**RMSE**")
+    st.markdown("**RMSE (σ̂^)**")
     st.latex(r"RMSE = \sqrt{\frac{1}{n}\sum (y_i - \hat{y}_i)^2}")
-    st.markdown("Average magnitude of prediction error.")
+    st.markdown("Testmated standard devation of the error.")
 
     # ======================================================
     # 7. LIKELIHOOD RATIO TEST
@@ -247,7 +241,7 @@ def run():
             var_name = var_name.replace("C(", "").split(",")[0]
             level = name.split("T.")[1].rstrip("]")
             st.markdown(
-                f"**{var_name} = {level} (β = {coef})**: Mean difference in {response} "
+                f"**{var_name} = {level} (β = {coef})**: The estimated mean difference in {response} "
                 f"between {level} and the reference level, holding other variables constant. "
                 f"{'Statistically significant.' if pval < 0.05 else 'Not statistically significant.'}"
             )
