@@ -136,7 +136,7 @@ def run():
     aic = model.aic
     bic = model.bic
     sigma_hat = np.sqrt(model.mse_resid)
-    rmse = np.sqrt(np.mean(model.resid ** 2))
+    sigma_hat = np.sqrt(np.mean(model.resid ** 2))
 
     if (n - k - 1) > 0:
         aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
@@ -146,7 +146,7 @@ def run():
     col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Log-Likelihood", round(loglik, 2))
     col2.metric("AIC", round(aic, 2))
-    col3.metric("AICc", round(aicc, 2))
+    col3.metric("AICC", round(aicc, 2))
     col4.metric("BIC", round(bic, 2))
     col5.metric("σ̂", round(sigma_hat, 4))
 
