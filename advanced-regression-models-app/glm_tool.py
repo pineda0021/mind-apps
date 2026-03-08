@@ -8,7 +8,7 @@ from scipy.stats import shapiro, chi2
 
 def run():
 
-    st.title("General Linear Regression Model Lab")
+    st.title("General Linear Regression Model")
 
     # ======================================================
     # 1. DATA UPLOAD
