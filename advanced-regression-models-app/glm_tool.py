@@ -4,6 +4,7 @@ import plotly.express as px
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from scipy.stats import shapiro, chi2
+import numpy as np
 
 
 def run():
@@ -134,17 +135,46 @@ def run():
     loglik = model.llf
     aic = model.aic
     bic = model.bic
+    sigma_hat = np.sqrt(model.mse_resid)
+    rmse = np.sqrt(np.mean(model.resid ** 2))
 
     if (n - k - 1) > 0:
         aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
     else:
         aicc = float("nan")
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Log-Likelihood", round(loglik, 2))
     col2.metric("AIC", round(aic, 2))
     col3.metric("AICc", round(aicc, 2))
     col4.metric("BIC", round(bic, 2))
+    col5.metric("σ̂", round(sigma_hat, 4))
+
+    st.metric("RMSE", round(rmse, 4))
+
+    # ======================================================
+    # Interpretation Panel
+    # ======================================================
+
+    st.subheader("Interpretation of Model Fit Metrics")
+
+    st.markdown("**Log-Likelihood (ℓ)**")
+    st.latex(r"\ell(\hat{\beta})")
+
+    st.markdown("**AIC**")
+    st.latex(r"AIC = -2\ell + 2k")
+
+    st.markdown("**AICc**")
+    st.latex(r"AIC_c = AIC + \frac{2k(k+1)}{n-k-1}")
+
+    st.markdown("**BIC**")
+    st.latex(r"BIC = -2\ell + k\ln(n)")
+
+    st.markdown("**Residual Standard Deviation (σ̂)**")
+    st.latex(r"\hat{\sigma} = \sqrt{\frac{SSE}{n-k}}")
+
+    st.markdown("**RMSE**")
+    st.latex(r"RMSE = \sqrt{\frac{1}{n}\sum (y_i - \hat{y}_i)^2}")
 
     # ======================================================
     # 7. LIKELIHOOD RATIO TEST
@@ -154,7 +184,7 @@ def run():
 
     null_model = smf.ols(response + " ~ 1", data=df).fit()
 
-    lr_stat = -2 * (null_model.llf - model.llf)
+    lr_stat = 2 * (model.llf - null_model.llf)
     df_diff = int(model.df_model)
     p_value_lr = chi2.sf(lr_stat, df_diff)
 
@@ -194,70 +224,11 @@ def run():
 
         return equation
 
-    # ======================================================
-    # 9. REDUCED MODEL (FIXED)
-    # ======================================================
-
-    def refit_reduced_model(model, predictors, categorical_vars, reference_dict, alpha=0.05):
-
-        pvals = model.pvalues.drop("Intercept", errors="ignore")
-
-        significant_predictors = set()
-
-        for param_name, pval in pvals.items():
-            if pval < alpha:
-
-                if param_name.startswith("C("):
-                    var_name = param_name.split("[")[0]
-                    var_name = var_name.replace("C(", "").split(",")[0]
-                    significant_predictors.add(var_name)
-                else:
-                    significant_predictors.add(param_name)
-
-        if not significant_predictors:
-            return None
-
-        terms = []
-
-        for var in predictors:
-            if var in significant_predictors:
-                if var in categorical_vars:
-                    ref = reference_dict[var]
-                    terms.append(f'C({var}, Treatment(reference="{ref}"))')
-                else:
-                    terms.append(var)
-
-        if not terms:
-            return None
-
-        reduced_formula = response + " ~ " + " + ".join(terms)
-
-        return smf.ols(
-            formula=reduced_formula,
-            data=model.model.data.frame
-        ).fit()
-
     st.subheader("Fitted Regression Equation (Full Model)")
     st.latex(build_equation(model, response))
 
-    reduced_model = refit_reduced_model(
-        model,
-        predictors,
-        categorical_vars,
-        reference_dict
-    )
-
-    if reduced_model is not None:
-        st.subheader("Reduced Model Equation")
-        st.latex(build_equation(reduced_model, response))
-
-        st.subheader("Reduced Model Summary")
-        st.text(reduced_model.summary())
-    else:
-        st.warning("No predictors are statistically significant at α = 0.05.")
-
     # ======================================================
-    # 10. PREDICTION
+    # 9. PREDICTION
     # ======================================================
 
     st.header("6️⃣ Prediction")
@@ -267,10 +238,7 @@ def run():
     for var in predictors:
 
         if var in categorical_vars:
-            input_dict[var] = st.selectbox(
-                var,
-                df[var].cat.categories
-            )
+            input_dict[var] = st.selectbox(var, df[var].cat.categories)
         else:
             numeric_series = pd.to_numeric(df[var], errors="coerce")
 
@@ -300,7 +268,7 @@ def run():
         st.success(f"Predicted {response}: {prediction:.4f}")
 
     # ======================================================
-    # 11. PREDICTED VS ACTUAL
+    # 10. PREDICTED VS ACTUAL
     # ======================================================
 
     st.header("7️⃣ Predicted vs Actual")
