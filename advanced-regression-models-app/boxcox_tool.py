@@ -138,14 +138,58 @@ def run():
 
             st.write(f"Estimated λ (MLE): **{lambda_hat:.4f}**")
 
-            # --- NEW: Show transformation formula ---
+            # ======================================================
+            # 🔟 Lambda Interpretation Guide (With Formulas)
+            # ======================================================
+
+            st.subheader("Lambda Interpretation Guide")
+
+            lambda_table = pd.DataFrame({
+                "Range for optimal λ": [
+                    "[-2.5, -1.5)", "[-1.5, -0.75)", "[-0.75, -0.25)",
+                    "[-0.25, 0.25)", "[0.25, 0.75)", "[0.75, 1.5)", "[1.5, 2.5]"
+                ],
+                "Recommended λ": [-2, -1, -0.5, 0, 0.5, 1, 2],
+                "Transformation Name": [
+                    "Inverse square",
+                    "Inverse (reciprocal)",
+                    "Inverse square root",
+                    "Natural logarithm",
+                    "Square root",
+                    "Linear",
+                    "Square"
+                ],
+                "Formula": [
+                    r"\frac{1}{2}(1 - y^{-2})",
+                    r"1 - y^{-1}",
+                    r"2(1 - y^{-1/2})",
+                    r"\ln(y)",
+                    r"2(\sqrt{y} - 1)",
+                    r"y - 1",
+                    r"\frac{1}{2}(y^2 - 1)"
+                ]
+            })
+
+            st.dataframe(lambda_table.drop(columns="Formula"))
+
+            closest_index = (lambda_table["Recommended λ"] - lambda_hat).abs().argsort()[0]
+            closest_row = lambda_table.iloc[closest_index]
+
+            st.markdown(f"""
+            ### Closest Recommended Transformation
+            - **Recommended λ:** {closest_row['Recommended λ']}
+            - **Transformation Name:** *{closest_row['Transformation Name']}*
+            """)
+
+            st.latex(closest_row["Formula"])
+
+            # Show general Box-Cox formula
             if abs(lambda_hat) > 1e-6:
                 st.latex(
                     rf"y^* = \frac{{y^{{{lambda_hat:.3f}}} - 1}}{{{lambda_hat:.3f}}}"
                 )
             else:
                 st.latex(r"y^* = \ln(y)")
-            # ---------------------------------------
 
             # Apply transformation
             y_transformed = boxcox(y_original, lmbda=lambda_hat)
@@ -176,19 +220,20 @@ def run():
             else:
                 st.warning("The transformed response still deviates from normality.")
 
-            # Save original model for comparison later
+            # Save original model
             original_formula_terms = []
             for var in predictors:
                 if var in categorical_vars:
                     ref = reference_dict[var]
-                    original_formula_terms.append(f'C({var}, Treatment(reference=\"{ref}\"))')
+                    original_formula_terms.append(
+                        f'C({var}, Treatment(reference=\"{ref}\"))'
+                    )
                 else:
                     original_formula_terms.append(var)
 
-            original_formula = df.columns[df.columns.get_loc(response)] + " ~ " + " + ".join(original_formula_terms)
+            original_formula = response + " ~ " + " + ".join(original_formula_terms)
             original_model = smf.ols(formula=original_formula, data=df).fit()
 
-            # Use transformed response moving forward
             response = transformed_response
 
     # ======================================================
@@ -216,104 +261,3 @@ def run():
 
     st.subheader("Model Summary")
     st.text(model.summary())
-
-    # ======================================================
-    # 7️⃣ MODEL FIT STATISTICS
-    # ======================================================
-
-    st.header("5️⃣ Model Fit Evaluation")
-
-    n = df.shape[0]
-    k = int(model.df_model) + 1
-
-    loglik = model.llf
-    aic = model.aic
-    bic = model.bic
-    sigma_hat = model.mse_resid ** 0.5
-    rmse = (model.resid ** 2).mean() ** 0.5
-
-    if (n - k - 1) > 0:
-        aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
-    else:
-        aicc = float("nan")
-
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
-    col1.metric("Log-Likelihood", round(loglik, 2))
-    col2.metric("AIC", round(aic, 2))
-    col3.metric("AICc", round(aicc, 2))
-    col4.metric("BIC", round(bic, 2))
-    col5.metric("σ̂ (Residual SD)", round(sigma_hat, 4))
-    col6.metric("RMSE", round(rmse, 4))
-
-    # --- NEW: AIC Comparison ---
-    if original_model is not None:
-        st.subheader("Model Comparison: Original vs Box-Cox")
-
-        comparison = pd.DataFrame({
-            "Model": ["Original", "Box-Cox"],
-            "AIC": [original_model.aic, model.aic],
-            "BIC": [original_model.bic, model.bic],
-            "Log-Likelihood": [original_model.llf, model.llf]
-        })
-
-        st.dataframe(comparison)
-
-        if model.aic < original_model.aic:
-            st.success("Box-Cox model shows improved fit (lower AIC).")
-        else:
-            st.info("Original model may be preferable based on AIC.")
-    # ---------------------------------------
-
-    # ======================================================
-    # 8️⃣ PREDICTION
-    # ======================================================
-
-    st.header("6️⃣ Prediction")
-
-    input_dict = {}
-
-    for var in predictors:
-        if var in categorical_vars:
-            input_dict[var] = st.selectbox(
-                var,
-                df[var].astype("category").cat.categories
-            )
-        else:
-            input_dict[var] = st.number_input(
-                var,
-                value=float(df[var].mean())
-            )
-
-    if st.button("Predict"):
-        new_df = pd.DataFrame([input_dict])
-        pred_transformed = model.predict(new_df)[0]
-
-        # --- NEW: Back-transformation ---
-        if lambda_hat is not None:
-            if abs(lambda_hat) > 1e-6:
-                pred_original = (lambda_hat * pred_transformed + 1) ** (1 / lambda_hat)
-            else:
-                pred_original = np.exp(pred_transformed)
-
-            st.success(f"Predicted {response} (transformed): {pred_transformed:.4f}")
-            st.success(f"Predicted original scale: {pred_original:.4f}")
-        else:
-            st.success(f"Predicted {response}: {pred_transformed:.4f}")
-        # --------------------------------
-
-    # ======================================================
-    # 9️⃣ PREDICTED VS ACTUAL
-    # ======================================================
-
-    st.header("7️⃣ Predicted vs Actual")
-
-    predicted_vals = model.predict(df)
-
-    fig2 = px.scatter(
-        x=predicted_vals,
-        y=df[response],
-        labels={'x': 'Predicted', 'y': 'Actual'},
-        title="Predicted vs Actual Values"
-    )
-
-    st.plotly_chart(fig2)
