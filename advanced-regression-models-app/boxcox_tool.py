@@ -116,7 +116,7 @@ def run():
             y_original = df[response].dropna()
 
             lambda_hat = boxcox_normmax(y_original, method="mle")
-            lambdas = np.linspace(-3, 3, 0.25)
+            lambdas = np.linspace(-2.5, 2.5, 0.25)
             llf_vals = [boxcox(y_original, lmbda=l)[1] for l in lambdas]
 
             st.subheader("Lambda Optimization (Profile Log-Likelihood)")
