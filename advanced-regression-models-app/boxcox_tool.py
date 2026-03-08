@@ -89,7 +89,7 @@ def run():
         st.warning("Response does NOT appear normally distributed.")
 
     # ======================================================
-    # 4️⃣ TRANSFORMATION (Guided by λ̂)
+    # 4️⃣ TRANSFORMATION (Recommended λ)
     # ======================================================
 
     st.header("3️⃣ Transformation (If Needed)")
@@ -109,7 +109,7 @@ def run():
             recommended_lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
             lambda_hat = recommended_lambdas[np.argmin(abs(recommended_lambdas - lambda_mle))]
 
-            st.info(f"Using Recommended λ = {lambda_hat} for interpretability.")
+            st.info(f"Using Recommended λ = {lambda_hat}")
 
             if lambda_hat == -2:
                 df[response] = 1 / (y_original ** 2)
@@ -147,7 +147,7 @@ def run():
     for var in predictors:
         if var in categorical_vars:
             ref = reference_dict[var]
-            terms.append(f'C({var}, Treatment(reference="{ref}"))')
+            terms.append(f'C({var}, Treatment(reference=\"{ref}\"))')
         else:
             terms.append(var)
 
@@ -182,44 +182,40 @@ def run():
     if (n - k - 1) > 0:
         aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
     else:
-        aicc = np.nan
+        aicc = float("nan")
 
-    col1, col2, col3 = st.columns(3)
-    col4, col5 = st.columns(2)
-
+    col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Log-Likelihood", round(loglik, 3))
     col2.metric("AIC", round(aic, 3))
     col3.metric("AICc", round(aicc, 3))
     col4.metric("BIC", round(bic, 3))
-    col5.metric("σ̂", round(sigma_hat, 4))
+    col5.metric("σ̂ (Residual SD)", round(sigma_hat, 4))
 
     st.metric("RMSE", round(rmse, 4))
 
     # ======================================================
-    # 📘 CLEAN METRIC EXPLANATIONS
+    # 📘 INTERPRETATION (Same Style, Cleaner Rendering)
     # ======================================================
 
     st.subheader("Interpretation of Model Fit Metrics")
 
-    with st.expander("View Mathematical Definitions and Interpretation"):
+    st.markdown("**Log-Likelihood (ℓ)**")
+    st.latex(r"\ell(\hat{\beta})")
 
-        st.markdown("### Log-Likelihood (ℓ)")
-        st.latex(r"\ell(\hat{\beta})")
+    st.markdown("**AIC**")
+    st.latex(r"AIC = -2\ell + 2k")
 
-        st.markdown("### AIC")
-        st.latex(r"AIC = -2\ell + 2k")
+    st.markdown("**AICc**")
+    st.latex(r"AICc = AIC + \frac{2k(k+1)}{n-k-1}")
 
-        st.markdown("### AICc")
-        st.latex(r"AIC_c = AIC + \frac{2k(k+1)}{n-k-1}")
+    st.markdown("**BIC**")
+    st.latex(r"BIC = -2\ell + k\ln(n)")
 
-        st.markdown("### BIC")
-        st.latex(r"BIC = -2\ell + k\ln(n)")
+    st.markdown("**Residual Standard Deviation (σ̂)**")
+    st.latex(r"\hat{\sigma} = \sqrt{\frac{SSE}{n-k}}")
 
-        st.markdown("### Residual Standard Deviation (σ̂)")
-        st.latex(r"\hat{\sigma} = \sqrt{\frac{SSE}{n-k}}")
-
-        st.markdown("### RMSE")
-        st.latex(r"RMSE = \sqrt{\frac{1}{n} \sum_{i=1}^{n}(y_i - \hat{y}_i)^2}")
+    st.markdown("**RMSE**")
+    st.latex(r"RMSE = \sqrt{\frac{1}{n} \sum (y_i - \hat{y}_i)^2}")
 
     # ======================================================
     # 5️⃣ PREDICTION
@@ -231,9 +227,15 @@ def run():
 
     for var in predictors:
         if var in categorical_vars:
-            input_dict[var] = st.selectbox(var, df[var].astype("category").cat.categories)
+            input_dict[var] = st.selectbox(
+                var,
+                df[var].astype("category").cat.categories
+            )
         else:
-            input_dict[var] = st.number_input(var, value=float(df[var].mean()))
+            input_dict[var] = st.number_input(
+                var,
+                value=float(df[var].mean())
+            )
 
     if st.button("Predict"):
 
@@ -273,7 +275,8 @@ def run():
     fig2 = px.scatter(
         x=predicted_vals,
         y=df[response],
-        labels={'x': 'Predicted', 'y': 'Actual'}
+        labels={'x': 'Predicted', 'y': 'Actual'},
+        title="Predicted vs Actual Values"
     )
 
     st.plotly_chart(fig2)
