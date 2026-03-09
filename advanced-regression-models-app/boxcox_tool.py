@@ -74,7 +74,6 @@ def run():
 
     st.header("2️⃣ Box–Cox Transformation (Optional)")
 
-    # Your formula
     st.latex(r"""
     \tilde{y} =
     \begin{cases}
@@ -112,10 +111,6 @@ def run():
                 df_model[response] = (df[response] ** chosen_lambda - 1) / chosen_lambda
 
             st.write(f"Using λ = {chosen_lambda:.4f}")
-
-            # ==============================
-            # Side-by-side histograms
-            # ==============================
 
             col1, col2 = st.columns(2)
 
@@ -162,23 +157,17 @@ def run():
     fig_resid.add_hline(y=0)
     st.plotly_chart(fig_resid)
 
-    # Shapiro test with decision rule
-    stat_r, p_r = shapiro(residuals)
-    st.write(f"Shapiro-Wilk p-value: {p_r:.4f}")
+    # ---- FIXED SHAPIRO BLOCK ----
+    if len(residuals) >= 3:
+        stat_r, p_r = shapiro(residuals)
+        st.write(f"Shapiro-Wilk p-value: {p_r:.4f}")
 
-     if p > 0.05:
-            st.success("Response appears normally distributed.")
+        if p_r > 0.05:
+            st.success("Fail to reject H₀: Residuals are approximately normal.")
         else:
-            st.warning("Response does NOT appear normally distributed.")
+            st.error("Reject H₀: Residuals are not normally distributed.")
     else:
         st.warning("Not enough data for Shapiro-Wilk test.")
-
-    alpha = 0.05
-
-    if p_r > alpha:
-        st.success("Do not to reject H₀: Residuals are approximately normal.")
-    else:
-        st.error("Reject H₀: Residuals are not normally distributed.")
 
     # ======================================================
     # Model Fit Metrics
@@ -194,21 +183,18 @@ def run():
     col3.metric("σ̂ (Residual SD)", round(sigma_hat, 4))
 
     # ======================================================
-    # Correct Likelihood Ratio Test for Box-Cox
+    # Correct Likelihood Ratio Test
     # ======================================================
 
     if transformed:
 
         st.subheader("Likelihood Ratio (Deviance) Test")
 
-        # Full Box-Cox log-likelihood includes Jacobian term
         ll_bc = boxcox_llf(chosen_lambda, y_clean)
-
-        # Normal model log-likelihood (λ = 1 equivalent)
         ll_linear = boxcox_llf(1, y_clean)
 
         deviance = 2 * (ll_bc - ll_linear)
-        df_test = int(model.df_model)
+        df_test = 1  # λ is one parameter
         p_value = 1 - chi2.cdf(deviance, df_test)
 
         st.write(f"Deviance Statistic (D): {deviance:.4f}")
