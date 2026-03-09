@@ -128,6 +128,14 @@ def run():
 
             stat_tr, p_tr = shapiro(df_model[transformed_response].dropna())
             st.write(f"Shapiro-Wilk p-value (transformed Y): {p_tr:.4f}")
+            st.write(f"p-value: {p:.4f}")
+
+        if p > 0.05:
+            st.success("Response appears normally distributed.")
+        else:
+            st.warning("Response does NOT appear normally distributed.")
+        else:
+        st.warning("Not enough data for Shapiro-Wilk test.")
 
             formula_transformed = transformed_response + " ~ " + " + ".join(terms)
 
@@ -274,7 +282,7 @@ def run():
         else:
             st.success(f"Predicted {response}: {prediction_tr:.4f}")
 
-    st.header("6️⃣ Predicted vs Actual")
+    st.header("7️⃣ Predicted vs Actual")
 
     predicted_vals = model.predict(df_model)
 
