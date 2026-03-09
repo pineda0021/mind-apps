@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import statsmodels.api as sm
+import plotly.graph_objects as go
 import statsmodels.formula.api as smf
 from scipy.stats import shapiro, boxcox_normmax, boxcox_llf, chi2
 
@@ -74,6 +74,15 @@ def run():
 
     st.header("2️⃣ Box–Cox Transformation (Optional)")
 
+    # Your formula
+    st.latex(r"""
+    \tilde{y} =
+    \begin{cases}
+    \dfrac{y^\lambda - 1}{\lambda}, & \lambda \ne 0 \\
+    \ln y, & \lambda = 0
+    \end{cases}
+    """)
+
     transformed = False
     df_model = df.copy()
     y_clean = df[response].dropna()
@@ -82,24 +91,6 @@ def run():
 
         lambda_mle = boxcox_normmax(y_clean)
         st.write(f"MLE λ = {lambda_mle:.4f}")
-
-        lambdas = np.linspace(-2.5, 2.5, 400)
-        llf_vals = [boxcox_llf(l, y_clean) for l in lambdas]
-
-        fig_lambda = px.line(
-            x=lambdas,
-            y=llf_vals,
-            labels={"x": "Lambda (λ)", "y": "Log-Likelihood"},
-            title="Box–Cox Profile Log-Likelihood"
-        )
-
-        fig_lambda.add_vline(
-            x=lambda_mle,
-            line_dash="dash",
-            annotation_text=f"λ̂ = {lambda_mle:.3f}"
-        )
-
-        st.plotly_chart(fig_lambda)
 
         recommended_lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
         rounded_lambda = recommended_lambdas[
@@ -122,11 +113,27 @@ def run():
 
             st.write(f"Using λ = {chosen_lambda:.4f}")
 
+            # ==============================
+            # Side-by-side histograms
+            # ==============================
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                fig1 = px.histogram(df[response], nbins=30,
+                                    title="Original Response")
+                st.plotly_chart(fig1)
+
+            with col2:
+                fig2 = px.histogram(df_model[response], nbins=30,
+                                    title="Transformed Response")
+                st.plotly_chart(fig2)
+
     else:
         st.warning("Box–Cox requires strictly positive response values.")
 
     # ======================================================
-    # 4️⃣ Fit Model  (MOVED UP — must happen before diagnostics)
+    # 4️⃣ Fit Model
     # ======================================================
 
     st.header("4️⃣ Fit OLS Model")
@@ -155,14 +162,22 @@ def run():
     fig_resid.add_hline(y=0)
     st.plotly_chart(fig_resid)
 
+    # Shapiro test with decision rule
     stat_r, p_r = shapiro(residuals)
-    st.write(f"Residual Shapiro-Wilk p-value: {p_r:.4f}")
+    st.write(f"Shapiro-Wilk p-value: {p_r:.4f}")
+
+    alpha = 0.05
+
+    if p_r > alpha:
+        st.success("Fail to reject H₀: Residuals are approximately normal.")
+    else:
+        st.error("Reject H₀: Residuals are not normally distributed.")
 
     # ======================================================
     # Model Fit Metrics
     # ======================================================
 
-    st.header(" Model Fit Metrics")
+    st.header("Model Fit Metrics")
 
     sigma_hat = np.sqrt(model.mse_resid)
 
@@ -172,25 +187,31 @@ def run():
     col3.metric("σ̂ (Residual SD)", round(sigma_hat, 4))
 
     # ======================================================
-    # Likelihood Ratio (Deviance) Test
+    # Correct Likelihood Ratio Test for Box-Cox
     # ======================================================
 
     if transformed:
 
         st.subheader("Likelihood Ratio (Deviance) Test")
 
-        deviance = 2 * (model.llf - model_original.llf)
-        df_test = model.df_model - model_original.df_model
-        p_value = 1 - chi2.cdf(deviance, df=df_test)
+        # Full Box-Cox log-likelihood includes Jacobian term
+        ll_bc = boxcox_llf(chosen_lambda, y_clean)
+
+        # Normal model log-likelihood (λ = 1 equivalent)
+        ll_linear = boxcox_llf(1, y_clean)
+
+        deviance = 2 * (ll_bc - ll_linear)
+        df_test = 1  # λ is one parameter
+        p_value = 1 - chi2.cdf(deviance, df_test)
 
         st.write(f"Deviance Statistic (D): {deviance:.4f}")
-        st.write(f"Degrees of Freedom (df): {df_test}")
+        st.write(f"Degrees of Freedom: {df_test}")
         st.write(f"p-value: {p_value:.4f}")
 
         if p_value < 0.05:
-            st.success("Transformation significantly improves model fit.")
+            st.success("Transformation significantly improves normality.")
         else:
-            st.info("No statistically significant improvement.")
+            st.info("No significant improvement from transformation.")
 
     # ======================================================
     # Fitted Regression Equation
@@ -214,7 +235,7 @@ def run():
     # Prediction Tool
     # ======================================================
 
-    st.subheader(" 5️⃣ Prediction")
+    st.subheader("5️⃣ Prediction")
 
     input_data = {}
 
@@ -232,7 +253,7 @@ def run():
     # Predicted vs Observed
     # ======================================================
 
-    st.header(" Predicted vs Observed")
+    st.header("Predicted vs Observed")
 
     predicted_vals = model.predict(df_model)
 
@@ -246,7 +267,9 @@ def run():
     min_val = min(predicted_vals.min(), df_model[response].min())
     max_val = max(predicted_vals.max(), df_model[response].max())
 
-    fig2.add_shape(type="line", x0=min_val, y0=min_val, x1=max_val, y1=max_val)
+    fig2.add_shape(type="line", x0=min_val, y0=min_val,
+                   x1=max_val, y1=max_val)
+
     st.plotly_chart(fig2)
 
 if __name__ == "__main__":
