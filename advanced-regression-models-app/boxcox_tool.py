@@ -62,8 +62,8 @@ def run():
         else:
             terms.append(var)
 
-    formula = response + " ~ " + " + ".join(terms)
-    st.code(formula)
+    formula_original = response + " ~ " + " + ".join(terms)
+    st.code(formula_original)
 
     # ======================================================
     # 2️⃣ Box–Cox Transformation
@@ -95,27 +95,31 @@ def run():
             chosen_lambda = lambda_mle if use_exact else rounded_lambda
             y = df[response]
 
+            transformed_response = response + "_tr"
+
             if chosen_lambda == -2:
-                df_model[response] = 0.5 * (1 - 1 / (y**2))
+                df_model[transformed_response] = 0.5 * (1 - 1 / (y**2))
             elif chosen_lambda == -1:
-                df_model[response] = 1 - (1 / y)
+                df_model[transformed_response] = 1 - (1 / y)
             elif chosen_lambda == -0.5:
-                df_model[response] = 2 * (1 - 1 / np.sqrt(y))
+                df_model[transformed_response] = 2 * (1 - 1 / np.sqrt(y))
             elif chosen_lambda == 0:
-                df_model[response] = np.log(y)
+                df_model[transformed_response] = np.log(y)
             elif chosen_lambda == 0.5:
-                df_model[response] = 2 * (np.sqrt(y) - 1)
+                df_model[transformed_response] = 2 * (np.sqrt(y) - 1)
             elif chosen_lambda == 1:
-                df_model[response] = y - 1
+                df_model[transformed_response] = y - 1
             elif chosen_lambda == 2:
-                df_model[response] = 0.5 * (y**2 - 1)
+                df_model[transformed_response] = 0.5 * (y**2 - 1)
             else:
-                df_model[response] = (y**chosen_lambda - 1) / chosen_lambda
+                df_model[transformed_response] = (y**chosen_lambda - 1) / chosen_lambda
 
             st.write(f"Using λ = {chosen_lambda:.4f}")
 
-            stat_tr, p_tr = shapiro(df_model[response].dropna())
+            stat_tr, p_tr = shapiro(df_model[transformed_response].dropna())
             st.write(f"Shapiro-Wilk p-value (transformed Y): {p_tr:.4f}")
+
+            formula_transformed = transformed_response + " ~ " + " + ".join(terms)
 
     else:
         st.warning("Box–Cox requires strictly positive response values.")
@@ -126,18 +130,18 @@ def run():
 
     st.header("3️⃣ Model Fitting")
 
-    model_original = smf.ols(formula=formula, data=df).fit()
+    model_original = smf.ols(formula=formula_original, data=df).fit()
 
     if transformed:
 
         model = smf.glm(
-            formula=formula,
+            formula=formula_transformed,
             data=df_model,
             family=sm.families.Gaussian()
         ).fit()
 
         null_model = smf.glm(
-            formula=response + " ~ 1",
+            formula=transformed_response + " ~ 1",
             data=df_model,
             family=sm.families.Gaussian()
         ).fit()
@@ -157,53 +161,13 @@ def run():
         col3.metric("p-value", round(p_value, 4))
 
     else:
-        model = smf.ols(formula=formula, data=df_model).fit()
+        model = smf.ols(formula=formula_original, data=df_model).fit()
 
     st.subheader("Model Summary")
     st.text(model.summary())
 
     # ======================================================
-    # 4️⃣ AIC Comparison
-    # ======================================================
-
-    st.header("4️⃣ Model Comparison (AIC)")
-
-    aic_original = model_original.aic
-
-    if transformed:
-        aic_transformed = model.aic
-
-        col1, col2 = st.columns(2)
-        col1.metric("AIC (Original)", round(aic_original, 4))
-        col2.metric("AIC (Transformed)", round(aic_transformed, 4))
-    else:
-        st.metric("AIC (Original)", round(aic_original, 4))
-
-    # ======================================================
-    # 5️⃣ Assumption Checks
-    # ======================================================
-
-    st.header("5️⃣ Assumption Checks")
-
-    if hasattr(model, "resid"):
-        residuals = model.resid
-    else:
-        residuals = model.resid_response
-
-    fitted = model.fittedvalues
-
-    fig_resid = px.scatter(x=fitted, y=residuals,
-                           labels={'x': 'Fitted', 'y': 'Residuals'},
-                           title="Residuals vs Fitted")
-    fig_resid.add_hline(y=0)
-    st.plotly_chart(fig_resid)
-
-    if len(residuals) >= 3:
-        stat_r, p_r = shapiro(residuals)
-        st.write(f"Shapiro-Wilk p-value (residuals): {p_r:.4f}")
-
-    # ======================================================
-    # 8️⃣ EQUATION BUILDER
+    # 4️⃣ Equation Builder
     # ======================================================
 
     def build_equation(model, response_label):
@@ -229,35 +193,10 @@ def run():
         return equation
 
     st.subheader("Fitted Regression Equation (Full Model)")
-    st.latex(build_equation(model, response))
+    st.latex(build_equation(model, response if not transformed else transformed_response))
 
     # ======================================================
-    # Transformed Model Equation (if applicable)
-    # ======================================================
-
-    if transformed:
-
-        st.subheader("Transformed Model Equation")
-        transformed_label = f"{response}^{{({round(chosen_lambda,2)})}}"
-        st.latex(build_equation(model, transformed_label))
-
-        st.subheader("Back-Transformed Model (Original Scale)")
-
-        if chosen_lambda == -1:
-            st.latex(rf"\widehat{{E}}({response}) = \frac{{1}}{{1 - \widehat{{E}}({response}^{{(-1)}})}}")
-        elif chosen_lambda == 0:
-            st.latex(rf"\widehat{{E}}({response}) = \exp(\widehat{{E}}(\log {response}))")
-        elif chosen_lambda == 0.5:
-            st.latex(rf"\widehat{{E}}({response}) = \left(\frac{{\widehat{{E}}({response}^{{(0.5)}})}}{{2}} + 1\right)^2")
-        elif chosen_lambda == 1:
-            st.latex(rf"\widehat{{E}}({response}) = \widehat{{E}}({response}^{{(1)}}) + 1")
-        elif chosen_lambda == 2:
-            st.latex(rf"\widehat{{E}}({response}) = \sqrt{{2\widehat{{E}}({response}^{{(2)}}) + 1}}")
-        else:
-            st.latex(rf"\widehat{{E}}({response}) = (\lambda \widehat{{E}}({response}^{{(\lambda)}}) + 1)^{{1/\lambda}}")
-
-    # ======================================================
-    # 9️⃣ Prediction
+    # 5️⃣ Prediction
     # ======================================================
 
     st.header("6️⃣ Prediction")
@@ -281,19 +220,24 @@ def run():
             )
 
         prediction = model.predict(new_df)[0]
-        st.success(f"Predicted {response}: {prediction:.4f}")
+        st.success(f"Predicted value: {prediction:.4f}")
 
     # ======================================================
-    # 10️⃣ Predicted vs Actual
+    # 6️⃣ Predicted vs Actual
     # ======================================================
 
     st.header("7️⃣ Predicted vs Actual")
 
-    predicted_vals = model.predict(df_model)
+    if transformed:
+        predicted_vals = model.predict(df_model)
+        actual_vals = df_model[transformed_response]
+    else:
+        predicted_vals = model.predict(df_model)
+        actual_vals = df_model[response]
 
     fig2 = px.scatter(
         x=predicted_vals,
-        y=df_model[response],
+        y=actual_vals,
         labels={'x': 'Predicted', 'y': 'Actual'},
         title="Predicted vs Actual Values"
     )
