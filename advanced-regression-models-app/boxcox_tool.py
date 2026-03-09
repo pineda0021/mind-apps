@@ -74,7 +74,6 @@ def run():
 
     st.header("2️⃣ Box–Cox Transformation (Optional)")
 
-    # General Box–Cox Formula
     st.latex(r"""
     \tilde{y} =
     \begin{cases}
@@ -83,23 +82,19 @@ def run():
     \end{cases}
     """)
 
-    # ======================================================
-    # Book Recommended Transformations
-    # ======================================================
-
     st.subheader("Recommended Transformations (Based on λ̂)")
 
     st.markdown("""
-| Range for optimal λ | Recommended λ | Transformation | Name |
-|----------------------|--------------|----------------|------|
-| [-2.5, -1.5) | -2 | (1/2)(1 - 1/y²) | Inverse Square |
-| [-1.5, -0.75) | -1 | 1 - 1/y | Inverse (Reciprocal) |
-| [-0.75, -0.25) | -0.5 | 2(1 - 1/√y) | Inverse Square Root |
-| [-0.25, 0.25) | 0 | ln(y) | Natural Logarithm |
-| [0.25, 0.75) | 0.5 | 2(√y - 1) | Square Root |
-| [0.75, 1.5) | 1 | y - 1 | Linear |
-| [1.5, 2.5] | 2 | (1/2)(y² - 1) | Square |
-""")
+    | Range for optimal λ | Recommended λ | Transformation | Name |
+    |----------------------|--------------|----------------|------|
+    | [-2.5, -1.5) | -2 | (1/2)(1 - 1/y²) | Inverse Square |
+    | [-1.5, -0.75) | -1 | 1 - 1/y | Inverse (Reciprocal) |
+    | [-0.75, -0.25) | -0.5 | 2(1 - 1/√y) | Inverse Square Root |
+    | [-0.25, 0.25) | 0 | ln(y) | Natural Logarithm |
+    | [0.25, 0.75) | 0.5 | 2(√y - 1) | Square Root |
+    | [0.75, 1.5) | 1 | y - 1 | Linear |
+    | [1.5, 2.5] | 2 | (1/2)(y² - 1) | Square |
+    """)
 
     transformed = False
     df_model = df.copy()
@@ -147,10 +142,10 @@ def run():
         st.warning("Box–Cox requires strictly positive response values.")
 
     # ======================================================
-    # 4️⃣ Fit Model
+    # 4️⃣ Fit Model Box-Cox  (MOVED HERE SO model EXISTS)
     # ======================================================
 
-    st.header("4️⃣ Fit OLS Model")
+    st.header("4️⃣ Fit Of the Box-Cox Model")
 
     model_original = smf.ols(formula=formula, data=df).fit()
     model = smf.ols(formula=formula, data=df_model).fit()
@@ -181,7 +176,7 @@ def run():
         st.write(f"Shapiro-Wilk p-value: {p_r:.4f}")
 
         if p_r > 0.05:
-            st.success("Fail to reject H₀: Residuals are approximately normal.")
+            st.success("Do not reject H₀: Residuals are approximately normal.")
         else:
             st.error("Reject H₀: Residuals are not normally distributed.")
     else:
@@ -225,7 +220,7 @@ def run():
             st.info("No significant improvement from transformation.")
 
     # ======================================================
-    # Fitted Regression Equation
+    # Remaining code unchanged
     # ======================================================
 
     st.subheader("Fitted Regression Equation")
@@ -242,10 +237,6 @@ def run():
 
     st.latex(equation)
 
-    # ======================================================
-    # Prediction Tool
-    # ======================================================
-
     st.subheader("5️⃣ Prediction")
 
     input_data = {}
@@ -259,10 +250,6 @@ def run():
         prediction = model.predict(new_df)[0]
 
         st.success(f"Predicted {response} = {prediction:.4f}")
-
-    # ======================================================
-    # Predicted vs Observed
-    # ======================================================
 
     st.header("Predicted vs Observed")
 
