@@ -74,6 +74,7 @@ def run():
 
     st.header("2️⃣ Box–Cox Transformation (Optional)")
 
+    # General Box–Cox Formula
     st.latex(r"""
     \tilde{y} =
     \begin{cases}
@@ -81,6 +82,24 @@ def run():
     \ln y, & \lambda = 0
     \end{cases}
     """)
+
+    # ======================================================
+    # Book Recommended Transformations
+    # ======================================================
+
+    st.subheader("Recommended Transformations (Based on λ̂)")
+
+    st.markdown("""
+| Range for optimal λ | Recommended λ | Transformation | Name |
+|----------------------|--------------|----------------|------|
+| [-2.5, -1.5) | -2 | (1/2)(1 - 1/y²) | Inverse Square |
+| [-1.5, -0.75) | -1 | 1 - 1/y | Inverse (Reciprocal) |
+| [-0.75, -0.25) | -0.5 | 2(1 - 1/√y) | Inverse Square Root |
+| [-0.25, 0.25) | 0 | ln(y) | Natural Logarithm |
+| [0.25, 0.75) | 0.5 | 2(√y - 1) | Square Root |
+| [0.75, 1.5) | 1 | y - 1 | Linear |
+| [1.5, 2.5] | 2 | (1/2)(y² - 1) | Square |
+""")
 
     transformed = False
     df_model = df.copy()
@@ -157,7 +176,6 @@ def run():
     fig_resid.add_hline(y=0)
     st.plotly_chart(fig_resid)
 
-    # ---- FIXED SHAPIRO BLOCK ----
     if len(residuals) >= 3:
         stat_r, p_r = shapiro(residuals)
         st.write(f"Shapiro-Wilk p-value: {p_r:.4f}")
@@ -183,7 +201,7 @@ def run():
     col3.metric("σ̂ (Residual SD)", round(sigma_hat, 4))
 
     # ======================================================
-    # Correct Likelihood Ratio Test
+    # Likelihood Ratio Test
     # ======================================================
 
     if transformed:
@@ -194,7 +212,7 @@ def run():
         ll_linear = boxcox_llf(1, y_clean)
 
         deviance = 2 * (ll_bc - ll_linear)
-        df_test = 1  # λ is one parameter
+        df_test = 1
         p_value = 1 - chi2.cdf(deviance, df_test)
 
         st.write(f"Deviance Statistic (D): {deviance:.4f}")
