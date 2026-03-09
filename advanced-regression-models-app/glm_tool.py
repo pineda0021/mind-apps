@@ -9,7 +9,7 @@ import numpy as np
 
 def run():
 
-    st.title("📘 General Linear Regression Model")
+    st.title("📘 Gaussian Linear Model (OLS)")
 
     # ======================================================
     # 1. DATA UPLOAD
