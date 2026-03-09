@@ -18,7 +18,7 @@ tool = st.sidebar.radio(
 
 st.title(tool)
 
-if tool == "Gaussian Linear Model (OLS)":
+if tool == "General Linear Regression Model":
     glm_tool.run()
 
 elif tool == "Box-Cox Transformation":
