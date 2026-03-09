@@ -125,50 +125,63 @@ def run():
     else:
         st.warning("Box–Cox requires strictly positive response values.")
 
-    # ======================================================
-    # 3️⃣ Model Fitting
-    # ======================================================
+   # ======================================================
+# 3️⃣ Model Fitting (Original Scale)
+# ======================================================
 
-    st.header("3️⃣ Model Fitting")
+st.header("3️⃣ Model Fitting (Original Model)")
 
-    model_original = smf.ols(formula=formula_original, data=df).fit()
+model_original = smf.ols(formula=formula_original, data=df).fit()
 
-    if transformed:
+st.subheader("Original Model Summary")
+st.text(model_original.summary())
 
-        model = smf.glm(
-            formula=formula_transformed,
-            data=df_model,
-            family=sm.families.Gaussian()
-        ).fit()
+active_response = response
 
-        null_model = smf.glm(
-            formula=transformed_response + " ~ 1",
-            data=df_model,
-            family=sm.families.Gaussian()
-        ).fit()
 
-        ll_full = model.llf
-        ll_null = null_model.llf
+# ======================================================
+# 3️⃣ Model Fitting for Transform
+# ======================================================
 
-        deviance = -2 * (ll_null - ll_full)
-        df_diff = model.df_model
-        p_value = 1 - chi2.cdf(deviance, df_diff)
+if transformed:
 
-        st.subheader("Deviance Test vs Null Model")
+    st.header("3️⃣ Model Fitting for Transform")
 
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Deviance", round(deviance, 4))
-        col2.metric("df", int(df_diff))
-        col3.metric("p-value", round(p_value, 4))
+    model_transformed = smf.glm(
+        formula=formula_transformed,
+        data=df_model,
+        family=sm.families.Gaussian()
+    ).fit()
 
-        active_response = transformed_response
+    null_model = smf.glm(
+        formula=transformed_response + " ~ 1",
+        data=df_model,
+        family=sm.families.Gaussian()
+    ).fit()
+
+    ll_full = model_transformed.llf
+    ll_null = null_model.llf
+
+    deviance = -2 * (ll_null - ll_full)
+    df_diff = model_transformed.df_model
+    p_value = 1 - chi2.cdf(deviance, df_diff)
+
+    st.subheader("Transformed Model Summary")
+    st.text(model_transformed.summary())
+
+    st.subheader("Deviance Test vs Null Model")
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Deviance", round(deviance, 4))
+    col2.metric("df", int(df_diff))
+    col3.metric("p-value", round(p_value, 4))
+
+    # Use transformed model as active model downstream
+    model = model_transformed
+    active_response = transformed_response
 
     else:
-        model = smf.ols(formula=formula_original, data=df_model).fit()
-        active_response = response
-
-    st.subheader("Model Summary")
-    st.text(model.summary())
+    model = model_original
 
     # ======================================================
     # 5️⃣ Assumption Checks
