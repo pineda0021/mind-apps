@@ -226,8 +226,53 @@ def run():
     st.plotly_chart(fig_resid)
 
     # ======================================================
-    # 6️⃣ Predicted vs Actual
+    # 6️⃣ Prediction
     # ======================================================
+
+    st.header("6️⃣ Prediction")
+
+    input_dict = {}
+
+    for var in predictors:
+        if var in categorical_vars:
+            input_dict[var] = st.selectbox(var, df[var].cat.categories)
+        else:
+            input_dict[var] = st.number_input(
+                var,
+                value=float(pd.to_numeric(df[var], errors="coerce").mean())
+            )
+
+    if st.button("Predict"):
+
+        new_df = pd.DataFrame([input_dict])
+
+        for var in categorical_vars:
+            new_df[var] = pd.Categorical(
+                new_df[var],
+                categories=df[var].cat.categories
+            )
+
+        try:
+            prediction_tr = model.predict(new_df)[0]
+        except Exception:
+            st.error("Prediction failed for this input.")
+            return
+
+        # ==========================
+        # Back-transform if needed
+        # ==========================
+
+        if transformed:
+
+            if chosen_lambda == 0:
+                prediction = np.exp(prediction_tr)
+            else:
+                prediction = (chosen_lambda * prediction_tr + 1)**(1 / chosen_lambda)
+
+            st.success(f"Predicted {response} (original scale): {prediction:.4f}")
+
+        else:
+            st.success(f"Predicted {response}: {prediction_tr:.4f}")
 
     st.header("6️⃣ Predicted vs Actual")
 
