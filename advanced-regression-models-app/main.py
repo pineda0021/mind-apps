@@ -10,7 +10,7 @@ st.sidebar.title("Select a Concept")
 tool = st.sidebar.radio(
     "Choose a tool:",
     [
-        "Gaussian Linear Model (OLS)",
+        "General Linear Regression Model",
         "Box-Cox Transformation",
         "Gamma GLM"
     ]
