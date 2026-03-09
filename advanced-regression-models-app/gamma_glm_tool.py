@@ -5,6 +5,7 @@ import plotly.express as px
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from scipy.stats import chi2, shapiro
+import plotly.graph_objects as go
 
 
 def run():
@@ -15,16 +16,20 @@ def run():
     # 1. DATA UPLOAD
     # ======================================================
 
-    uploaded_file = st.file_uploader(
-        "Upload CSV file",
-        type=["csv"],
-        key="gamma_upload"
-    )
+    uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
 
     if uploaded_file is None:
         return
 
     df = pd.read_csv(uploaded_file)
+
+    initial_rows = df.shape[0]
+    df = df.dropna()
+    dropped = initial_rows - df.shape[0]
+
+    if dropped > 0:
+        st.warning(f"{dropped} rows removed due to missing values.")
+
     st.subheader("Data Preview")
     st.dataframe(df.head())
 
@@ -45,44 +50,30 @@ def run():
         return
 
     # ======================================================
-    # ✅ Normality Check (Y vs log(Y))
+    # Distribution Check
     # ======================================================
 
     st.subheader("Distribution Check")
 
-    y_original = df[response].dropna()
+    y_original = df[response]
 
     if len(y_original) >= 3:
-        stat_orig, p_orig = shapiro(y_original)
+        _, p_orig = shapiro(y_original)
         st.write(f"Shapiro-Wilk p-value (Original Y): {p_orig:.4f}")
-    else:
-        st.warning("Not enough data for Shapiro-Wilk test (original Y).")
 
     y_log = np.log(y_original)
 
     if len(y_log) >= 3:
-        stat_log, p_log = shapiro(y_log)
+        _, p_log = shapiro(y_log)
         st.write(f"Shapiro-Wilk p-value (Log(Y)): {p_log:.4f}")
-    else:
-        st.warning("Not enough data for Shapiro-Wilk test (log Y).")
 
-    # Side-by-side histograms
     col1, col2 = st.columns(2)
 
     with col1:
-        fig_y = px.histogram(
-            df,
-            x=response,
-            title="Original Y Distribution"
-        )
-        st.plotly_chart(fig_y)
+        st.plotly_chart(px.histogram(df, x=response, title="Original Y"))
 
     with col2:
-        fig_log = px.histogram(
-            x=y_log,
-            title="Log(Y) Distribution"
-        )
-        st.plotly_chart(fig_log)
+        st.plotly_chart(px.histogram(x=y_log, title="Log(Y)"))
 
     predictors = st.multiselect(
         "Select Predictor Variables (X)",
@@ -93,7 +84,7 @@ def run():
         return
 
     categorical_vars = st.multiselect(
-        "Select Categorical Variables (Factors)",
+        "Select Categorical Variables",
         predictors
     )
 
@@ -102,9 +93,9 @@ def run():
     for col in categorical_vars:
         df[col] = df[col].astype("category")
         ref = st.selectbox(
-            f"Select reference level for {col}",
+            f"Reference level for {col}",
             df[col].cat.categories,
-            key=f"ref_gamma_{col}"
+            key=f"ref_{col}"
         )
         reference_dict[col] = ref
 
@@ -123,20 +114,22 @@ def run():
 
     formula = response + " ~ " + " + ".join(terms)
 
+    st.code(formula)
+
     # ======================================================
-    # 4. FIT GAMMA GLM
+    # 4. FIT MODEL
     # ======================================================
 
     st.header("2️⃣ Fit Gamma GLM (Log Link)")
 
-    model_gamma = smf.glm(
+    model = smf.glm(
         formula=formula,
         data=df,
         family=sm.families.Gamma(link=sm.families.links.log())
     ).fit()
 
     st.subheader("Model Summary")
-    st.text(model_gamma.summary())
+    st.text(model.summary())
 
     # ======================================================
     # 5. MODEL FIT STATISTICS
@@ -144,121 +137,107 @@ def run():
 
     st.header("3️⃣ Model Fit Evaluation")
 
-    n = df.shape[0]
-    k = int(model_gamma.df_model) + 1
-
-    loglik = model_gamma.llf
-    aic = model_gamma.aic
-    bic = model_gamma.bic
-    deviance = model_gamma.deviance
-
-    if (n - k - 1) > 0:
-        aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
-    else:
-        aicc = float("nan")
-
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Log-Likelihood", round(loglik, 2))
-    col2.metric("AIC", round(aic, 2))
-    col3.metric("AICc", round(aicc, 2))
-    col4.metric("BIC", round(bic, 2))
-
-    st.write(f"Model Deviance: {deviance:.4f}")
-
-    st.markdown("""
-Lower AIC/AICc/BIC indicate better balance between model fit and complexity.
-
-Gamma models are appropriate for positively skewed continuous outcomes.
-""")
-
-    # ======================================================
-    # 6. Likelihood Ratio Test
-    # ======================================================
-
-    st.subheader("Likelihood Ratio (Deviance) Test")
-
-    null_formula = response + " ~ 1"
-
     null_model = smf.glm(
-        formula=null_formula,
+        formula=response + " ~ 1",
         data=df,
         family=sm.families.Gamma(link=sm.families.links.log())
     ).fit()
 
-    lr_stat = -2 * (null_model.llf - model_gamma.llf)
-    df_diff = int(model_gamma.df_model)
+    loglik = model.llf
+    aic = model.aic
+    bic = model.bic
+    deviance = model.deviance
+
+    mcfadden_r2 = 1 - (model.llf / null_model.llf)
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Log-Likelihood", round(loglik, 2))
+    col2.metric("AIC", round(aic, 2))
+    col3.metric("BIC", round(bic, 2))
+    col4.metric("McFadden R²", round(mcfadden_r2, 4))
+
+    st.write(f"Model Deviance: {deviance:.4f}")
+
+    # ======================================================
+    # Likelihood Ratio Test
+    # ======================================================
+
+    lr_stat = -2 * (null_model.llf - model.llf)
+    df_diff = int(model.df_model)
     p_value_lr = chi2.sf(lr_stat, df_diff)
 
-    st.write(f"LR Statistic: {lr_stat:.4f}")
-    st.write(f"Degrees of Freedom: {df_diff}")
-    st.write(f"p-value: {p_value_lr:.6f}")
+    st.write(f"LR Test p-value: {p_value_lr:.6f}")
 
-    if p_value_lr < 0.05:
-        st.success("The Gamma model significantly improves over the intercept-only model.")
-    else:
-        st.warning("The Gamma model does not significantly improve over the intercept-only model.")
+    # ======================================================
+    # 6. RESIDUAL DIAGNOSTICS
+    # ======================================================
+
+    st.header("4️⃣ Residual Diagnostics")
+
+    fitted = model.fittedvalues
+    resid_dev = model.resid_deviance
+
+    fig = px.scatter(x=fitted, y=resid_dev,
+                     labels={"x": "Fitted", "y": "Deviance Residuals"},
+                     title="Residuals vs Fitted")
+    st.plotly_chart(fig)
 
     # ======================================================
     # 7. INTERPRETATION
     # ======================================================
 
-    st.header("4️⃣ Interpretation of Coefficients")
+    st.header("5️⃣ Interpretation")
 
-    for name, coef in model_gamma.params.items():
+    conf = model.conf_int()
+    conf.columns = ["2.5%", "97.5%"]
+
+    for name, coef in model.params.items():
 
         if name == "Intercept":
             continue
 
-        coef = round(coef, 4)
-        multiplicative_effect = round(np.exp(coef), 4)
+        exp_coef = np.exp(coef)
+        lower = np.exp(conf.loc[name, "2.5%"])
+        upper = np.exp(conf.loc[name, "97.5%"])
 
-        if "C(" in name:
-            var_name = name.split("[")[0]
-            var_name = var_name.replace("C(", "").split(",")[0]
-            level = name.split("T.")[1].replace("]", "")
-            ref = reference_dict[var_name]
-
-            st.write(
-                f"For **{var_name} = {level}**, the expected **{response}** "
-                f"is multiplied by **{multiplicative_effect}** "
-                f"relative to the reference group (**{ref}**)."
-            )
-        else:
-            st.write(
-                f"For each one-unit increase in **{name}**, the expected "
-                f"**{response}** is multiplied by **{multiplicative_effect}**, "
-                "holding other variables constant."
-            )
+        st.write(
+            f"**{name}** → Multiplicative Effect: "
+            f"{exp_coef:.4f} "
+            f"(95% CI: {lower:.4f}, {upper:.4f})"
+        )
 
     # ======================================================
     # 8. PREDICTION
     # ======================================================
 
-    st.header("5️⃣ Prediction")
+    st.header("6️⃣ Prediction")
 
     input_dict = {}
 
     for var in predictors:
-
-        if not pd.api.types.is_numeric_dtype(df[var]):
-
-            if not pd.api.types.is_categorical_dtype(df[var]):
-                df[var] = df[var].astype("category")
-
+        if var in categorical_vars:
             input_dict[var] = st.selectbox(
                 var,
                 df[var].cat.categories
             )
-
         else:
             input_dict[var] = st.number_input(
                 var,
                 value=float(df[var].mean())
             )
 
-    if st.button("Predict (Gamma)"):
+    if st.button("Predict"):
 
         new_df = pd.DataFrame([input_dict])
-        prediction = model_gamma.predict(new_df)[0]
 
-        st.success(f"Predicted {response}: {prediction:.4f}")
+        pred = model.get_prediction(new_df)
+        pred_summary = pred.summary_frame()
+
+        mean_pred = pred_summary["mean"].values[0]
+        lower = pred_summary["mean_ci_lower"].values[0]
+        upper = pred_summary["mean_ci_upper"].values[0]
+
+        st.success(
+            f"Predicted {response}: {mean_pred:.4f} "
+            f"(95% CI: {lower:.4f}, {upper:.4f})"
+        )
