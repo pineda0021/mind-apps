@@ -4,7 +4,7 @@ import numpy as np
 import plotly.express as px
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
-from scipy.stats import chi2
+from scipy.stats import chi2, shapiro
 
 
 def run():
@@ -43,6 +43,46 @@ def run():
     if (df[response] <= 0).any():
         st.error("Gamma regression requires strictly positive response values.")
         return
+
+    # ======================================================
+    # ✅ Normality Check (Y vs log(Y))
+    # ======================================================
+
+    st.subheader("Distribution Check")
+
+    y_original = df[response].dropna()
+
+    if len(y_original) >= 3:
+        stat_orig, p_orig = shapiro(y_original)
+        st.write(f"Shapiro-Wilk p-value (Original Y): {p_orig:.4f}")
+    else:
+        st.warning("Not enough data for Shapiro-Wilk test (original Y).")
+
+    y_log = np.log(y_original)
+
+    if len(y_log) >= 3:
+        stat_log, p_log = shapiro(y_log)
+        st.write(f"Shapiro-Wilk p-value (Log(Y)): {p_log:.4f}")
+    else:
+        st.warning("Not enough data for Shapiro-Wilk test (log Y).")
+
+    # Side-by-side histograms
+    col1, col2 = st.columns(2)
+
+    with col1:
+        fig_y = px.histogram(
+            df,
+            x=response,
+            title="Original Y Distribution"
+        )
+        st.plotly_chart(fig_y)
+
+    with col2:
+        fig_log = px.histogram(
+            x=y_log,
+            title="Log(Y) Distribution"
+        )
+        st.plotly_chart(fig_log)
 
     predictors = st.multiselect(
         "Select Predictor Variables (X)",
@@ -112,7 +152,6 @@ def run():
     bic = model_gamma.bic
     deviance = model_gamma.deviance
 
-    # AICc
     if (n - k - 1) > 0:
         aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
     else:
@@ -133,7 +172,7 @@ Gamma models are appropriate for positively skewed continuous outcomes.
 """)
 
     # ======================================================
-    # 6. Likelihood Ratio (Deviance) Test
+    # 6. Likelihood Ratio Test
     # ======================================================
 
     st.subheader("Likelihood Ratio (Deviance) Test")
@@ -155,16 +194,12 @@ Gamma models are appropriate for positively skewed continuous outcomes.
     st.write(f"p-value: {p_value_lr:.6f}")
 
     if p_value_lr < 0.05:
-        st.success(
-            "The Gamma model significantly improves over the intercept-only model."
-        )
+        st.success("The Gamma model significantly improves over the intercept-only model.")
     else:
-        st.warning(
-            "The Gamma model does not significantly improve over the intercept-only model."
-        )
+        st.warning("The Gamma model does not significantly improve over the intercept-only model.")
 
     # ======================================================
-    # 7. INTERPRETATION (MULTIPLICATIVE)
+    # 7. INTERPRETATION
     # ======================================================
 
     st.header("4️⃣ Interpretation of Coefficients")
