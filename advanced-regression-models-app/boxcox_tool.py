@@ -128,7 +128,7 @@ def run():
 
     st.header("3️⃣ Model Fitting")
 
-    model_original = smf.ols(formula=formula, data=df).fit()
+    model_original = smf.ols(formula=formula, data=df_model).fit()
 
     if transformed:
         model = smf.glm(
