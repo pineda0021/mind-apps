@@ -125,63 +125,61 @@ def run():
     else:
         st.warning("Box–Cox requires strictly positive response values.")
 
-   # ======================================================
-# 3️⃣ Model Fitting (Original Scale)
-# ======================================================
+    # ======================================================
+    # 3️⃣ Model Fitting (Original Scale)
+    # ======================================================
 
-st.header("3️⃣ Model Fitting (Original Model)")
+    st.header("3️⃣ Model Fitting (Original Model)")
 
-model_original = smf.ols(formula=formula_original, data=df).fit()
+    model_original = smf.ols(formula=formula_original, data=df).fit()
 
-st.subheader("Original Model Summary")
-st.text(model_original.summary())
+    st.subheader("Original Model Summary")
+    st.text(model_original.summary())
 
-active_response = response
+    active_response = response
 
+    # ======================================================
+    # 3️⃣ Model Fitting for Transform
+    # ======================================================
 
-# ======================================================
-# 3️⃣ Model Fitting for Transform
-# ======================================================
+    if transformed:
 
-if transformed:
+        st.header("3️⃣ Model Fitting for Transform")
 
-    st.header("3️⃣ Model Fitting for Transform")
+        model_transformed = smf.glm(
+            formula=formula_transformed,
+            data=df_model,
+            family=sm.families.Gaussian()
+        ).fit()
 
-    model_transformed = smf.glm(
-        formula=formula_transformed,
-        data=df_model,
-        family=sm.families.Gaussian()
-    ).fit()
+        null_model = smf.glm(
+            formula=transformed_response + " ~ 1",
+            data=df_model,
+            family=sm.families.Gaussian()
+        ).fit()
 
-    null_model = smf.glm(
-        formula=transformed_response + " ~ 1",
-        data=df_model,
-        family=sm.families.Gaussian()
-    ).fit()
+        ll_full = model_transformed.llf
+        ll_null = null_model.llf
 
-    ll_full = model_transformed.llf
-    ll_null = null_model.llf
+        deviance = -2 * (ll_null - ll_full)
+        df_diff = model_transformed.df_model
+        p_value = 1 - chi2.cdf(deviance, df_diff)
 
-    deviance = -2 * (ll_null - ll_full)
-    df_diff = model_transformed.df_model
-    p_value = 1 - chi2.cdf(deviance, df_diff)
+        st.subheader("Transformed Model Summary")
+        st.text(model_transformed.summary())
 
-    st.subheader("Transformed Model Summary")
-    st.text(model_transformed.summary())
+        st.subheader("Deviance Test vs Null Model")
 
-    st.subheader("Deviance Test vs Null Model")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Deviance", round(deviance, 4))
+        col2.metric("df", int(df_diff))
+        col3.metric("p-value", round(p_value, 4))
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Deviance", round(deviance, 4))
-    col2.metric("df", int(df_diff))
-    col3.metric("p-value", round(p_value, 4))
-
-    # Use transformed model as active model downstream
-    model = model_transformed
-    active_response = transformed_response
+        model = model_transformed
+        active_response = transformed_response
 
     else:
-    model = model_original
+        model = model_original
 
     # ======================================================
     # 5️⃣ Assumption Checks
@@ -192,9 +190,12 @@ if transformed:
     residuals = model.resid if hasattr(model, "resid") else model.resid_response
     fitted = model.fittedvalues
 
-    fig_resid = px.scatter(x=fitted, y=residuals,
-                           labels={'x': 'Fitted', 'y': 'Residuals'},
-                           title="Residuals vs Fitted")
+    fig_resid = px.scatter(
+        x=fitted,
+        y=residuals,
+        labels={'x': 'Fitted', 'y': 'Residuals'},
+        title="Residuals vs Fitted"
+    )
     fig_resid.add_hline(y=0)
     st.plotly_chart(fig_resid)
 
