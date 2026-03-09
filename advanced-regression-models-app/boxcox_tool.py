@@ -67,18 +67,42 @@ def run():
     st.code(formula_original)
 
     # ======================================================
-    # 2️⃣ Box–Cox Transformation
+    # 2️⃣ Box–Cox Transformation (SAFE)
     # ======================================================
 
     st.header("2️⃣ Box–Cox Transformation (Optional)")
 
     transformed = False
     df_model = df.copy()
-    y_clean = df[response].dropna()
 
-    if (y_clean > 0).all():
+    # Safe numeric conversion
+    y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
+    y_clean = y_clean[np.isfinite(y_clean)]
 
-        lambda_mle = boxcox_normmax(y_clean)
+    can_boxcox = True
+
+    if not np.issubdtype(y_clean.dtype, np.number):
+        st.warning("Response must be numeric for Box–Cox.")
+        can_boxcox = False
+
+    if y_clean.nunique() < 2:
+        st.warning("Response has no variation. Box–Cox skipped.")
+        can_boxcox = False
+
+    if (y_clean <= 0).any():
+        st.warning("Box–Cox requires strictly positive values. Skipped.")
+        can_boxcox = False
+
+    if can_boxcox:
+
+        try:
+            lambda_mle = boxcox_normmax(y_clean)
+        except Exception:
+            st.warning("Box–Cox optimization failed for this dataset.")
+            can_boxcox = False
+
+    if can_boxcox:
+
         st.write(f"MLE λ = {lambda_mle:.4f}")
 
         recommended_lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
@@ -95,56 +119,34 @@ def run():
             transformed = True
             chosen_lambda = lambda_mle if use_exact else rounded_lambda
             y = df[response]
-
             transformed_response = response + "_tr"
 
-            if chosen_lambda == -2:
-                df_model[transformed_response] = 0.5 * (1 - 1 / (y**2))
-            elif chosen_lambda == -1:
-                df_model[transformed_response] = 1 - (1 / y)
-            elif chosen_lambda == -0.5:
-                df_model[transformed_response] = 2 * (1 - 1 / np.sqrt(y))
-            elif chosen_lambda == 0:
+            if chosen_lambda == 0:
                 df_model[transformed_response] = np.log(y)
-            elif chosen_lambda == 0.5:
-                df_model[transformed_response] = 2 * (np.sqrt(y) - 1)
-            elif chosen_lambda == 1:
-                df_model[transformed_response] = y - 1
-            elif chosen_lambda == 2:
-                df_model[transformed_response] = 0.5 * (y**2 - 1)
             else:
                 df_model[transformed_response] = (y**chosen_lambda - 1) / chosen_lambda
-
-            st.write(f"Using λ = {chosen_lambda:.4f}")
 
             stat_tr, p_tr = shapiro(df_model[transformed_response].dropna())
             st.write(f"Shapiro-Wilk p-value (transformed Y): {p_tr:.4f}")
 
             formula_transformed = transformed_response + " ~ " + " + ".join(terms)
 
-    else:
-        st.warning("Box–Cox requires strictly positive response values.")
-
     # ======================================================
-    # 3️⃣ Model Fitting (Original Scale)
+    # 3️⃣ Model Fitting
     # ======================================================
 
-    st.header("3️⃣ Model Fitting (Original Model)")
+    st.header("3️⃣ Model Fitting")
 
     model_original = smf.ols(formula=formula_original, data=df).fit()
-
     st.subheader("Original Model Summary")
     st.text(model_original.summary())
 
     active_response = response
-
-    # ======================================================
-    # 3️⃣ Model Fitting for Transform
-    # ======================================================
+    model = model_original
 
     if transformed:
 
-        st.header("3️⃣ Model Fitting for Transform")
+        st.header("Model Fitting for Transform")
 
         model_transformed = smf.glm(
             formula=formula_transformed,
@@ -152,34 +154,58 @@ def run():
             family=sm.families.Gaussian()
         ).fit()
 
+        st.subheader("Transformed Model Summary")
+        st.text(model_transformed.summary())
+
         null_model = smf.glm(
             formula=transformed_response + " ~ 1",
             data=df_model,
             family=sm.families.Gaussian()
         ).fit()
 
-        ll_full = model_transformed.llf
-        ll_null = null_model.llf
-
-        deviance = -2 * (ll_null - ll_full)
+        deviance = -2 * (null_model.llf - model_transformed.llf)
         df_diff = model_transformed.df_model
         p_value = 1 - chi2.cdf(deviance, df_diff)
 
-        st.subheader("Transformed Model Summary")
-        st.text(model_transformed.summary())
-
-        st.subheader("Deviance Test vs Null Model")
-
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Deviance", round(deviance, 4))
-        col2.metric("df", int(df_diff))
-        col3.metric("p-value", round(p_value, 4))
+        st.subheader("Deviance Test vs Null")
+        st.write(f"Deviance: {deviance:.4f}")
+        st.write(f"df: {df_diff}")
+        st.write(f"p-value: {p_value:.4f}")
 
         model = model_transformed
         active_response = transformed_response
 
-    else:
-        model = model_original
+    # ======================================================
+    # 4️⃣ Coefficient Interpretation
+    # ======================================================
+
+    st.header("4️⃣ Coefficient Interpretation")
+
+    for name in model.params.index:
+
+        coef = round(model.params[name], 4)
+        pval = model.pvalues[name]
+
+        if name == "Intercept":
+            st.markdown(
+                f"**Intercept ({coef})**: Estimated mean of the response "
+                f"when all predictors are zero or at reference levels. "
+                f"{'Significant.' if pval < 0.05 else 'Not significant.'}"
+            )
+        elif name.startswith("C(") and "T." in name:
+            var_name = name.split("[")[0].replace("C(", "").split(",")[0]
+            level = name.split("T.")[1].rstrip("]")
+            st.markdown(
+                f"**{var_name} = {level} (β = {coef})**: "
+                f"Difference from reference level. "
+                f"{'Significant.' if pval < 0.05 else 'Not significant.'}"
+            )
+        else:
+            st.markdown(
+                f"**{name} (β = {coef})**: "
+                f"For one-unit increase in {name}, response changes by {coef}. "
+                f"{'Significant.' if pval < 0.05 else 'Not significant.'}"
+            )
 
     # ======================================================
     # 5️⃣ Assumption Checks
@@ -200,83 +226,10 @@ def run():
     st.plotly_chart(fig_resid)
 
     # ======================================================
-    # 8️⃣ EQUATION BUILDER
+    # 6️⃣ Predicted vs Actual
     # ======================================================
 
-    def build_equation(model, response_label):
-
-        params = model.params
-        equation = f"\\widehat{{\\mathbb{{E}}}}({response_label}) = {round(params['Intercept'],4)}"
-
-        for name in params.index:
-            if name == "Intercept":
-                continue
-
-            coef = round(params[name], 4)
-            sign = "+" if coef >= 0 else "-"
-
-            if name.startswith("C(") and "T." in name:
-                var_name = name.split("[")[0]
-                var_name = var_name.replace("C(", "").split(",")[0]
-                level = name.split("T.")[1].rstrip("]")
-                equation += f" {sign} {abs(coef)} D_{{{var_name}={level}}}"
-            else:
-                equation += f" {sign} {abs(coef)} \\cdot {name}"
-
-        return equation
-
-    st.subheader("Fitted Regression Equation (Full Model)")
-    st.latex(build_equation(model, active_response))
-
-    # ======================================================
-    # 6️⃣ Prediction
-    # ======================================================
-
-    st.header("6️⃣ Prediction")
-
-    input_dict = {}
-
-    for var in predictors:
-        if var in categorical_vars:
-            input_dict[var] = st.selectbox(var, df[var].cat.categories)
-        else:
-            input_dict[var] = st.number_input(var, value=float(df[var].mean()))
-
-    if st.button("Predict"):
-
-        new_df = pd.DataFrame([input_dict])
-
-        for var in categorical_vars:
-            new_df[var] = pd.Categorical(
-                new_df[var],
-                categories=df[var].cat.categories
-            )
-
-        prediction_tr = model.predict(new_df)[0]
-
-        if transformed:
-            if chosen_lambda == -1:
-                prediction = 1 / (1 - prediction_tr)
-            elif chosen_lambda == 0:
-                prediction = np.exp(prediction_tr)
-            elif chosen_lambda == 0.5:
-                prediction = ((prediction_tr / 2) + 1)**2
-            elif chosen_lambda == 1:
-                prediction = prediction_tr + 1
-            elif chosen_lambda == 2:
-                prediction = np.sqrt(2 * prediction_tr + 1)
-            else:
-                prediction = (chosen_lambda * prediction_tr + 1)**(1/chosen_lambda)
-
-            st.success(f"Predicted {response} (original scale): {prediction:.4f}")
-        else:
-            st.success(f"Predicted {response}: {prediction_tr:.4f}")
-
-    # ======================================================
-    # 7️⃣ Predicted vs Actual
-    # ======================================================
-
-    st.header("7️⃣ Predicted vs Actual")
+    st.header("6️⃣ Predicted vs Actual")
 
     predicted_vals = model.predict(df_model)
 
