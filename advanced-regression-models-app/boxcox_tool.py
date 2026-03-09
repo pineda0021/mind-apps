@@ -34,6 +34,14 @@ def run():
 
     response = st.selectbox("Select Response Variable (Y)", df.columns)
 
+    # ✅ Original Shapiro Test
+    y_original = pd.to_numeric(df[response], errors="coerce").dropna()
+    if len(y_original) >= 3:
+        stat_orig, p_orig = shapiro(y_original)
+        st.write(f"Shapiro-Wilk p-value (original Y): {p_orig:.4f}")
+    else:
+        st.warning("Not enough data for Shapiro-Wilk test (original Y).")
+
     predictors = st.multiselect(
         "Select Predictor Variables (X)",
         [col for col in df.columns if col != response]
@@ -75,7 +83,6 @@ def run():
     transformed = False
     df_model = df.copy()
 
-    # Safe numeric conversion
     y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
     y_clean = y_clean[np.isfinite(y_clean)]
 
@@ -94,7 +101,6 @@ def run():
         can_boxcox = False
 
     if can_boxcox:
-
         try:
             lambda_mle = boxcox_normmax(y_clean)
         except Exception:
@@ -126,16 +132,38 @@ def run():
             else:
                 df_model[transformed_response] = (y**chosen_lambda - 1) / chosen_lambda
 
-            stat_tr, p_tr = shapiro(df_model[transformed_response].dropna())
-            st.write(f"Shapiro-Wilk p-value (transformed Y): {p_tr:.4f}")
-            st.write(f"p-value: {p:.4f}")
+            # ✅ Shapiro test for transformed Y
+            y_tr_clean = df_model[transformed_response].dropna()
 
-        if p > 0.05:
-            st.success("Response appears normally distributed.")
-        else:
-            st.warning("Response does NOT appear normally distributed.")
-        else:
-        st.warning("Not enough data for Shapiro-Wilk test.")
+            if len(y_tr_clean) >= 3:
+                stat_tr, p_tr = shapiro(y_tr_clean)
+                st.write(f"Shapiro-Wilk p-value (transformed Y): {p_tr:.4f}")
+
+                if p_tr > 0.05:
+                    st.success("Transformed response appears normally distributed.")
+                else:
+                    st.warning("Transformed response does NOT appear normally distributed.")
+            else:
+                st.warning("Not enough data for Shapiro-Wilk test (transformed Y).")
+
+            # ✅ Side-by-side histograms
+            col1, col2 = st.columns(2)
+
+            with col1:
+                fig_y = px.histogram(
+                    df,
+                    x=response,
+                    title="Original Y Distribution"
+                )
+                st.plotly_chart(fig_y)
+
+            with col2:
+                fig_ytr = px.histogram(
+                    df_model,
+                    x=transformed_response,
+                    title="Transformed Y Distribution"
+                )
+                st.plotly_chart(fig_ytr)
 
             formula_transformed = transformed_response + " ~ " + " + ".join(terms)
 
@@ -265,10 +293,6 @@ def run():
         except Exception:
             st.error("Prediction failed for this input.")
             return
-
-        # ==========================
-        # Back-transform if needed
-        # ==========================
 
         if transformed:
 
