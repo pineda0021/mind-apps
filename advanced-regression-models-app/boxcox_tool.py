@@ -6,6 +6,7 @@ import statsmodels.formula.api as smf
 import statsmodels.api as sm
 from scipy.stats import shapiro, boxcox_normmax, chi2
 
+
 # ======================================================
 # APP
 # ======================================================
@@ -160,14 +161,32 @@ def run():
         col2.metric("df", int(df_diff))
         col3.metric("p-value", round(p_value, 4))
 
+        active_response = transformed_response
+
     else:
         model = smf.ols(formula=formula_original, data=df_model).fit()
+        active_response = response
 
     st.subheader("Model Summary")
     st.text(model.summary())
 
     # ======================================================
-    # 4️⃣ Equation Builder
+    # 5️⃣ Assumption Checks
+    # ======================================================
+
+    st.header("5️⃣ Assumption Checks")
+
+    residuals = model.resid if hasattr(model, "resid") else model.resid_response
+    fitted = model.fittedvalues
+
+    fig_resid = px.scatter(x=fitted, y=residuals,
+                           labels={'x': 'Fitted', 'y': 'Residuals'},
+                           title="Residuals vs Fitted")
+    fig_resid.add_hline(y=0)
+    st.plotly_chart(fig_resid)
+
+    # ======================================================
+    # 8️⃣ EQUATION BUILDER
     # ======================================================
 
     def build_equation(model, response_label):
@@ -193,10 +212,10 @@ def run():
         return equation
 
     st.subheader("Fitted Regression Equation (Full Model)")
-    st.latex(build_equation(model, response if not transformed else transformed_response))
+    st.latex(build_equation(model, active_response))
 
     # ======================================================
-    # 5️⃣ Prediction
+    # 6️⃣ Prediction
     # ======================================================
 
     st.header("6️⃣ Prediction")
@@ -219,27 +238,39 @@ def run():
                 categories=df[var].cat.categories
             )
 
-        prediction = model.predict(new_df)[0]
-        st.success(f"Predicted value: {prediction:.4f}")
+        prediction_tr = model.predict(new_df)[0]
+
+        if transformed:
+            if chosen_lambda == -1:
+                prediction = 1 / (1 - prediction_tr)
+            elif chosen_lambda == 0:
+                prediction = np.exp(prediction_tr)
+            elif chosen_lambda == 0.5:
+                prediction = ((prediction_tr / 2) + 1)**2
+            elif chosen_lambda == 1:
+                prediction = prediction_tr + 1
+            elif chosen_lambda == 2:
+                prediction = np.sqrt(2 * prediction_tr + 1)
+            else:
+                prediction = (chosen_lambda * prediction_tr + 1)**(1/chosen_lambda)
+
+            st.success(f"Predicted {response} (original scale): {prediction:.4f}")
+        else:
+            st.success(f"Predicted {response}: {prediction_tr:.4f}")
 
     # ======================================================
-    # 6️⃣ Predicted vs Actual
+    # 7️⃣ Predicted vs Actual
     # ======================================================
 
     st.header("7️⃣ Predicted vs Actual")
 
-    if transformed:
-        predicted_vals = model.predict(df_model)
-        actual_vals = df_model[transformed_response]
-    else:
-        predicted_vals = model.predict(df_model)
-        actual_vals = df_model[response]
+    predicted_vals = model.predict(df_model)
 
     fig2 = px.scatter(
         x=predicted_vals,
-        y=actual_vals,
+        y=df_model[active_response],
         labels={'x': 'Predicted', 'y': 'Actual'},
-        title="Predicted vs Actual Values"
+        title="Predicted vs Actual"
     )
 
     st.plotly_chart(fig2)
