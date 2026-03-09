@@ -13,7 +13,7 @@ from scipy.stats import shapiro, boxcox_normmax, chi2
 
 def run():
 
-    st.title("📘 Ordinary Least Squares (OLS) Regression Lab")
+    st.title("📘 General Linear Regression Model")
 
     uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
 
