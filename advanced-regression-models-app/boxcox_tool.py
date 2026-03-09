@@ -166,10 +166,17 @@ def run():
     stat_r, p_r = shapiro(residuals)
     st.write(f"Shapiro-Wilk p-value: {p_r:.4f}")
 
+     if p > 0.05:
+            st.success("Response appears normally distributed.")
+        else:
+            st.warning("Response does NOT appear normally distributed.")
+    else:
+        st.warning("Not enough data for Shapiro-Wilk test.")
+
     alpha = 0.05
 
     if p_r > alpha:
-        st.success("Fail to reject H₀: Residuals are approximately normal.")
+        st.success("Do not to reject H₀: Residuals are approximately normal.")
     else:
         st.error("Reject H₀: Residuals are not normally distributed.")
 
@@ -201,7 +208,7 @@ def run():
         ll_linear = boxcox_llf(1, y_clean)
 
         deviance = 2 * (ll_bc - ll_linear)
-        df_test = 1  # λ is one parameter
+        df_test = int(model.df_model)
         p_value = 1 - chi2.cdf(deviance, df_test)
 
         st.write(f"Deviance Statistic (D): {deviance:.4f}")
