@@ -6,7 +6,6 @@ import statsmodels.formula.api as smf
 import statsmodels.api as sm
 from scipy.stats import shapiro, boxcox_normmax, chi2
 
-
 # ======================================================
 # APP
 # ======================================================
@@ -96,7 +95,6 @@ def run():
             chosen_lambda = lambda_mle if use_exact else rounded_lambda
             y = df[response]
 
-            # Table-based transformations
             if chosen_lambda == -2:
                 df_model[response] = 0.5 * (1 - 1 / (y**2))
             elif chosen_lambda == -1:
@@ -131,6 +129,7 @@ def run():
     model_original = smf.ols(formula=formula, data=df).fit()
 
     if transformed:
+
         model = smf.glm(
             formula=formula,
             data=df_model,
@@ -207,13 +206,12 @@ def run():
     # 8️⃣ EQUATION BUILDER
     # ======================================================
 
-    def build_equation(model, response):
+    def build_equation(model, response_label):
 
         params = model.params
-        equation = f"\\widehat{{\\mathbb{{E}}}}({response}) = {round(params['Intercept'],4)}"
+        equation = f"\\widehat{{\\mathbb{{E}}}}({response_label}) = {round(params['Intercept'],4)}"
 
         for name in params.index:
-
             if name == "Intercept":
                 continue
 
@@ -234,7 +232,32 @@ def run():
     st.latex(build_equation(model, response))
 
     # ======================================================
-    # 6️⃣ Prediction
+    # Transformed Model Equation (if applicable)
+    # ======================================================
+
+    if transformed:
+
+        st.subheader("Transformed Model Equation")
+        transformed_label = f"{response}^{{({round(chosen_lambda,2)})}}"
+        st.latex(build_equation(model, transformed_label))
+
+        st.subheader("Back-Transformed Model (Original Scale)")
+
+        if chosen_lambda == -1:
+            st.latex(rf"\widehat{{E}}({response}) = \frac{{1}}{{1 - \widehat{{E}}({response}^{{(-1)}})}}")
+        elif chosen_lambda == 0:
+            st.latex(rf"\widehat{{E}}({response}) = \exp(\widehat{{E}}(\log {response}))")
+        elif chosen_lambda == 0.5:
+            st.latex(rf"\widehat{{E}}({response}) = \left(\frac{{\widehat{{E}}({response}^{{(0.5)}})}}{{2}} + 1\right)^2")
+        elif chosen_lambda == 1:
+            st.latex(rf"\widehat{{E}}({response}) = \widehat{{E}}({response}^{{(1)}}) + 1")
+        elif chosen_lambda == 2:
+            st.latex(rf"\widehat{{E}}({response}) = \sqrt{{2\widehat{{E}}({response}^{{(2)}}) + 1}}")
+        else:
+            st.latex(rf"\widehat{{E}}({response}) = (\lambda \widehat{{E}}({response}^{{(\lambda)}}) + 1)^{{1/\lambda}}")
+
+    # ======================================================
+    # 9️⃣ Prediction
     # ======================================================
 
     st.header("6️⃣ Prediction")
@@ -257,55 +280,22 @@ def run():
                 categories=df[var].cat.categories
             )
 
-        prediction_tr = model.predict(new_df)[0]
-
-        if transformed:
-            if chosen_lambda == -1:
-                prediction = 1 / (1 - prediction_tr)
-            elif chosen_lambda == 0:
-                prediction = np.exp(prediction_tr)
-            elif chosen_lambda == 0.5:
-                prediction = ((prediction_tr / 2) + 1)**2
-            elif chosen_lambda == 1:
-                prediction = prediction_tr + 1
-            elif chosen_lambda == 2:
-                prediction = np.sqrt(2 * prediction_tr + 1)
-            else:
-                prediction = (chosen_lambda * prediction_tr + 1)**(1/chosen_lambda)
-
-            st.success(f"Predicted {response} (original scale): {prediction:.4f}")
-        else:
-            st.success(f"Predicted {response}: {prediction_tr:.4f}")
+        prediction = model.predict(new_df)[0]
+        st.success(f"Predicted {response}: {prediction:.4f}")
 
     # ======================================================
-    # 7️⃣ Predicted vs Actual (Original Scale)
+    # 10️⃣ Predicted vs Actual
     # ======================================================
 
     st.header("7️⃣ Predicted vs Actual")
 
-    if transformed:
-        fitted_tr = model.predict(df_model)
-
-        if chosen_lambda == -1:
-            fitted_vals = 1 / (1 - fitted_tr)
-        elif chosen_lambda == 0:
-            fitted_vals = np.exp(fitted_tr)
-        elif chosen_lambda == 0.5:
-            fitted_vals = ((fitted_tr / 2) + 1)**2
-        elif chosen_lambda == 1:
-            fitted_vals = fitted_tr + 1
-        elif chosen_lambda == 2:
-            fitted_vals = np.sqrt(2 * fitted_tr + 1)
-        else:
-            fitted_vals = (chosen_lambda * fitted_tr + 1)**(1/chosen_lambda)
-    else:
-        fitted_vals = model.predict(df_model)
+    predicted_vals = model.predict(df_model)
 
     fig2 = px.scatter(
-        x=fitted_vals,
-        y=df[response],
+        x=predicted_vals,
+        y=df_model[response],
         labels={'x': 'Predicted', 'y': 'Actual'},
-        title="Predicted vs Actual"
+        title="Predicted vs Actual Values"
     )
 
     st.plotly_chart(fig2)
