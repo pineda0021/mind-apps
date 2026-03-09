@@ -128,12 +128,12 @@ def run():
 
     st.header("3️⃣ Model Fitting")
 
-    model_original = smf.ols(formula=formula, data=df_model).fit()
+    model_original = smf.ols(formula=formula, data=df).fit()
 
     if transformed:
         model = smf.glm(
             formula=formula,
-            data=df,
+            data=df_model,
             family=sm.families.Gaussian()
         ).fit()
 
