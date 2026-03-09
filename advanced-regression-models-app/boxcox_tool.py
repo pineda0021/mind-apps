@@ -133,7 +133,7 @@ def run():
     if transformed:
         model = smf.glm(
             formula=formula,
-            data=df_model,
+            data=df,
             family=sm.families.Gaussian()
         ).fit()
 
