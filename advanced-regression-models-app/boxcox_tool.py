@@ -4,7 +4,8 @@ import numpy as np
 import plotly.express as px
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
-from scipy.stats import shapiro, boxcox_normmax, boxcox_llf, chi2
+from scipy.stats import shapiro, boxcox_normmax, chi2
+
 
 # ======================================================
 # APP
@@ -41,10 +42,7 @@ def run():
     if not predictors:
         return
 
-    categorical_vars = st.multiselect(
-        "Select Categorical Predictors",
-        predictors
-    )
+    categorical_vars = st.multiselect("Select Categorical Predictors", predictors)
 
     reference_dict = {}
 
@@ -118,20 +116,8 @@ def run():
 
             st.write(f"Using λ = {chosen_lambda:.4f}")
 
-            # Shapiro test on transformed response
             stat_tr, p_tr = shapiro(df_model[response].dropna())
             st.write(f"Shapiro-Wilk p-value (transformed Y): {p_tr:.4f}")
-
-            # Histograms
-            col1, col2 = st.columns(2)
-            with col1:
-                fig1 = px.histogram(df[response], nbins=30,
-                                    title="Original Response")
-                st.plotly_chart(fig1)
-            with col2:
-                fig2 = px.histogram(df_model[response], nbins=30,
-                                    title="Transformed Response")
-                st.plotly_chart(fig2)
 
     else:
         st.warning("Box–Cox requires strictly positive response values.")
@@ -157,10 +143,19 @@ def run():
             family=sm.families.Gaussian()
         ).fit()
 
-        deviance = -2 * (null_model.llf - model.llf)
+        ll_full = model.llf
+        ll_null = null_model.llf
+
+        deviance = -2 * (ll_null - ll_full)
+        df_diff = model.df_model
+        p_value = 1 - chi2.cdf(deviance, df_diff)
 
         st.subheader("Deviance Test vs Null Model")
-        st.write(f"Deviance: {deviance:.4f}")
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Deviance", round(deviance, 4))
+        col2.metric("df", int(df_diff))
+        col3.metric("p-value", round(p_value, 4))
 
     else:
         model = smf.ols(formula=formula, data=df_model).fit()
@@ -172,7 +167,7 @@ def run():
     # 4️⃣ AIC Comparison
     # ======================================================
 
-    st.header("Model Comparison (AIC)")
+    st.header("4️⃣ Model Comparison (AIC)")
 
     aic_original = model_original.aic
 
@@ -180,31 +175,27 @@ def run():
         aic_transformed = model.aic
 
         col1, col2 = st.columns(2)
-        col1.metric("AIC (Original Model)", round(aic_original, 4))
-        col2.metric("AIC (Transformed Model)", round(aic_transformed, 4))
-
-        if aic_transformed < aic_original:
-            st.success("Transformed model preferred (lower AIC).")
-        else:
-            st.info("Original model preferred (lower AIC).")
+        col1.metric("AIC (Original)", round(aic_original, 4))
+        col2.metric("AIC (Transformed)", round(aic_transformed, 4))
     else:
-        st.metric("AIC (Original Model)", round(aic_original, 4))
+        st.metric("AIC (Original)", round(aic_original, 4))
 
     # ======================================================
     # 5️⃣ Assumption Checks
     # ======================================================
 
-    st.header("Assumption Checks")
+    st.header("5️⃣ Assumption Checks")
 
-    residuals = model.resid
+    if hasattr(model, "resid"):
+        residuals = model.resid
+    else:
+        residuals = model.resid_response
+
     fitted = model.fittedvalues
 
-    fig_resid = px.scatter(
-        x=fitted,
-        y=residuals,
-        labels={'x': 'Fitted Values', 'y': 'Residuals'},
-        title="Residuals vs Fitted"
-    )
+    fig_resid = px.scatter(x=fitted, y=residuals,
+                           labels={'x': 'Fitted', 'y': 'Residuals'},
+                           title="Residuals vs Fitted")
     fig_resid.add_hline(y=0)
     st.plotly_chart(fig_resid)
 
@@ -213,18 +204,59 @@ def run():
         st.write(f"Shapiro-Wilk p-value (residuals): {p_r:.4f}")
 
     # ======================================================
+    # 8️⃣ EQUATION BUILDER
+    # ======================================================
+
+    def build_equation(model, response):
+
+        params = model.params
+        equation = f"\\widehat{{\\mathbb{{E}}}}({response}) = {round(params['Intercept'],4)}"
+
+        for name in params.index:
+
+            if name == "Intercept":
+                continue
+
+            coef = round(params[name], 4)
+            sign = "+" if coef >= 0 else "-"
+
+            if name.startswith("C(") and "T." in name:
+                var_name = name.split("[")[0]
+                var_name = var_name.replace("C(", "").split(",")[0]
+                level = name.split("T.")[1].rstrip("]")
+                equation += f" {sign} {abs(coef)} D_{{{var_name}={level}}}"
+            else:
+                equation += f" {sign} {abs(coef)} \\cdot {name}"
+
+        return equation
+
+    st.subheader("Fitted Regression Equation (Full Model)")
+    st.latex(build_equation(model, response))
+
+    # ======================================================
     # 6️⃣ Prediction
     # ======================================================
 
-    st.header("Prediction")
+    st.header("6️⃣ Prediction")
 
-    input_data = {}
+    input_dict = {}
+
     for var in predictors:
-        input_data[var] = st.number_input(f"Enter value for {var}", key=f"pred_{var}")
+        if var in categorical_vars:
+            input_dict[var] = st.selectbox(var, df[var].cat.categories)
+        else:
+            input_dict[var] = st.number_input(var, value=float(df[var].mean()))
 
     if st.button("Predict"):
 
-        new_df = pd.DataFrame([input_data])
+        new_df = pd.DataFrame([input_dict])
+
+        for var in categorical_vars:
+            new_df[var] = pd.Categorical(
+                new_df[var],
+                categories=df[var].cat.categories
+            )
+
         prediction_tr = model.predict(new_df)[0]
 
         if transformed:
@@ -241,15 +273,15 @@ def run():
             else:
                 prediction = (chosen_lambda * prediction_tr + 1)**(1/chosen_lambda)
 
-            st.success(f"Back-transformed prediction = {prediction:.4f}")
+            st.success(f"Predicted {response} (original scale): {prediction:.4f}")
         else:
-            st.success(f"Predicted {response} = {prediction_tr:.4f}")
+            st.success(f"Predicted {response}: {prediction_tr:.4f}")
 
     # ======================================================
-    # 7️⃣ Predicted vs Observed (Original Scale)
+    # 7️⃣ Predicted vs Actual (Original Scale)
     # ======================================================
 
-    st.header("Predicted vs Observed (Original Scale)")
+    st.header("7️⃣ Predicted vs Actual")
 
     if transformed:
         fitted_tr = model.predict(df_model)
@@ -269,22 +301,12 @@ def run():
     else:
         fitted_vals = model.predict(df_model)
 
-    observed_vals = df[response]
-
     fig2 = px.scatter(
         x=fitted_vals,
-        y=observed_vals,
-        labels={'x': 'Predicted (Original Scale)',
-                'y': 'Observed (Original Scale)'},
-        title="Predicted vs Observed (Original Scale)"
+        y=df[response],
+        labels={'x': 'Predicted', 'y': 'Actual'},
+        title="Predicted vs Actual"
     )
-
-    min_val = min(fitted_vals.min(), observed_vals.min())
-    max_val = max(fitted_vals.max(), observed_vals.max())
-
-    fig2.add_shape(type="line",
-                   x0=min_val, y0=min_val,
-                   x1=max_val, y1=max_val)
 
     st.plotly_chart(fig2)
 
