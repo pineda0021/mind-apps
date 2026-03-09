@@ -61,6 +61,17 @@ def run():
         )
         reference_dict[col] = ref
 
+    terms = []
+    for var in predictors:
+        if var in categorical_vars:
+            ref = reference_dict[var]
+            terms.append(f'C({var}, Treatment(reference="{ref}"))')
+        else:
+            terms.append(var)
+
+    formula_original = response + " ~ " + " + ".join(terms)
+    st.code(formula_original)
+
     # ======================================================
     # 3. RESPONSE NORMALITY CHECK
     # ======================================================
