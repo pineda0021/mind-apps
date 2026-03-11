@@ -132,7 +132,7 @@ def run():
     \end{cases}
     """)
 
-     transformed = False
+    transformed = False
     df_model = df.copy()
 
     y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
