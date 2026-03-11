@@ -132,105 +132,92 @@ def run():
     \end{cases}
     """)
 
-    transformed = False
-    chosen_lambda = None
+     transformed = False
     df_model = df.copy()
 
     y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
     y_clean = y_clean[np.isfinite(y_clean)]
 
-    st.write("🔎 Minimum Y:", y_clean.min())
-    st.write("🔎 Any Y ≤ 0?:", (y_clean <= 0).any())
+    can_boxcox = True
+
+    if not np.issubdtype(y_clean.dtype, np.number):
+        st.warning("Response must be numeric for Box–Cox.")
+        can_boxcox = False
+
+    if y_clean.nunique() < 2:
+        st.warning("Response has no variation. Box–Cox skipped.")
+        can_boxcox = False
 
     if (y_clean <= 0).any():
-        st.warning("Box–Cox requires strictly positive response.")
-    else:
+        st.warning("Box–Cox requires strictly positive values. Skipped.")
+        can_boxcox = False
 
-        # MASS-style grid search
-        lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
-        log_likelihoods = []
+    if can_boxcox:
+        try:
+            lambda_mle = boxcox_normmax(y_clean)
+        except Exception:
+            st.warning("Box–Cox optimization failed for this dataset.")
+            can_boxcox = False
 
-        df_bc = df.loc[y_clean.index].copy()
+    if can_boxcox:
 
-        for lam in lambdas:
+        st.write(f"MLE λ = {lambda_mle:.4f}")
 
-            if lam == 0:
-                y_trans = np.log(y_clean)
-            else:
-                y_trans = (y_clean**lam - 1) / lam
+        recommended_lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
+        rounded_lambda = recommended_lambdas[
+            np.argmin(np.abs(recommended_lambdas - lambda_mle))
+        ]
 
-            df_bc["_y_trans"] = y_trans
+        st.write(f"Recommended rounded λ = {rounded_lambda}")
 
-            formula_temp = "_y_trans ~ " + " + ".join(terms)
-            model_temp = smf.ols(formula=formula_temp, data=df_bc).fit()
-
-            log_likelihoods.append(model_temp.llf)
-
-        log_likelihoods = np.array(log_likelihoods)
-        lambda_mle = lambdas[np.argmax(log_likelihoods)]
-
-        st.write(f"MLE λ (regression likelihood) = {lambda_mle:.4f}")
-
-        rounded_lambda = recommend_lambda(lambda_mle)
-        st.write(f"Recommended λ (interval rule) = {rounded_lambda}")
-
-        # Show ordered λ table (like R)
-        boxcox_df = pd.DataFrame({
-            "lambda": lambdas,
-            "logLik": log_likelihoods
-        })
-
-        boxcox_sorted = boxcox_df.sort_values("logLik", ascending=False)
-
-        st.subheader("Top λ Values (MASS style)")
-        st.dataframe(boxcox_sorted.head())
-
-        # Likelihood profile plot
-        fig_lambda = px.line(
-            boxcox_df,
-            x="lambda",
-            y="logLik",
-            title="Box–Cox Log-Likelihood Profile"
-        )
-        st.plotly_chart(fig_lambda)
-
-        use_exact = st.checkbox("Use exact MLE λ instead of recommended")
+        use_exact = st.checkbox("Use exact MLE λ instead of rounded")
 
         if st.checkbox("Apply Box–Cox Transformation"):
 
             transformed = True
             chosen_lambda = lambda_mle if use_exact else rounded_lambda
+            y = df[response]
             transformed_response = response + "_tr"
 
             if chosen_lambda == 0:
-                df_model[transformed_response] = np.log(df[response])
+                df_model[transformed_response] = np.log(y)
             else:
-                df_model[transformed_response] = (
-                    df[response]**chosen_lambda - 1
-                ) / chosen_lambda
+                df_model[transformed_response] = (y**chosen_lambda - 1) / chosen_lambda
 
+            # ✅ Shapiro test for transformed Y
             y_tr_clean = df_model[transformed_response].dropna()
 
             if len(y_tr_clean) >= 3:
-                _, p_tr = shapiro(y_tr_clean)
+                stat_tr, p_tr = shapiro(y_tr_clean)
                 st.write(f"Shapiro-Wilk p-value (transformed Y): {p_tr:.4f}")
 
+                if p_tr > 0.05:
+                    st.success("Transformed response appears normally distributed.")
+                else:
+                    st.warning("Transformed response does NOT appear normally distributed.")
+            else:
+                st.warning("Not enough data for Shapiro-Wilk test (transformed Y).")
+
+            # ✅ Side-by-side histograms
             col1, col2 = st.columns(2)
 
             with col1:
-                fig_y = px.histogram(df, x=response,
-                                     title="Original Y")
+                fig_y = px.histogram(
+                    df,
+                    x=response,
+                    title="Original Y Distribution"
+                )
                 st.plotly_chart(fig_y)
 
             with col2:
-                fig_ytr = px.histogram(df_model,
-                                       x=transformed_response,
-                                       title="Transformed Y")
+                fig_ytr = px.histogram(
+                    df_model,
+                    x=transformed_response,
+                    title="Transformed Y Distribution"
+                )
                 st.plotly_chart(fig_ytr)
 
-            formula_transformed = (
-                transformed_response + " ~ " + " + ".join(terms)
-            )
+            formula_transformed = transformed_response + " ~ " + " + ".join(terms)
     # ======================================================
     # 3️⃣ Model Fitting
     # ======================================================
