@@ -218,7 +218,7 @@ def run():
                 transformed_response + " ~ " + " + ".join(terms)
             )
 
-    # ======================================================
+        # ======================================================
     # 3️⃣ Model Fitting
     # ======================================================
 
@@ -271,6 +271,8 @@ def run():
 
         model = model_transformed
         active_response = transformed_response
+
+
 
     # ======================================================
     # 4️⃣ Coefficient Interpretation
