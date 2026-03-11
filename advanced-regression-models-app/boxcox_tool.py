@@ -147,7 +147,7 @@ def run():
     else:
 
         # MASS-style grid search
-        lambdas = np.arange(-3, 3, 0.25)
+        lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
         log_likelihoods = []
 
         df_bc = df.loc[y_clean.index].copy()
