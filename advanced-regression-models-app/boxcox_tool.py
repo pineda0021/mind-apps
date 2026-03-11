@@ -114,7 +114,8 @@ def run():
             terms.append(f'C({var}, Treatment(reference="{ref}"))')
         else:
             terms.append(var)
-    # ======================================================
+
+        # ======================================================
     # 2️⃣ Box–Cox Transformation
     # ======================================================
 
@@ -183,42 +184,11 @@ def run():
                     y**chosen_lambda - 1
                 ) / chosen_lambda
 
-            y_tr_clean = df_model[transformed_response].dropna()
-
-            if len(y_tr_clean) >= 3:
-                stat_tr, p_tr = shapiro(y_tr_clean)
-                st.write(f"Shapiro-Wilk p-value (transformed Y): {p_tr:.4f}")
-
-                if p_tr > 0.05:
-                    st.success("Transformed response appears normally distributed.")
-                else:
-                    st.warning("Transformed response does NOT appear normally distributed.")
-            else:
-                st.warning("Not enough data for Shapiro-Wilk test.")
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                fig_y = px.histogram(
-                    df,
-                    x=response,
-                    title="Original Y Distribution"
-                )
-                st.plotly_chart(fig_y)
-
-            with col2:
-                fig_ytr = px.histogram(
-                    df_model,
-                    x=transformed_response,
-                    title="Transformed Y Distribution"
-                )
-                st.plotly_chart(fig_ytr)
-
             formula_transformed = (
                 transformed_response + " ~ " + " + ".join(terms)
             )
-
-        # ======================================================
+  
+    # ======================================================
     # 3️⃣ Model Fitting
     # ======================================================
 
