@@ -224,6 +224,7 @@ def run():
 
     st.header("3️⃣ Model Fitting")
 
+    # Always fit original model
     model_original = smf.ols(
         formula=formula_original,
         data=df
@@ -235,7 +236,13 @@ def run():
     model = model_original
     active_response = response
 
-    if transformed:
+    # Fit transformed model only if transformation was applied
+    if transformed and chosen_lambda is not None:
+
+        transformed_response = response + "_tr"
+        formula_transformed = (
+            transformed_response + " ~ " + " + ".join(terms)
+        )
 
         model_transformed = smf.glm(
             formula=formula_transformed,
@@ -246,6 +253,7 @@ def run():
         st.subheader("Transformed Model Summary")
         st.text(model_transformed.summary())
 
+        # Deviance test vs null
         null_model = smf.glm(
             formula=transformed_response + " ~ 1",
             data=df_model,
