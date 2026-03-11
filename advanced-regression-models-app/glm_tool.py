@@ -104,23 +104,26 @@ def run():
     st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
     st.write(f"p-value: {p:.4f}")
 
-    if p > 0.05:
-        st.success("Response appears normally distributed.")
-        proceed_with_ols = True
-    else:
+    # ======================================================
+    # IF RESPONSE IS NOT NORMAL → RUN MASS BOXCox AND STOP
+    # ======================================================
+
+    if p <= 0.05:
+
         st.warning("Response does NOT appear normally distributed.")
-        proceed_with_ols = False
 
-        # ======================================================
-        # BOX-COX (CORRECT MASS EQUIVALENT)
-        # ======================================================
-
-        st.markdown("### 📌 Box-Cox Transformation (Profile Likelihood)")
+        st.markdown("### 📌 Box-Cox Transformation (MASS Equivalent Profile Likelihood)")
 
         if (df[response] <= 0).any():
             st.error("Box-Cox requires strictly positive response values.")
-            st.info("Consider fitting a Gamma GLM instead.")
+            st.info("Recommended: Fit a Gamma Generalized Linear Model (GLM).")
             st.stop()
+
+        y = df[response]
+        n = len(y)
+
+        # Geometric mean scaling (CRITICAL)
+        gm = np.exp(np.mean(np.log(y)))
 
         lambda_grid = np.arange(-3, 3.25, 0.25)
         log_likelihoods = []
@@ -128,9 +131,9 @@ def run():
         for lmbda in lambda_grid:
 
             if abs(lmbda) < 1e-8:
-                y_trans = np.log(df[response])
+                y_trans = gm * np.log(y)
             else:
-                y_trans = (df[response]**lmbda - 1) / lmbda
+                y_trans = (y**lmbda - 1) / (lmbda * gm**(lmbda - 1))
 
             df_temp = df.copy()
             df_temp["_y_trans_"] = y_trans
@@ -138,18 +141,14 @@ def run():
             formula_bc = "_y_trans_ ~ " + " + ".join(terms)
             model_bc = smf.ols(formula=formula_bc, data=df_temp).fit()
 
-            # Jacobian adjustment (CRITICAL)
-            jacobian = (lmbda - 1) * np.sum(np.log(df[response]))
-            profile_ll = model_bc.llf + jacobian
+            sse = np.sum(model_bc.resid ** 2)
+            sigma2 = sse / n
+
+            profile_ll = -(n / 2) * np.log(sigma2)
 
             log_likelihoods.append(profile_ll)
 
         log_likelihoods = np.array(log_likelihoods)
-
-        boxcox_df = pd.DataFrame({
-            "lambda": lambda_grid,
-            "logLik": log_likelihoods
-        })
 
         best_idx = np.argmax(log_likelihoods)
         best_lambda = lambda_grid[best_idx]
@@ -164,6 +163,12 @@ def run():
         if len(ci_lambdas) > 0:
             st.write(f"95% CI for λ: ({ci_lambdas.min():.4f}, {ci_lambdas.max():.4f})")
 
+        # Plot profile likelihood
+        boxcox_df = pd.DataFrame({
+            "lambda": lambda_grid,
+            "logLik": log_likelihoods
+        })
+
         fig_lambda = px.line(
             boxcox_df,
             x="lambda",
@@ -173,14 +178,9 @@ def run():
         fig_lambda.add_hline(y=cutoff, line_dash="dash")
         st.plotly_chart(fig_lambda)
 
-        # ======================================================
-        # STOP AND INSTRUCT USER
-        # ======================================================
+        st.error("⚠ OLS halted due to non-normal response.")
 
-        st.error("⚠ OLS is not appropriate under non-normal response.")
-
-        st.markdown(
-            f"""
+        st.markdown(f"""
 ### Next Step
 
 Write down the recommended λ = **{best_lambda:.4f}**  
@@ -188,25 +188,29 @@ and fit a **Box-Cox Transformed Linear Model**,
 
 OR  
 
-Fit a **Gamma Generalized Linear Model (GLM)** if the response is positive and skewed.
-"""
-        )
+Fit a **Gamma GLM** if the response is positive and skewed.
+""")
 
         st.stop()
 
     # ======================================================
-    # 4. FIT OLS (ONLY IF NORMAL)
+    # IF NORMAL → PROCEED WITH OLS
     # ======================================================
 
-    if proceed_with_ols:
+    st.success("Response appears normally distributed.")
 
-        st.header("3️⃣ Fit General Linear Model")
+    st.header("3️⃣ Fit General Linear Model")
 
-        model = smf.ols(formula=formula, data=df).fit()
+    model = smf.ols(formula=formula, data=df).fit()
 
-        st.subheader("Model Summary")
-        st.text(model.summary())
+    st.subheader("Model Summary")
+    st.text(model.summary())
 
+    # (Your remaining original code continues here unchanged)
+
+
+if __name__ == "__main__":
+    run()
 
     # ======================================================
     # 5. FIT MODEL
