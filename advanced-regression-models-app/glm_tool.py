@@ -105,6 +105,78 @@ def run():
             st.success("Response appears normally distributed.")
         else:
             st.warning("Response does NOT appear normally distributed.")
+
+            # ======================================================
+            # BOX-COX PROFILE LIKELIHOOD (R MASS EQUIVALENT)
+            # ======================================================
+
+            st.markdown("### 📌 Box-Cox Transformation (MASS Equivalent Profile Likelihood)")
+
+            if (df[response] <= 0).any():
+                st.error("Box-Cox transformation requires strictly positive response values.")
+            else:
+                lambda_grid = np.arange(-3, 3.25, 0.25)
+
+                log_likelihoods = []
+
+                for lmbda in lambda_grid:
+
+                    if abs(lmbda) < 1e-8:
+                        y_trans = np.log(df[response])
+                    else:
+                        y_trans = (df[response]**lmbda - 1) / lmbda
+
+                    df_temp = df.copy()
+                    df_temp["_y_trans_"] = y_trans
+
+                    formula_bc = "_y_trans_ ~ " + " + ".join(terms)
+                    model_bc = smf.ols(formula=formula_bc, data=df_temp).fit()
+
+                    log_likelihoods.append(model_bc.llf)
+
+                log_likelihoods = np.array(log_likelihoods)
+
+                boxcox_df = pd.DataFrame({
+                    "lambda": lambda_grid,
+                    "logLik": log_likelihoods
+                })
+
+                ordered_df = boxcox_df.sort_values(by="logLik", ascending=False)
+
+                best_lambda = ordered_df.iloc[0]["lambda"]
+                max_loglik = ordered_df.iloc[0]["logLik"]
+
+                st.success(f"Optimal λ (max profile log-likelihood): {best_lambda:.4f}")
+
+                cutoff = max_loglik - 0.5 * chi2.ppf(0.95, df=1)
+                ci_lambdas = boxcox_df[boxcox_df["logLik"] >= cutoff]["lambda"]
+
+                if len(ci_lambdas) > 0:
+                    ci_lower = ci_lambdas.min()
+                    ci_upper = ci_lambdas.max()
+                    st.write(f"95% CI for λ: ({ci_lower:.4f}, {ci_upper:.4f})")
+
+                if abs(best_lambda - 1) < 0.15:
+                    st.info("λ ≈ 1 → Transformation likely unnecessary.")
+                elif abs(best_lambda) < 0.15:
+                    st.info("λ ≈ 0 → Consider log transformation.")
+                elif abs(best_lambda - 0.5) < 0.15:
+                    st.info("λ ≈ 0.5 → Consider square-root transformation.")
+                elif best_lambda < 0:
+                    st.info("λ < 0 → Consider reciprocal-type transformation.")
+                else:
+                    st.info("Use Box-Cox transformation with this λ.")
+
+                fig_lambda = px.line(
+                    boxcox_df,
+                    x="lambda",
+                    y="logLik",
+                    title="Box-Cox Profile Log-Likelihood"
+                )
+
+                fig_lambda.add_hline(y=cutoff, line_dash="dash")
+                st.plotly_chart(fig_lambda)
+
     else:
         st.warning("Not enough data for Shapiro-Wilk test.")
 
