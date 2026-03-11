@@ -69,8 +69,8 @@ def run():
         else:
             terms.append(var)
 
-    formula_original = response + " ~ " + " + ".join(terms)
-    st.code(formula_original)
+    formula = response + " ~ " + " + ".join(terms)
+    st.code(formula)
 
     # ======================================================
     # 3. RESPONSE NORMALITY CHECK
@@ -92,108 +92,121 @@ def run():
 
     y_clean = df[response].dropna()
 
-    if len(y_clean) >= 3:
-        qq_fig = sm.qqplot(y_clean, line='s')
-        st.pyplot(qq_fig.figure)
-
-        stat, p = shapiro(y_clean)
-
-        st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
-        st.write(f"p-value: {p:.4f}")
-
-        if p > 0.05:
-            st.success("Response appears normally distributed.")
-        else:
-            st.warning("Response does NOT appear normally distributed.")
-
-            # ======================================================
-            # BOX-COX PROFILE LIKELIHOOD (R MASS EQUIVALENT)
-            # ======================================================
-
-            st.markdown("### 📌 Box-Cox Transformation (MASS Equivalent Profile Likelihood)")
-
-            if (df[response] <= 0).any():
-                st.error("Box-Cox transformation requires strictly positive response values.")
-            else:
-                lambda_grid = np.arange(-3, 3.25, 0.25)
-
-                log_likelihoods = []
-
-                for lmbda in lambda_grid:
-
-                    if abs(lmbda) < 1e-8:
-                        y_trans = np.log(df[response])
-                    else:
-                        y_trans = (df[response]**lmbda - 1) / lmbda
-
-                    df_temp = df.copy()
-                    df_temp["_y_trans_"] = y_trans
-
-                    formula_bc = "_y_trans_ ~ " + " + ".join(terms)
-                    model_bc = smf.ols(formula=formula_bc, data=df_temp).fit()
-
-                    log_likelihoods.append(model_bc.llf)
-
-                log_likelihoods = np.array(log_likelihoods)
-
-                boxcox_df = pd.DataFrame({
-                    "lambda": lambda_grid,
-                    "logLik": log_likelihoods
-                })
-
-                ordered_df = boxcox_df.sort_values(by="logLik", ascending=False)
-
-                best_lambda = ordered_df.iloc[0]["lambda"]
-                max_loglik = ordered_df.iloc[0]["logLik"]
-
-                st.success(f"Optimal λ (max profile log-likelihood): {best_lambda:.4f}")
-
-                cutoff = max_loglik - 0.5 * chi2.ppf(0.95, df=1)
-                ci_lambdas = boxcox_df[boxcox_df["logLik"] >= cutoff]["lambda"]
-
-                if len(ci_lambdas) > 0:
-                    ci_lower = ci_lambdas.min()
-                    ci_upper = ci_lambdas.max()
-                    st.write(f"95% CI for λ: ({ci_lower:.4f}, {ci_upper:.4f})")
-
-                if abs(best_lambda - 1) < 0.15:
-                    st.info("λ ≈ 1 → Transformation likely unnecessary.")
-                elif abs(best_lambda) < 0.15:
-                    st.info("λ ≈ 0 → Consider log transformation.")
-                elif abs(best_lambda - 0.5) < 0.15:
-                    st.info("λ ≈ 0.5 → Consider square-root transformation.")
-                elif best_lambda < 0:
-                    st.info("λ < 0 → Consider reciprocal-type transformation.")
-                else:
-                    st.info("Use Box-Cox transformation with this λ.")
-
-                fig_lambda = px.line(
-                    boxcox_df,
-                    x="lambda",
-                    y="logLik",
-                    title="Box-Cox Profile Log-Likelihood"
-                )
-
-                fig_lambda.add_hline(y=cutoff, line_dash="dash")
-                st.plotly_chart(fig_lambda)
-
-    else:
+    if len(y_clean) < 3:
         st.warning("Not enough data for Shapiro-Wilk test.")
+        return
+
+    qq_fig = sm.qqplot(y_clean, line='s')
+    st.pyplot(qq_fig.figure)
+
+    stat, p = shapiro(y_clean)
+
+    st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
+    st.write(f"p-value: {p:.4f}")
+
+    if p > 0.05:
+        st.success("Response appears normally distributed.")
+        proceed_with_ols = True
+    else:
+        st.warning("Response does NOT appear normally distributed.")
+        proceed_with_ols = False
+
+        # ======================================================
+        # BOX-COX (CORRECT MASS EQUIVALENT)
+        # ======================================================
+
+        st.markdown("### 📌 Box-Cox Transformation (Profile Likelihood)")
+
+        if (df[response] <= 0).any():
+            st.error("Box-Cox requires strictly positive response values.")
+            st.info("Consider fitting a Gamma GLM instead.")
+            st.stop()
+
+        lambda_grid = np.arange(-3, 3.25, 0.25)
+        log_likelihoods = []
+
+        for lmbda in lambda_grid:
+
+            if abs(lmbda) < 1e-8:
+                y_trans = np.log(df[response])
+            else:
+                y_trans = (df[response]**lmbda - 1) / lmbda
+
+            df_temp = df.copy()
+            df_temp["_y_trans_"] = y_trans
+
+            formula_bc = "_y_trans_ ~ " + " + ".join(terms)
+            model_bc = smf.ols(formula=formula_bc, data=df_temp).fit()
+
+            # Jacobian adjustment (CRITICAL)
+            jacobian = (lmbda - 1) * np.sum(np.log(df[response]))
+            profile_ll = model_bc.llf + jacobian
+
+            log_likelihoods.append(profile_ll)
+
+        log_likelihoods = np.array(log_likelihoods)
+
+        boxcox_df = pd.DataFrame({
+            "lambda": lambda_grid,
+            "logLik": log_likelihoods
+        })
+
+        best_idx = np.argmax(log_likelihoods)
+        best_lambda = lambda_grid[best_idx]
+        max_loglik = log_likelihoods[best_idx]
+
+        st.success(f"Recommended λ: {best_lambda:.4f}")
+
+        # 95% CI
+        cutoff = max_loglik - 0.5 * chi2.ppf(0.95, df=1)
+        ci_lambdas = lambda_grid[log_likelihoods >= cutoff]
+
+        if len(ci_lambdas) > 0:
+            st.write(f"95% CI for λ: ({ci_lambdas.min():.4f}, {ci_lambdas.max():.4f})")
+
+        fig_lambda = px.line(
+            boxcox_df,
+            x="lambda",
+            y="logLik",
+            title="Box-Cox Profile Log-Likelihood"
+        )
+        fig_lambda.add_hline(y=cutoff, line_dash="dash")
+        st.plotly_chart(fig_lambda)
+
+        # ======================================================
+        # STOP AND INSTRUCT USER
+        # ======================================================
+
+        st.error("⚠ OLS is not appropriate under non-normal response.")
+
+        st.markdown(
+            f"""
+### Next Step
+
+Write down the recommended λ = **{best_lambda:.4f}**  
+and fit a **Box-Cox Transformed Linear Model**,  
+
+OR  
+
+Fit a **Gamma Generalized Linear Model (GLM)** if the response is positive and skewed.
+"""
+        )
+
+        st.stop()
 
     # ======================================================
-    # 4. BUILD FORMULA
+    # 4. FIT OLS (ONLY IF NORMAL)
     # ======================================================
 
-    terms = []
+    if proceed_with_ols:
 
-    for var in predictors:
-        if var in categorical_vars:
-            ref = reference_dict[var]
-            terms.append(f'C({var}, Treatment(reference="{ref}"))')
-        else:
-            terms.append(var)
+        st.header("3️⃣ Fit General Linear Model")
 
-    formula = response + " ~ " + " + ".join(terms)
+        model = smf.ols(formula=formula, data=df).fit()
+
+        st.subheader("Model Summary")
+        st.text(model.summary())
+
 
     # ======================================================
     # 5. FIT MODEL
