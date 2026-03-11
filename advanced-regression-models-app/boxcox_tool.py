@@ -139,7 +139,7 @@ def run():
     y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
     y_clean = y_clean[np.isfinite(y_clean)]
 
-    t.write("🔎 Minimum Y:", y_clean.min())
+    st.write("🔎 Minimum Y:", y_clean.min())
     st.write("🔎 Any Y ≤ 0?:", (y_clean <= 0).any())
 
     if (y_clean <= 0).any():
