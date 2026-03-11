@@ -1,7 +1,7 @@
 # ==========================================================
 # Discrete Distributions Tool
-# Updated for Universal Readability (Dark & Light Mode Safe)
-# Created by Professor Edward Pineda-Castro, Los Angeles City College
+# Clean Version (No Dark Mode Styling)
+# Created by Professor Edward Pineda-Castro
 # MIND: Statistics Visualizer Suite
 # ==========================================================
 
@@ -11,28 +11,6 @@ import pandas as pd
 import plotly.graph_objects as go
 from scipy.stats import binom, poisson
 from fractions import Fraction
-
-# ---------- Universal Readability Colors ----------
-BACKGROUND = "#2B2B2B"
-TEXT = "white"
-ACCENT = "#4da3ff"
-
-
-# ---------- Helper Step Box ----------
-def step_box(text):
-    st.markdown(
-        f"""
-        <div style="
-            background-color:{BACKGROUND};
-            padding:12px;
-            border-radius:10px;
-            border-left:6px solid {ACCENT};
-            margin-bottom:12px;">
-            <p style="color:{TEXT};margin:0;font-weight:bold;">{text}</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
 
 # ---------- Fraction Parser ----------
@@ -48,7 +26,8 @@ def parse_fraction(p_str):
 # Main App
 # ==========================================================
 def run():
-    st.markdown(f"<h1 style='color:{TEXT};'>🎲 Discrete Probability Distributions</h1>", unsafe_allow_html=True)
+
+    st.title("🎲 Discrete Probability Distributions")
 
     # ---------- GLOBAL DECIMAL SELECTOR ----------
     decimals = st.number_input(
@@ -70,16 +49,18 @@ def run():
     # 1. DISCRETE DISTRIBUTION
     # ======================================================
     if dist_type == "Discrete":
-        st.markdown(f"<h2 style='color:{TEXT};'>🧮 Discrete Distribution</h2>", unsafe_allow_html=True)
 
-        st.latex(r"P(X = x_i) = p_i,\quad \sum p_i = 1")
+        st.subheader("🧮 Discrete Distribution")
+
         st.latex(r"\mu = \sum x_i p_i")
-        st.latex(r"\sigma = \sqrt{\sum p_i (x_i - \mu)^2}")
+        st.latex(r"\sigma^2 = \sum p_i (x_i - \mu)^2")
+        st.latex(r"\sigma = \sqrt{\sigma^2}")
 
         x_input = st.text_input("Values of X (comma-separated):", "0,1,2,3")
         p_input = st.text_input("Probabilities P(X) (comma-separated):", "1/8,3/8,3/8,1/8")
 
         if st.button("📊 Calculate Discrete Distribution"):
+
             try:
                 X = np.array([float(x.strip()) for x in x_input.split(",")])
                 P = np.array([float(Fraction(p.strip())) for p in p_input.split(",")])
@@ -90,17 +71,17 @@ def run():
             if len(X) != len(P):
                 st.error("⚠️ X and P(X) must have the same length.")
                 return
+
             if not np.isclose(P.sum(), 1):
                 st.error(f"⚠️ Probabilities must sum to 1. Current sum = {P.sum():.5f}")
                 return
 
-            # Mean
-            μ = np.sum(X * P)
+            # ---- Calculations ----
+            mu = np.sum(X * P)
+            variance = np.sum(P * (X - mu) ** 2)
+            sigma = np.sqrt(variance)
 
-            # Standard deviation
-            σ = np.sqrt(np.sum(P * (X - μ) ** 2))
-
-            # Table
+            # ---- Table ----
             df = pd.DataFrame({
                 "x": X,
                 "P(X = x)": np.round(P, decimals),
@@ -109,27 +90,21 @@ def run():
 
             st.dataframe(df, use_container_width=True)
 
-            st.markdown(
-                f"""
-                <p style='color:{TEXT};'>
-                • <b>Mean:</b> μ = {round(μ, decimals)}<br>
-                • <b>Standard Deviation:</b> σ = {round(σ, decimals)}
-                </p>
-                """,
-                unsafe_allow_html=True
-            )
+            st.markdown(f"""
+            **Mean (μ)** = {round(mu, decimals)}  
+            **Variance (σ²)** = {round(variance, decimals)}  
+            **Standard Deviation (σ)** = {round(sigma, decimals)}
+            """)
 
-            # Plot
+            # ---- Plot ----
             fig = go.Figure()
-            fig.add_bar(x=X, y=P, marker=dict(color=ACCENT))
+            fig.add_bar(x=X, y=P)
 
             fig.update_layout(
-                title=dict(text="Discrete Probability Distribution", font=dict(color=TEXT)),
-                xaxis=dict(title="x", color=TEXT, showgrid=False),
-                yaxis=dict(title="P(X = x)", color=TEXT, showgrid=False),
-                plot_bgcolor="rgba(0,0,0,0)",
-                paper_bgcolor=BACKGROUND,
-                font=dict(color=TEXT)
+                title="Discrete Probability Distribution",
+                xaxis_title="x",
+                yaxis_title="P(X = x)",
+                template="plotly"
             )
 
             st.plotly_chart(fig, use_container_width=True)
@@ -138,7 +113,8 @@ def run():
     # 2. BINOMIAL DISTRIBUTION
     # ======================================================
     elif dist_type == "Binomial":
-        st.markdown(f"<h2 style='color:{TEXT};'>🎯 Binomial Distribution</h2>", unsafe_allow_html=True)
+
+        st.subheader("🎯 Binomial Distribution")
 
         st.latex(r"P(X = x) = \binom{n}{x} p^x (1-p)^{n-x}")
 
@@ -155,15 +131,10 @@ def run():
         μ = n * p
         σ = np.sqrt(n * p * (1 - p))
 
-        st.markdown(
-            f"""
-            <p style='color:{TEXT};'>
-            • <b>Mean:</b> μ = {round(μ, decimals)}<br>
-            • <b>Standard Deviation:</b> σ = {round(σ, decimals)}
-            </p>
-            """,
-            unsafe_allow_html=True
-        )
+        st.markdown(f"""
+        **Mean (μ)** = {round(μ, decimals)}  
+        **Standard Deviation (σ)** = {round(σ, decimals)}
+        """)
 
         calc = st.selectbox(
             "Select Probability Type:",
@@ -185,6 +156,7 @@ def run():
             x = st.number_input("Enter x:", min_value=0, max_value=int(n))
 
         if st.button("📊 Calculate Binomial"):
+
             if calc == "Exactly: P(X = x)":
                 st.success(f"P(X = {x}) = {round(binom.pmf(x, n, p), decimals)}")
 
@@ -206,19 +178,22 @@ def run():
                 st.success(f"P({a} ≤ X ≤ {b}) = {round(prob, decimals)}")
 
             elif "Full Table" in calc:
-                df = pd.DataFrame({"x": x_vals, "P(X = x)": np.round(pmf_vals, decimals)})
+
+                df = pd.DataFrame({
+                    "x": x_vals,
+                    "P(X = x)": np.round(pmf_vals, decimals)
+                })
+
                 st.dataframe(df, use_container_width=True)
 
                 fig = go.Figure()
-                fig.add_bar(x=x_vals, y=pmf_vals, marker=dict(color=ACCENT))
+                fig.add_bar(x=x_vals, y=pmf_vals)
 
                 fig.update_layout(
-                    title=dict(text=f"Binomial Distribution (n={n}, p={p})", font=dict(color=TEXT)),
-                    xaxis=dict(title="x", color=TEXT, showgrid=False),
-                    yaxis=dict(title="P(X = x)", color=TEXT, showgrid=False),
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    paper_bgcolor=BACKGROUND,
-                    font=dict(color=TEXT)
+                    title=f"Binomial Distribution (n={n}, p={p})",
+                    xaxis_title="x",
+                    yaxis_title="P(X = x)",
+                    template="plotly"
                 )
 
                 st.plotly_chart(fig, use_container_width=True)
@@ -227,7 +202,8 @@ def run():
     # 3. POISSON DISTRIBUTION
     # ======================================================
     elif dist_type == "Poisson":
-        st.markdown(f"<h2 style='color:{TEXT};'>💡 Poisson Distribution</h2>", unsafe_allow_html=True)
+
+        st.subheader("💡 Poisson Distribution")
 
         st.latex(r"P(X = x) = \frac{e^{-λ} λ^x}{x!}")
 
@@ -239,15 +215,10 @@ def run():
 
         σ = np.sqrt(lam)
 
-        st.markdown(
-            f"""
-            <p style='color:{TEXT};'>
-            • <b>Mean:</b> μ = {round(lam, decimals)}<br>
-            • <b>Standard Deviation:</b> σ = {round(σ, decimals)}
-            </p>
-            """,
-            unsafe_allow_html=True
-        )
+        st.markdown(f"""
+        **Mean (μ)** = {round(lam, decimals)}  
+        **Standard Deviation (σ)** = {round(σ, decimals)}
+        """)
 
         calc = st.selectbox(
             "Select Probability Type:",
@@ -269,6 +240,7 @@ def run():
             x = st.number_input("Enter x:", min_value=0, max_value=int(x_max))
 
         if st.button("📊 Calculate Poisson"):
+
             if calc == "Exactly: P(X = x)":
                 st.success(f"P(X = {x}) = {round(poisson.pmf(x, lam), decimals)}")
 
@@ -290,19 +262,22 @@ def run():
                 st.success(f"P({a} ≤ X ≤ {b}) = {round(prob, decimals)}")
 
             elif "Full Table" in calc:
-                df = pd.DataFrame({"x": x_vals, "P(X = x)": np.round(pmf_vals, decimals)})
+
+                df = pd.DataFrame({
+                    "x": x_vals,
+                    "P(X = x)": np.round(pmf_vals, decimals)
+                })
+
                 st.dataframe(df, use_container_width=True)
 
                 fig = go.Figure()
-                fig.add_bar(x=x_vals, y=pmf_vals, marker=dict(color=ACCENT))
+                fig.add_bar(x=x_vals, y=pmf_vals)
 
                 fig.update_layout(
-                    title=dict(text=f"Poisson Distribution (λ={lam})", font=dict(color=TEXT)),
-                    xaxis=dict(title="x", color=TEXT, showgrid=False),
-                    yaxis=dict(title="P(X = x)", color=TEXT, showgrid=False),
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    paper_bgcolor=BACKGROUND,
-                    font=dict(color=TEXT)
+                    title=f"Poisson Distribution (λ={lam})",
+                    xaxis_title="x",
+                    yaxis_title="P(X = x)",
+                    template="plotly"
                 )
 
                 st.plotly_chart(fig, use_container_width=True)
