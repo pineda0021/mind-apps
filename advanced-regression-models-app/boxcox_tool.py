@@ -28,7 +28,8 @@ def recommend_lambda(lambda_mle):
         return 2.0
     else:
         return lambda_mle
-        
+
+
 def transformation_info(lam):
     lam_rounded = round(lam, 4)
 
@@ -99,9 +100,11 @@ def run():
     reference_dict = {}
     for col in categorical_vars:
         df[col] = df[col].astype("category")
-        ref = st.selectbox(f"Reference level for {col}",
-                           df[col].cat.categories,
-                           key=f"ref_{col}")
+        ref = st.selectbox(
+            f"Reference level for {col}",
+            df[col].cat.categories,
+            key=f"ref_{col}"
+        )
         reference_dict[col] = ref
 
     terms = []
@@ -115,111 +118,98 @@ def run():
     formula_original = response + " ~ " + " + ".join(terms)
     st.code(formula_original)
 
-   # ======================================================
-# 2️⃣ Box–Cox Transformation
-# ======================================================
+    # ======================================================
+    # 2️⃣ Box–Cox Transformation
+    # ======================================================
 
-st.header("2️⃣ Box–Cox Transformation (Optional)")
+    st.header("2️⃣ Box–Cox Transformation (Optional)")
 
-st.latex(r"""
-\tilde{y} =
-\begin{cases}
-\dfrac{y^{\lambda}-1}{\lambda}, & \lambda \neq 0 \\
-\ln(y), & \lambda = 0
-\end{cases}
-""")
+    st.latex(r"""
+    \tilde{y} =
+    \begin{cases}
+    \dfrac{y^{\lambda}-1}{\lambda}, & \lambda \neq 0 \\
+    \ln(y), & \lambda = 0
+    \end{cases}
+    """)
 
-transformed = False
-chosen_lambda = None
-df_model = df.copy()
+    transformed = False
+    chosen_lambda = None
+    df_model = df.copy()
 
-y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
-y_clean = y_clean[np.isfinite(y_clean)]
+    y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
+    y_clean = y_clean[np.isfinite(y_clean)]
 
-# ===============================
-# 🔎 Diagnostic Snippet
-# ===============================
+    st.write("🔎 Diagnostic — Minimum Y value:", y_clean.min())
+    st.write("🔎 Any Y ≤ 0?:", (y_clean <= 0).any())
+    st.write("🔎 Unique Y values:", y_clean.nunique())
 
-st.write("🔎 Diagnostic — Minimum Y value:", y_clean.min())
-st.write("🔎 Any Y ≤ 0?:", (y_clean <= 0).any())
-st.write("🔎 Unique Y values:", y_clean.nunique())
+    can_boxcox = True
 
-can_boxcox = True
-
-if not np.issubdtype(y_clean.dtype, np.number):
-    can_boxcox = False
-
-if y_clean.nunique() < 2:
-    can_boxcox = False
-
-if (y_clean <= 0).any():
-    st.warning("Box–Cox requires strictly positive values.")
-    can_boxcox = False
-
-
-# ✅ EVERYTHING BELOW MUST BE NESTED PROPERLY
-if can_boxcox:
-
-    st.success("Box–Cox block entered.")
-
-    try:
-        lambda_mle = boxcox_normmax(y_clean)
-    except Exception:
+    if not np.issubdtype(y_clean.dtype, np.number):
         can_boxcox = False
 
-    # SECOND BLOCK MUST BE INSIDE THE FIRST
+    if y_clean.nunique() < 2:
+        can_boxcox = False
+
+    if (y_clean <= 0).any():
+        st.warning("Box–Cox requires strictly positive values.")
+        can_boxcox = False
+
     if can_boxcox:
+        try:
+            lambda_mle = boxcox_normmax(y_clean)
+        except Exception:
+            can_boxcox = False
 
-        st.write(f"MLE λ = {lambda_mle:.4f}")
+        if can_boxcox:
 
-        rounded_lambda = recommend_lambda(lambda_mle)
-        st.write(f"Recommended λ (interval rule) = {rounded_lambda}")
+            st.write(f"MLE λ = {lambda_mle:.4f}")
 
-        use_exact = st.checkbox("Use exact MLE λ instead of rounded")
+            rounded_lambda = recommend_lambda(lambda_mle)
+            st.write(f"Recommended λ (interval rule) = {rounded_lambda}")
 
-        if st.checkbox("Apply Box–Cox Transformation"):
+            use_exact = st.checkbox("Use exact MLE λ instead of rounded")
 
-            transformed = True
-            chosen_lambda = lambda_mle if use_exact else rounded_lambda
-            transformed_response = response + "_tr"
+            if st.checkbox("Apply Box–Cox Transformation"):
 
-            if chosen_lambda == 0:
-                df_model[transformed_response] = np.log(df[response])
-            else:
-                df_model[transformed_response] = (
-                    df[response]**chosen_lambda - 1
-                ) / chosen_lambda
+                transformed = True
+                chosen_lambda = lambda_mle if use_exact else rounded_lambda
+                transformed_response = response + "_tr"
 
-            y_tr_clean = df_model[transformed_response].dropna()
-
-            if len(y_tr_clean) >= 3:
-                _, p_tr = shapiro(y_tr_clean)
-                st.write(f"Shapiro-Wilk p-value (transformed Y): {p_tr:.4f}")
-
-                if p_tr > 0.05:
-                    st.success("Transformed response appears normally distributed.")
+                if chosen_lambda == 0:
+                    df_model[transformed_response] = np.log(df[response])
                 else:
-                    st.warning("Transformed response does NOT appear normally distributed.")
+                    df_model[transformed_response] = (
+                        df[response]**chosen_lambda - 1
+                    ) / chosen_lambda
 
-            col1, col2 = st.columns(2)
+                y_tr_clean = df_model[transformed_response].dropna()
 
-            with col1:
-                fig_y = px.histogram(
-                    df,
-                    x=response,
-                    title="Original Y Distribution"
+                if len(y_tr_clean) >= 3:
+                    _, p_tr = shapiro(y_tr_clean)
+                    st.write(f"Shapiro-Wilk p-value (transformed Y): {p_tr:.4f}")
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    fig_y = px.histogram(
+                        df,
+                        x=response,
+                        title="Original Y Distribution"
+                    )
+                    st.plotly_chart(fig_y)
+
+                with col2:
+                    fig_ytr = px.histogram(
+                        df_model,
+                        x=transformed_response,
+                        title="Transformed Y Distribution"
+                    )
+                    st.plotly_chart(fig_ytr)
+
+                formula_transformed = (
+                    transformed_response + " ~ " + " + ".join(terms)
                 )
-                st.plotly_chart(fig_y)
-
-            with col2:
-                fig_ytr = px.histogram(
-                    df_model,
-                    x=transformed_response,
-                    title="Transformed Y Distribution"
-                )
-                st.plotly_chart(fig_ytr)
-
-            formula_transformed = transformed_response + " ~ " + " + ".join(terms)
 
     # ======================================================
     # 3️⃣ Model Fitting
@@ -227,7 +217,11 @@ if can_boxcox:
 
     st.header("3️⃣ Model Fitting")
 
-    model_original = smf.ols(formula=formula_original, data=df).fit()
+    model_original = smf.ols(
+        formula=formula_original,
+        data=df
+    ).fit()
+
     st.subheader("Original Model Summary")
     st.text(model_original.summary())
 
@@ -276,8 +270,8 @@ if can_boxcox:
         st.markdown(
             f"**{name} (β = {coef})**: "
             f"{'Significant.' if pval < 0.05 else 'Not significant.'}"
-        )
-
+        ) 
+        
 
     # ======================================================
     # 5️⃣ Assumption Checks
