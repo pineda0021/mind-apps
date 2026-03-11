@@ -119,10 +119,9 @@ def run():
     st.code(formula_original)
 
     # ======================================================
-# 2️⃣ Box–Cox Transformation
-# ======================================================
-
-st.header("2️⃣ Box–Cox Transformation (Optional)")
+    # 2️⃣ Box–Cox Transformation
+    # ======================================================
+    st.header("2️⃣ Box–Cox Transformation (Optional)")
 
 st.latex(r"""
 \tilde{y} =
@@ -225,6 +224,7 @@ if can_boxcox:
         formula_transformed = (
             transformed_response + " ~ " + " + ".join(terms)
         )
+
 
 
     # ======================================================
