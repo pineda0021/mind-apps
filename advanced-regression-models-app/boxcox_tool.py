@@ -8,6 +8,56 @@ from scipy.stats import shapiro, boxcox_normmax, chi2
 
 
 # ======================================================
+# Box–Cox Helper Functions
+# ======================================================
+
+def recommend_lambda(lambda_mle):
+    if -2.5 <= lambda_mle < -1.5:
+        return -2.0
+    elif -1.5 <= lambda_mle < -0.75:
+        return -1.0
+    elif -0.75 <= lambda_mle < -0.25:
+        return -0.5
+    elif -0.25 <= lambda_mle < 0.25:
+        return 0.0
+    elif 0.25 <= lambda_mle < 0.75:
+        return 0.5
+    elif 0.75 <= lambda_mle < 1.5:
+        return 1.0
+    elif 1.5 <= lambda_mle <= 2.5:
+        return 2.0
+    else:
+        return lambda_mle
+
+
+def transformation_info(lam):
+    lam_rounded = round(lam, 4)
+
+    transformations = {
+        -2.0: {"name": "Inverse Square",
+               "formula": r"\tilde{y} = \frac{1}{2}\left(1 - \frac{1}{y^2}\right)"},
+        -1.0: {"name": "Inverse (Reciprocal)",
+               "formula": r"\tilde{y} = 1 - \frac{1}{y}"},
+        -0.5: {"name": "Inverse Square Root",
+               "formula": r"\tilde{y} = 2\left(1 - \frac{1}{\sqrt{y}}\right)"},
+        0.0: {"name": "Natural Log",
+              "formula": r"\tilde{y} = \ln(y)"},
+        0.5: {"name": "Square Root",
+              "formula": r"\tilde{y} = 2(\sqrt{y} - 1)"},
+        1.0: {"name": "Linear",
+              "formula": r"\tilde{y} = y - 1"},
+        2.0: {"name": "Square",
+              "formula": r"\tilde{y} = \frac{1}{2}(y^2 - 1)"}
+    }
+
+    return transformations.get(
+        lam_rounded,
+        {"name": "Custom λ",
+         "formula": r"\tilde{y} = \frac{y^{\lambda}-1}{\lambda}"}
+    )
+
+
+# ======================================================
 # APP
 # ======================================================
 
@@ -16,13 +66,10 @@ def run():
     st.title("📘 General Linear Regression Model")
 
     uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
-
     if uploaded_file is None:
         return
 
-    df_original = pd.read_csv(uploaded_file)
-    df = df_original.copy()
-
+    df = pd.read_csv(uploaded_file)
     st.subheader("Data Preview")
     st.dataframe(df.head())
 
@@ -34,13 +81,11 @@ def run():
 
     response = st.selectbox("Select Response Variable (Y)", df.columns)
 
-    # ✅ Original Shapiro Test
     y_original = pd.to_numeric(df[response], errors="coerce").dropna()
+
     if len(y_original) >= 3:
-        stat_orig, p_orig = shapiro(y_original)
+        _, p_orig = shapiro(y_original)
         st.write(f"Shapiro-Wilk p-value (original Y): {p_orig:.4f}")
-    else:
-        st.warning("Not enough data for Shapiro-Wilk test (original Y).")
 
     predictors = st.multiselect(
         "Select Predictor Variables (X)",
@@ -53,14 +98,11 @@ def run():
     categorical_vars = st.multiselect("Select Categorical Predictors", predictors)
 
     reference_dict = {}
-
     for col in categorical_vars:
         df[col] = df[col].astype("category")
-        ref = st.selectbox(
-            f"Reference level for {col}",
-            df[col].cat.categories,
-            key=f"ref_{col}"
-        )
+        ref = st.selectbox(f"Reference level for {col}",
+                           df[col].cat.categories,
+                           key=f"ref_{col}")
         reference_dict[col] = ref
 
     terms = []
@@ -75,95 +117,58 @@ def run():
     st.code(formula_original)
 
     # ======================================================
-    # 2️⃣ Box–Cox Transformation (SAFE)
+    # 2️⃣ Box–Cox Transformation
     # ======================================================
 
     st.header("2️⃣ Box–Cox Transformation (Optional)")
 
+    st.latex(r"""
+    \tilde{y} =
+    \begin{cases}
+    \dfrac{y^{\lambda}-1}{\lambda}, & \lambda \neq 0 \\
+    \ln(y), & \lambda = 0
+    \end{cases}
+    """)
+
     transformed = False
+    chosen_lambda = None
     df_model = df.copy()
 
     y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
-    y_clean = y_clean[np.isfinite(y_clean)]
 
-    can_boxcox = True
+    if (y_clean > 0).all() and y_clean.nunique() > 1:
 
-    if not np.issubdtype(y_clean.dtype, np.number):
-        st.warning("Response must be numeric for Box–Cox.")
-        can_boxcox = False
-
-    if y_clean.nunique() < 2:
-        st.warning("Response has no variation. Box–Cox skipped.")
-        can_boxcox = False
-
-    if (y_clean <= 0).any():
-        st.warning("Box–Cox requires strictly positive values. Skipped.")
-        can_boxcox = False
-
-    if can_boxcox:
-        try:
-            lambda_mle = boxcox_normmax(y_clean)
-        except Exception:
-            st.warning("Box–Cox optimization failed for this dataset.")
-            can_boxcox = False
-
-    if can_boxcox:
-
+        lambda_mle = boxcox_normmax(y_clean)
         st.write(f"MLE λ = {lambda_mle:.4f}")
 
-        recommended_lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
-        rounded_lambda = recommended_lambdas[
-            np.argmin(np.abs(recommended_lambdas - lambda_mle))
-        ]
+        rounded_lambda = recommend_lambda(lambda_mle)
+        st.write(f"Recommended λ = {rounded_lambda}")
 
-        st.write(f"Recommended rounded λ = {rounded_lambda}")
+        info = transformation_info(rounded_lambda)
+        st.write(f"Recommended Transformation: **{info['name']}**")
+        st.latex(info["formula"])
 
-        use_exact = st.checkbox("Use exact MLE λ instead of rounded")
+        use_exact = st.checkbox("Use exact MLE λ instead")
 
         if st.checkbox("Apply Box–Cox Transformation"):
 
             transformed = True
             chosen_lambda = lambda_mle if use_exact else rounded_lambda
-            y = df[response]
             transformed_response = response + "_tr"
 
+            info_exact = transformation_info(chosen_lambda)
+
+            st.subheader("Transformation Being Applied")
+            st.write(f"λ used = {chosen_lambda:.4f}")
+            st.write(f"Transformation: **{info_exact['name']}**")
+            st.latex(info_exact["formula"])
+
             if chosen_lambda == 0:
-                df_model[transformed_response] = np.log(y)
+                df_model[transformed_response] = np.log(df[response])
             else:
-                df_model[transformed_response] = (y**chosen_lambda - 1) / chosen_lambda
-
-            # ✅ Shapiro test for transformed Y
-            y_tr_clean = df_model[transformed_response].dropna()
-
-            if len(y_tr_clean) >= 3:
-                stat_tr, p_tr = shapiro(y_tr_clean)
-                st.write(f"Shapiro-Wilk p-value (transformed Y): {p_tr:.4f}")
-
-                if p_tr > 0.05:
-                    st.success("Transformed response appears normally distributed.")
-                else:
-                    st.warning("Transformed response does NOT appear normally distributed.")
-            else:
-                st.warning("Not enough data for Shapiro-Wilk test (transformed Y).")
-
-            # ✅ Side-by-side histograms
-            col1, col2 = st.columns(2)
-
-            with col1:
-                fig_y = px.histogram(
-                    df,
-                    x=response,
-                    title="Original Y Distribution"
-                )
-                st.plotly_chart(fig_y)
-
-            with col2:
-                fig_ytr = px.histogram(
-                    df_model,
-                    x=transformed_response,
-                    title="Transformed Y Distribution"
-                )
-                st.plotly_chart(fig_ytr)
+                df_model[transformed_response] = (
+                    df[response]**chosen_lambda - 1
+                ) / chosen_lambda
 
             formula_transformed = transformed_response + " ~ " + " + ".join(terms)
 
@@ -177,12 +182,10 @@ def run():
     st.subheader("Original Model Summary")
     st.text(model_original.summary())
 
-    active_response = response
     model = model_original
+    active_response = response
 
     if transformed:
-
-        st.header("Model Fitting for Transform")
 
         model_transformed = smf.glm(
             formula=formula_transformed,
@@ -208,6 +211,38 @@ def run():
         st.write(f"df: {df_diff}")
         st.write(f"p-value: {p_value:.4f}")
 
+        st.subheader("Likelihood Ratio Interpretation")
+        st.latex(r"D = -2(\ell_0 - \ell_1) \sim \chi^2_{df}")
+
+        if p_value < 0.05:
+            st.success("The transformed model significantly improves model fit.")
+        else:
+            st.warning("No significant improvement over the null model.")
+
+        # AIC Comparison
+        st.subheader("Model Comparison (AIC)")
+
+        aic_original = model_original.aic
+        aic_transformed = model_transformed.aic
+        delta_aic = aic_original - aic_transformed
+
+        comparison_table = pd.DataFrame({
+            "Model": ["Original", "Transformed"],
+            "AIC": [round(aic_original, 4),
+                    round(aic_transformed, 4)]
+        })
+
+        st.dataframe(comparison_table)
+
+        st.write(f"ΔAIC = {delta_aic:.4f}")
+
+        if delta_aic > 2:
+            st.success("Transformed model shows meaningful improvement.")
+        elif delta_aic > 0:
+            st.info("Slight improvement.")
+        else:
+            st.warning("Original model preferred based on AIC.")
+
         model = model_transformed
         active_response = transformed_response
 
@@ -218,28 +253,17 @@ def run():
     st.header("4️⃣ Coefficient Interpretation")
 
     for name in model.params.index:
-
         coef = round(model.params[name], 4)
         pval = model.pvalues[name]
 
         if name == "Intercept":
             st.markdown(
-                f"**Intercept ({coef})**: Estimated mean of the response "
-                f"when all predictors are zero or at reference levels. "
-                f"{'Significant.' if pval < 0.05 else 'Not significant.'}"
-            )
-        elif name.startswith("C(") and "T." in name:
-            var_name = name.split("[")[0].replace("C(", "").split(",")[0]
-            level = name.split("T.")[1].rstrip("]")
-            st.markdown(
-                f"**{var_name} = {level} (β = {coef})**: "
-                f"Difference from reference level. "
+                f"**Intercept ({coef})**: "
                 f"{'Significant.' if pval < 0.05 else 'Not significant.'}"
             )
         else:
             st.markdown(
                 f"**{name} (β = {coef})**: "
-                f"For one-unit increase in {name}, response changes by {coef}. "
                 f"{'Significant.' if pval < 0.05 else 'Not significant.'}"
             )
 
@@ -249,7 +273,7 @@ def run():
 
     st.header("5️⃣ Assumption Checks")
 
-    residuals = model.resid if hasattr(model, "resid") else model.resid_response
+    residuals = model.resid
     fitted = model.fittedvalues
 
     fig_resid = px.scatter(
@@ -288,23 +312,21 @@ def run():
                 categories=df[var].cat.categories
             )
 
-        try:
-            prediction_tr = model.predict(new_df)[0]
-        except Exception:
-            st.error("Prediction failed for this input.")
-            return
+        prediction_tr = model.predict(new_df)[0]
 
         if transformed:
-
             if chosen_lambda == 0:
                 prediction = np.exp(prediction_tr)
             else:
                 prediction = (chosen_lambda * prediction_tr + 1)**(1 / chosen_lambda)
 
             st.success(f"Predicted {response} (original scale): {prediction:.4f}")
-
         else:
             st.success(f"Predicted {response}: {prediction_tr:.4f}")
+
+    # ======================================================
+    # 7️⃣ Predicted vs Actual
+    # ======================================================
 
     st.header("7️⃣ Predicted vs Actual")
 
