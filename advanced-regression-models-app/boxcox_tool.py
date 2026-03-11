@@ -115,7 +115,10 @@ def run():
         else:
             terms.append(var)
 
-        # ======================================================
+    formula_original = response + " ~ " + " + ".join(terms)
+    st.code(formula_original)
+
+    # ======================================================
     # 2️⃣ Box–Cox Transformation
     # ======================================================
 
@@ -184,17 +187,12 @@ def run():
                     y**chosen_lambda - 1
                 ) / chosen_lambda
 
-            formula_transformed = (
-                transformed_response + " ~ " + " + ".join(terms)
-            )
-  
     # ======================================================
     # 3️⃣ Model Fitting
     # ======================================================
 
     st.header("3️⃣ Model Fitting")
 
-    # Always fit original model
     model_original = smf.ols(
         formula=formula_original,
         data=df
@@ -206,7 +204,6 @@ def run():
     model = model_original
     active_response = response
 
-    # Fit transformed model only if transformation was applied
     if transformed and chosen_lambda is not None:
 
         transformed_response = response + "_tr"
@@ -223,7 +220,6 @@ def run():
         st.subheader("Transformed Model Summary")
         st.text(model_transformed.summary())
 
-        # Deviance test vs null
         null_model = smf.glm(
             formula=transformed_response + " ~ 1",
             data=df_model,
@@ -243,87 +239,5 @@ def run():
         active_response = transformed_response
 
 
-
-    # ======================================================
-    # 4️⃣ Coefficient Interpretation
-    # ======================================================
-
-    st.header("4️⃣ Coefficient Interpretation")
-
-    for name in model.params.index:
-        coef = round(model.params[name], 4)
-        pval = model.pvalues[name]
-
-        st.markdown(
-            f"**{name} (β = {coef})**: "
-            f"{'Significant.' if pval < 0.05 else 'Not significant.'}"
-        ) 
-        
-
-    # ======================================================
-    # 5️⃣ Assumption Checks
-    # ======================================================
-
-    st.header("5️⃣ Assumption Checks")
-
-    residuals = model.resid
-    fitted = model.fittedvalues
-
-    fig_resid = px.scatter(
-        x=fitted,
-        y=residuals,
-        labels={'x': 'Fitted', 'y': 'Residuals'},
-        title="Residuals vs Fitted"
-    )
-    fig_resid.add_hline(y=0)
-    st.plotly_chart(fig_resid)
-
-    # ======================================================
-    # 6️⃣ Prediction
-    # ======================================================
-
-    st.header("6️⃣ Prediction")
-
-    input_dict = {}
-
-    for var in predictors:
-        input_dict[var] = st.number_input(
-            var,
-            value=float(pd.to_numeric(df[var], errors="coerce").mean())
-        )
-
-    if st.button("Predict"):
-
-        new_df = pd.DataFrame([input_dict])
-        prediction_tr = model.predict(new_df)[0]
-
-        if transformed:
-            if chosen_lambda == 0:
-                prediction = np.exp(prediction_tr)
-            else:
-                prediction = (chosen_lambda * prediction_tr + 1)**(1 / chosen_lambda)
-
-            st.success(f"Predicted {response} (original scale): {prediction:.4f}")
-        else:
-            st.success(f"Predicted {response}: {prediction_tr:.4f}")
-
-    # ======================================================
-    # 7️⃣ Predicted vs Actual
-    # ======================================================
-
-    st.header("7️⃣ Predicted vs Actual")
-
-    predicted_vals = model.predict(df_model)
-
-    fig2 = px.scatter(
-        x=predicted_vals,
-        y=df_model[active_response],
-        labels={'x': 'Predicted', 'y': 'Actual'},
-        title="Predicted vs Actual"
-    )
-
-    st.plotly_chart(fig2)
-
-  
 if __name__ == "__main__":
     run()
