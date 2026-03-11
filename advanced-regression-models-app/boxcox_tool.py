@@ -118,23 +118,23 @@ def run():
     formula_original = response + " ~ " + " + ".join(terms)
     st.code(formula_original)
     
-# ======================================================
-# 2️⃣ Box–Cox Transformation
-# ======================================================
+    # ======================================================
+    # 2️⃣ Box–Cox Transformation
+    # ======================================================
 
-st.header("2️⃣ Box–Cox Transformation (Optional)")
+    st.header("2️⃣ Box–Cox Transformation (Optional)")
 
-st.latex(r"""
-\tilde{y} =
-\begin{cases}
-\dfrac{y^{\lambda}-1}{\lambda}, & \lambda \neq 0 \\
-\ln(y), & \lambda = 0
-\end{cases}
-""")
+    st.latex(r"""
+    \tilde{y} =
+    \begin{cases}
+    \dfrac{y^{\lambda}-1}{\lambda}, & \lambda \neq 0 \\
+    \ln(y), & \lambda = 0
+    \end{cases}
+    """)
 
-transformed = False
-chosen_lambda = None
-df_model = df.copy()
+    transformed = False
+    chosen_lambda = None
+    df_model = df.copy()
 
 y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
 y_clean = y_clean[np.isfinite(y_clean)]
