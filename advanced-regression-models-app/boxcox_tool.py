@@ -123,46 +123,46 @@ def run():
     # ======================================================
     st.header("2️⃣ Box–Cox Transformation (Optional)")
 
-st.latex(r"""
-\tilde{y} =
-\begin{cases}
-\dfrac{y^{\lambda}-1}{\lambda}, & \lambda \neq 0 \\
-\ln(y), & \lambda = 0
-\end{cases}
-""")
+    st.latex(r"""
+    \tilde{y} =
+    \begin{cases}
+    \dfrac{y^{\lambda}-1}{\lambda}, & \lambda \neq 0 \\
+    \ln(y), & \lambda = 0
+    \end{cases}
+    """)
 
-transformed = False
-chosen_lambda = None
-df_model = df.copy()
+    transformed = False
+    chosen_lambda = None
+    df_model = df.copy()
 
-y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
-y_clean = y_clean[np.isfinite(y_clean)]
+    y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
+    y_clean = y_clean[np.isfinite(y_clean)]
 
-can_boxcox = True
+    can_boxcox = True
 
-if not np.issubdtype(y_clean.dtype, np.number):
-    st.warning("Response must be numeric for Box–Cox.")
-    can_boxcox = False
+    if not np.issubdtype(y_clean.dtype, np.number):
+        st.warning("Response must be numeric for Box–Cox.")
+        can_boxcox = False
 
-if y_clean.nunique() < 2:
-    st.warning("Response has no variation. Box–Cox skipped.")
-    can_boxcox = False
+    if y_clean.nunique() < 2:
+        st.warning("Response has no variation. Box–Cox skipped.")
+        can_boxcox = False
 
-if (y_clean <= 0).any():
-    st.warning("Box–Cox requires strictly positive values. Skipped.")
-    can_boxcox = False
+    if (y_clean <= 0).any():
+        st.warning("Box–Cox requires strictly positive values. Skipped.")
+        can_boxcox = False
 
-if can_boxcox:
-    try:
+    if can_boxcox:
+        try:
         # Constrain search interval to avoid runaway λ
         lambda_mle = boxcox_normmax(y_clean, brack=(-3, 3))
-    except Exception:
+        except Exception:
         st.warning("Box–Cox optimization failed for this dataset.")
         can_boxcox = False
 
-if can_boxcox:
+    if can_boxcox:
 
-    st.write(f"MLE λ = {lambda_mle:.4f}")
+        st.write(f"MLE λ = {lambda_mle:.4f}")
 
     # Round to interpretable λ values
     recommended_lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
@@ -224,8 +224,6 @@ if can_boxcox:
         formula_transformed = (
             transformed_response + " ~ " + " + ".join(terms)
         )
-
-
 
     # ======================================================
     # 3️⃣ Model Fitting
