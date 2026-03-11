@@ -6,13 +6,6 @@ import statsmodels.formula.api as smf
 import statsmodels.api as sm
 from scipy.stats import shapiro, boxcox_normmax, chi2
 
-# PDF
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import TableStyle
-import tempfile
-
 
 # ======================================================
 # Box–Cox Helper Functions
@@ -35,7 +28,32 @@ def recommend_lambda(lambda_mle):
         return 2.0
     else:
         return lambda_mle
+        
+def transformation_info(lam):
+    lam_rounded = round(lam, 4)
 
+    transformations = {
+        -2.0: {"name": "Inverse Square",
+               "formula": r"\tilde{y} = \frac{1}{2}\left(1 - \frac{1}{y^2}\right)"},
+        -1.0: {"name": "Inverse (Reciprocal)",
+               "formula": r"\tilde{y} = 1 - \frac{1}{y}"},
+        -0.5: {"name": "Inverse Square Root",
+               "formula": r"\tilde{y} = 2\left(1 - \frac{1}{\sqrt{y}}\right)"},
+        0.0: {"name": "Natural Log",
+              "formula": r"\tilde{y} = \ln(y)"},
+        0.5: {"name": "Square Root",
+              "formula": r"\tilde{y} = 2(\sqrt{y} - 1)"},
+        1.0: {"name": "Linear",
+              "formula": r"\tilde{y} = y - 1"},
+        2.0: {"name": "Square",
+              "formula": r"\tilde{y} = \frac{1}{2}(y^2 - 1)"}
+    }
+
+    return transformations.get(
+        lam_rounded,
+        {"name": "Custom λ",
+         "formula": r"\tilde{y} = \frac{y^{\lambda}-1}{\lambda}"}
+    )
 
 # ======================================================
 # APP
@@ -305,56 +323,6 @@ def run():
 
     st.plotly_chart(fig2)
 
-    # ======================================================
-    # PDF EXPORT
-    # ======================================================
-
-    st.header("📄 Export Report")
-
-    if st.button("Generate PDF Report"):
-
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-        doc = SimpleDocTemplate(temp_file.name)
-        elements = []
-        styles = getSampleStyleSheet()
-
-        elements.append(Paragraph("General Linear Regression Report", styles["Title"]))
-        elements.append(Spacer(1, 12))
-
-        elements.append(Paragraph(f"Response Variable: {response}", styles["Normal"]))
-        elements.append(Paragraph(f"Predictors: {', '.join(predictors)}", styles["Normal"]))
-        elements.append(Spacer(1, 12))
-
-        elements.append(Paragraph(f"Original Model AIC: {aic_original:.4f}", styles["Normal"]))
-
-        if aic_transformed is not None:
-            elements.append(Paragraph(f"Transformed Model AIC: {aic_transformed:.4f}", styles["Normal"]))
-            elements.append(Paragraph(f"Deviance: {deviance:.4f}", styles["Normal"]))
-            elements.append(Paragraph(f"p-value: {p_value:.4f}", styles["Normal"]))
-
-        elements.append(Spacer(1, 12))
-
-        coef_data = [["Parameter", "Estimate"]]
-        for name, coef in model.params.items():
-            coef_data.append([name, round(coef, 4)])
-
-        table = Table(coef_data)
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ]))
-
-        elements.append(table)
-        doc.build(elements)
-
-        with open(temp_file.name, "rb") as f:
-            st.download_button(
-                label="Download PDF",
-                data=f,
-                file_name="Regression_Report.pdf",
-                mime="application/pdf"
-            )
-
-
+  
 if __name__ == "__main__":
     run()
