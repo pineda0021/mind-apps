@@ -6,6 +6,13 @@ import statsmodels.formula.api as smf
 import statsmodels.api as sm
 from scipy.stats import shapiro, boxcox_normmax, chi2
 
+# PDF
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import TableStyle
+import tempfile
+
 
 # ======================================================
 # Box–Cox Helper Functions
@@ -28,33 +35,6 @@ def recommend_lambda(lambda_mle):
         return 2.0
     else:
         return lambda_mle
-
-
-def transformation_info(lam):
-    lam_rounded = round(lam, 4)
-
-    transformations = {
-        -2.0: {"name": "Inverse Square",
-               "formula": r"\tilde{y} = \frac{1}{2}\left(1 - \frac{1}{y^2}\right)"},
-        -1.0: {"name": "Inverse (Reciprocal)",
-               "formula": r"\tilde{y} = 1 - \frac{1}{y}"},
-        -0.5: {"name": "Inverse Square Root",
-               "formula": r"\tilde{y} = 2\left(1 - \frac{1}{\sqrt{y}}\right)"},
-        0.0: {"name": "Natural Log",
-              "formula": r"\tilde{y} = \ln(y)"},
-        0.5: {"name": "Square Root",
-              "formula": r"\tilde{y} = 2(\sqrt{y} - 1)"},
-        1.0: {"name": "Linear",
-              "formula": r"\tilde{y} = y - 1"},
-        2.0: {"name": "Square",
-              "formula": r"\tilde{y} = \frac{1}{2}(y^2 - 1)"}
-    }
-
-    return transformations.get(
-        lam_rounded,
-        {"name": "Custom λ",
-         "formula": r"\tilde{y} = \frac{y^{\lambda}-1}{\lambda}"}
-    )
 
 
 # ======================================================
@@ -130,9 +110,8 @@ def run():
     \end{cases}
     """)
 
-     st.header("2️⃣ Box–Cox Transformation (Optional)")
-
     transformed = False
+    chosen_lambda = None
     df_model = df.copy()
 
     y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
@@ -141,22 +120,18 @@ def run():
     can_boxcox = True
 
     if not np.issubdtype(y_clean.dtype, np.number):
-        st.warning("Response must be numeric for Box–Cox.")
         can_boxcox = False
 
     if y_clean.nunique() < 2:
-        st.warning("Response has no variation. Box–Cox skipped.")
         can_boxcox = False
 
     if (y_clean <= 0).any():
-        st.warning("Box–Cox requires strictly positive values. Skipped.")
         can_boxcox = False
 
     if can_boxcox:
         try:
             lambda_mle = boxcox_normmax(y_clean)
         except Exception:
-            st.warning("Box–Cox optimization failed for this dataset.")
             can_boxcox = False
 
     if can_boxcox:
@@ -176,48 +151,31 @@ def run():
 
             transformed = True
             chosen_lambda = lambda_mle if use_exact else rounded_lambda
-            y = df[response]
             transformed_response = response + "_tr"
 
             if chosen_lambda == 0:
-                df_model[transformed_response] = np.log(y)
+                df_model[transformed_response] = np.log(df[response])
             else:
-                df_model[transformed_response] = (y**chosen_lambda - 1) / chosen_lambda
+                df_model[transformed_response] = (df[response]**chosen_lambda - 1) / chosen_lambda
 
-            # ✅ Shapiro test for transformed Y
             y_tr_clean = df_model[transformed_response].dropna()
 
             if len(y_tr_clean) >= 3:
-                stat_tr, p_tr = shapiro(y_tr_clean)
+                _, p_tr = shapiro(y_tr_clean)
                 st.write(f"Shapiro-Wilk p-value (transformed Y): {p_tr:.4f}")
 
-                if p_tr > 0.05:
-                    st.success("Transformed response appears normally distributed.")
-                else:
-                    st.warning("Transformed response does NOT appear normally distributed.")
-            else:
-                st.warning("Not enough data for Shapiro-Wilk test (transformed Y).")
-
-            # ✅ Side-by-side histograms
             col1, col2 = st.columns(2)
 
             with col1:
-                fig_y = px.histogram(
-                    df,
-                    x=response,
-                    title="Original Y Distribution"
-                )
+                fig_y = px.histogram(df, x=response, title="Original Y Distribution")
                 st.plotly_chart(fig_y)
 
             with col2:
-                fig_ytr = px.histogram(
-                    df_model,
-                    x=transformed_response,
-                    title="Transformed Y Distribution"
-                )
+                fig_ytr = px.histogram(df_model, x=transformed_response,
+                                       title="Transformed Y Distribution")
                 st.plotly_chart(fig_ytr)
 
-            formula_transformed = transformed_response + " ~ " + " + ".join(terms)ms)
+            formula_transformed = transformed_response + " ~ " + " + ".join(terms)
 
     # ======================================================
     # 3️⃣ Model Fitting
@@ -231,6 +189,11 @@ def run():
 
     model = model_original
     active_response = response
+
+    aic_original = model_original.aic
+    aic_transformed = None
+    deviance = None
+    p_value = None
 
     if transformed:
 
@@ -258,37 +221,7 @@ def run():
         st.write(f"df: {df_diff}")
         st.write(f"p-value: {p_value:.4f}")
 
-        st.subheader("Likelihood Ratio Interpretation")
-        st.latex(r"D = -2(\ell_0 - \ell_1) \sim \chi^2_{df}")
-
-        if p_value < 0.05:
-            st.success("The transformed model significantly improves model fit.")
-        else:
-            st.warning("No significant improvement over the null model.")
-
-        # AIC Comparison
-        st.subheader("Model Comparison (AIC)")
-
-        aic_original = model_original.aic
         aic_transformed = model_transformed.aic
-        delta_aic = aic_original - aic_transformed
-
-        comparison_table = pd.DataFrame({
-            "Model": ["Original", "Transformed"],
-            "AIC": [round(aic_original, 4),
-                    round(aic_transformed, 4)]
-        })
-
-        st.dataframe(comparison_table)
-
-        st.write(f"ΔAIC = {delta_aic:.4f}")
-
-        if delta_aic > 2:
-            st.success("Transformed model shows meaningful improvement.")
-        elif delta_aic > 0:
-            st.info("Slight improvement.")
-        else:
-            st.warning("Original model preferred based on AIC.")
 
         model = model_transformed
         active_response = transformed_response
@@ -303,16 +236,10 @@ def run():
         coef = round(model.params[name], 4)
         pval = model.pvalues[name]
 
-        if name == "Intercept":
-            st.markdown(
-                f"**Intercept ({coef})**: "
-                f"{'Significant.' if pval < 0.05 else 'Not significant.'}"
-            )
-        else:
-            st.markdown(
-                f"**{name} (β = {coef})**: "
-                f"{'Significant.' if pval < 0.05 else 'Not significant.'}"
-            )
+        st.markdown(
+            f"**{name} (β = {coef})**: "
+            f"{'Significant.' if pval < 0.05 else 'Not significant.'}"
+        )
 
     # ======================================================
     # 5️⃣ Assumption Checks
@@ -341,24 +268,14 @@ def run():
     input_dict = {}
 
     for var in predictors:
-        if var in categorical_vars:
-            input_dict[var] = st.selectbox(var, df[var].cat.categories)
-        else:
-            input_dict[var] = st.number_input(
-                var,
-                value=float(pd.to_numeric(df[var], errors="coerce").mean())
-            )
+        input_dict[var] = st.number_input(
+            var,
+            value=float(pd.to_numeric(df[var], errors="coerce").mean())
+        )
 
     if st.button("Predict"):
 
         new_df = pd.DataFrame([input_dict])
-
-        for var in categorical_vars:
-            new_df[var] = pd.Categorical(
-                new_df[var],
-                categories=df[var].cat.categories
-            )
-
         prediction_tr = model.predict(new_df)[0]
 
         if transformed:
@@ -387,6 +304,56 @@ def run():
     )
 
     st.plotly_chart(fig2)
+
+    # ======================================================
+    # PDF EXPORT
+    # ======================================================
+
+    st.header("📄 Export Report")
+
+    if st.button("Generate PDF Report"):
+
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        doc = SimpleDocTemplate(temp_file.name)
+        elements = []
+        styles = getSampleStyleSheet()
+
+        elements.append(Paragraph("General Linear Regression Report", styles["Title"]))
+        elements.append(Spacer(1, 12))
+
+        elements.append(Paragraph(f"Response Variable: {response}", styles["Normal"]))
+        elements.append(Paragraph(f"Predictors: {', '.join(predictors)}", styles["Normal"]))
+        elements.append(Spacer(1, 12))
+
+        elements.append(Paragraph(f"Original Model AIC: {aic_original:.4f}", styles["Normal"]))
+
+        if aic_transformed is not None:
+            elements.append(Paragraph(f"Transformed Model AIC: {aic_transformed:.4f}", styles["Normal"]))
+            elements.append(Paragraph(f"Deviance: {deviance:.4f}", styles["Normal"]))
+            elements.append(Paragraph(f"p-value: {p_value:.4f}", styles["Normal"]))
+
+        elements.append(Spacer(1, 12))
+
+        coef_data = [["Parameter", "Estimate"]]
+        for name, coef in model.params.items():
+            coef_data.append([name, round(coef, 4)])
+
+        table = Table(coef_data)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ]))
+
+        elements.append(table)
+        doc.build(elements)
+
+        with open(temp_file.name, "rb") as f:
+            st.download_button(
+                label="Download PDF",
+                data=f,
+                file_name="Regression_Report.pdf",
+                mime="application/pdf"
+            )
 
 
 if __name__ == "__main__":
