@@ -206,12 +206,6 @@ Fit a **Gamma GLM** if the response is positive and skewed.
     st.subheader("Model Summary")
     st.text(model.summary())
 
-    # (Your remaining original code continues here unchanged)
-
-
-if __name__ == "__main__":
-    run()
-
     # ======================================================
     # 5. FIT MODEL
     # ======================================================
