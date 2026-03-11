@@ -156,10 +156,7 @@ def run():
 
         st.write(f"MLE λ = {lambda_mle:.4f}")
 
-        recommended_lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
-        rounded_lambda = recommended_lambdas[
-            np.argmin(np.abs(recommended_lambdas - lambda_mle))
-        ]
+        rounded_lambda = recommend_lambda(lambda_mle)
 
         st.write(f"Recommended rounded λ = {rounded_lambda}")
 
