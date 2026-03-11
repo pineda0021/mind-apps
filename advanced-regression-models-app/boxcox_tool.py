@@ -163,9 +163,10 @@ def run():
         except Exception:
             can_boxcox = False
 
-     if can_boxcox:
+    if can_boxcox:
         st.write(f"MLE λ = {lambda_mle:.4f}")
-        rounded_lambda = recommend_lambda(lambda_mle)
+        
+         rounded_lambda = recommend_lambda(lambda_mle)
         st.write(f"Recommended λ (interval rule) = {rounded_lambda}")
 
         use_exact = st.checkbox("Use exact MLE λ instead of rounded")
