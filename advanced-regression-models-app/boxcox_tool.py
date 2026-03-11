@@ -115,58 +115,64 @@ def run():
     formula_original = response + " ~ " + " + ".join(terms)
     st.code(formula_original)
 
-    # ======================================================
-    # 2️⃣ Box–Cox Transformation
-    # ======================================================
+   # ======================================================
+# 2️⃣ Box–Cox Transformation
+# ======================================================
 
-    st.header("2️⃣ Box–Cox Transformation (Optional)")
+st.header("2️⃣ Box–Cox Transformation (Optional)")
 
-    st.latex(r"""
-    \tilde{y} =
-    \begin{cases}
-    \dfrac{y^{\lambda}-1}{\lambda}, & \lambda \neq 0 \\
-    \ln(y), & \lambda = 0
-    \end{cases}
-    """)
+st.latex(r"""
+\tilde{y} =
+\begin{cases}
+\dfrac{y^{\lambda}-1}{\lambda}, & \lambda \neq 0 \\
+\ln(y), & \lambda = 0
+\end{cases}
+""")
 
-    transformed = False
-    chosen_lambda = None
-    df_model = df.copy()
+transformed = False
+chosen_lambda = None
+df_model = df.copy()
 
-    y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
-    y_clean = y_clean[np.isfinite(y_clean)]
+y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
+y_clean = y_clean[np.isfinite(y_clean)]
 
-    # ===============================
-    # 🔎 Diagnostic Snippet
-    # ===============================
+# ===============================
+# 🔎 Diagnostic Snippet
+# ===============================
 
-    st.write("🔎 Diagnostic — Minimum Y value:", y_clean.min())
-    st.write("🔎 Any Y ≤ 0?:", (y_clean <= 0).any())
-    st.write("🔎 Unique Y values:", y_clean.nunique())
+st.write("🔎 Diagnostic — Minimum Y value:", y_clean.min())
+st.write("🔎 Any Y ≤ 0?:", (y_clean <= 0).any())
+st.write("🔎 Unique Y values:", y_clean.nunique())
 
-    can_boxcox = True
+can_boxcox = True
 
-    if not np.issubdtype(y_clean.dtype, np.number):
+if not np.issubdtype(y_clean.dtype, np.number):
+    can_boxcox = False
+
+if y_clean.nunique() < 2:
+    can_boxcox = False
+
+if (y_clean <= 0).any():
+    st.warning("Box–Cox requires strictly positive values.")
+    can_boxcox = False
+
+
+# ✅ EVERYTHING BELOW MUST BE NESTED PROPERLY
+if can_boxcox:
+
+    st.success("Box–Cox block entered.")
+
+    try:
+        lambda_mle = boxcox_normmax(y_clean)
+    except Exception:
         can_boxcox = False
 
-    if y_clean.nunique() < 2:
-        can_boxcox = False
-
-    if (y_clean <= 0).any():
-        st.warning("Box–Cox requires strictly positive values.")
-        can_boxcox = False
-
+    # SECOND BLOCK MUST BE INSIDE THE FIRST
     if can_boxcox:
-        st.success("Box–Cox block entered.")
-        try:
-            lambda_mle = boxcox_normmax(y_clean)
-        except Exception:
-            can_boxcox = False
 
-    if can_boxcox:
         st.write(f"MLE λ = {lambda_mle:.4f}")
-        
-         rounded_lambda = recommend_lambda(lambda_mle)
+
+        rounded_lambda = recommend_lambda(lambda_mle)
         st.write(f"Recommended λ (interval rule) = {rounded_lambda}")
 
         use_exact = st.checkbox("Use exact MLE λ instead of rounded")
@@ -190,10 +196,19 @@ def run():
                 _, p_tr = shapiro(y_tr_clean)
                 st.write(f"Shapiro-Wilk p-value (transformed Y): {p_tr:.4f}")
 
+                if p_tr > 0.05:
+                    st.success("Transformed response appears normally distributed.")
+                else:
+                    st.warning("Transformed response does NOT appear normally distributed.")
+
             col1, col2 = st.columns(2)
 
             with col1:
-                fig_y = px.histogram(df, x=response, title="Original Y Distribution")
+                fig_y = px.histogram(
+                    df,
+                    x=response,
+                    title="Original Y Distribution"
+                )
                 st.plotly_chart(fig_y)
 
             with col2:
