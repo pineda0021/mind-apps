@@ -130,47 +130,94 @@ def run():
     \end{cases}
     """)
 
+     st.header("2️⃣ Box–Cox Transformation (Optional)")
+
     transformed = False
-    chosen_lambda = None
     df_model = df.copy()
 
     y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
+    y_clean = y_clean[np.isfinite(y_clean)]
 
-    if (y_clean > 0).all() and y_clean.nunique() > 1:
+    can_boxcox = True
 
-        lambda_mle = boxcox_normmax(y_clean)
+    if not np.issubdtype(y_clean.dtype, np.number):
+        st.warning("Response must be numeric for Box–Cox.")
+        can_boxcox = False
+
+    if y_clean.nunique() < 2:
+        st.warning("Response has no variation. Box–Cox skipped.")
+        can_boxcox = False
+
+    if (y_clean <= 0).any():
+        st.warning("Box–Cox requires strictly positive values. Skipped.")
+        can_boxcox = False
+
+    if can_boxcox:
+        try:
+            lambda_mle = boxcox_normmax(y_clean)
+        except Exception:
+            st.warning("Box–Cox optimization failed for this dataset.")
+            can_boxcox = False
+
+    if can_boxcox:
+
         st.write(f"MLE λ = {lambda_mle:.4f}")
 
-        rounded_lambda = recommend_lambda(lambda_mle)
-        st.write(f"Recommended λ = {rounded_lambda}")
+        recommended_lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
+        rounded_lambda = recommended_lambdas[
+            np.argmin(np.abs(recommended_lambdas - lambda_mle))
+        ]
 
-        info = transformation_info(rounded_lambda)
-        st.write(f"Recommended Transformation: **{info['name']}**")
-        st.latex(info["formula"])
+        st.write(f"Recommended rounded λ = {rounded_lambda}")
 
-        use_exact = st.checkbox("Use exact MLE λ instead")
+        use_exact = st.checkbox("Use exact MLE λ instead of rounded")
 
         if st.checkbox("Apply Box–Cox Transformation"):
 
             transformed = True
             chosen_lambda = lambda_mle if use_exact else rounded_lambda
+            y = df[response]
             transformed_response = response + "_tr"
 
-            info_exact = transformation_info(chosen_lambda)
-
-            st.subheader("Transformation Being Applied")
-            st.write(f"λ used = {chosen_lambda:.4f}")
-            st.write(f"Transformation: **{info_exact['name']}**")
-            st.latex(info_exact["formula"])
-
             if chosen_lambda == 0:
-                df_model[transformed_response] = np.log(df[response])
+                df_model[transformed_response] = np.log(y)
             else:
-                df_model[transformed_response] = (
-                    df[response]**chosen_lambda - 1
-                ) / chosen_lambda
+                df_model[transformed_response] = (y**chosen_lambda - 1) / chosen_lambda
 
-            formula_transformed = transformed_response + " ~ " + " + ".join(terms)
+            # ✅ Shapiro test for transformed Y
+            y_tr_clean = df_model[transformed_response].dropna()
+
+            if len(y_tr_clean) >= 3:
+                stat_tr, p_tr = shapiro(y_tr_clean)
+                st.write(f"Shapiro-Wilk p-value (transformed Y): {p_tr:.4f}")
+
+                if p_tr > 0.05:
+                    st.success("Transformed response appears normally distributed.")
+                else:
+                    st.warning("Transformed response does NOT appear normally distributed.")
+            else:
+                st.warning("Not enough data for Shapiro-Wilk test (transformed Y).")
+
+            # ✅ Side-by-side histograms
+            col1, col2 = st.columns(2)
+
+            with col1:
+                fig_y = px.histogram(
+                    df,
+                    x=response,
+                    title="Original Y Distribution"
+                )
+                st.plotly_chart(fig_y)
+
+            with col2:
+                fig_ytr = px.histogram(
+                    df_model,
+                    x=transformed_response,
+                    title="Transformed Y Distribution"
+                )
+                st.plotly_chart(fig_ytr)
+
+            formula_transformed = transformed_response + " ~ " + " + ".join(terms)ms)
 
     # ======================================================
     # 3️⃣ Model Fitting
