@@ -55,6 +55,7 @@ def transformation_info(lam):
          "formula": r"\tilde{y} = \frac{y^{\lambda}-1}{\lambda}"}
     )
 
+
 # ======================================================
 # APP
 # ======================================================
@@ -135,6 +136,14 @@ def run():
     y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
     y_clean = y_clean[np.isfinite(y_clean)]
 
+    # ===============================
+    # 🔎 Diagnostic Snippet
+    # ===============================
+
+    st.write("🔎 Diagnostic — Minimum Y value:", y_clean.min())
+    st.write("🔎 Any Y ≤ 0?:", (y_clean <= 0).any())
+    st.write("🔎 Unique Y values:", y_clean.nunique())
+
     can_boxcox = True
 
     if not np.issubdtype(y_clean.dtype, np.number):
@@ -144,9 +153,11 @@ def run():
         can_boxcox = False
 
     if (y_clean <= 0).any():
+        st.warning("Box–Cox requires strictly positive values.")
         can_boxcox = False
 
     if can_boxcox:
+        st.success("Box–Cox block entered.")
         try:
             lambda_mle = boxcox_normmax(y_clean)
         except Exception:
@@ -157,8 +168,7 @@ def run():
         st.write(f"MLE λ = {lambda_mle:.4f}")
 
         rounded_lambda = recommend_lambda(lambda_mle)
-
-        st.write(f"Recommended rounded λ = {rounded_lambda}")
+        st.write(f"Recommended λ (interval rule) = {rounded_lambda}")
 
         use_exact = st.checkbox("Use exact MLE λ instead of rounded")
 
@@ -171,7 +181,9 @@ def run():
             if chosen_lambda == 0:
                 df_model[transformed_response] = np.log(df[response])
             else:
-                df_model[transformed_response] = (df[response]**chosen_lambda - 1) / chosen_lambda
+                df_model[transformed_response] = (
+                    df[response]**chosen_lambda - 1
+                ) / chosen_lambda
 
             y_tr_clean = df_model[transformed_response].dropna()
 
@@ -186,8 +198,11 @@ def run():
                 st.plotly_chart(fig_y)
 
             with col2:
-                fig_ytr = px.histogram(df_model, x=transformed_response,
-                                       title="Transformed Y Distribution")
+                fig_ytr = px.histogram(
+                    df_model,
+                    x=transformed_response,
+                    title="Transformed Y Distribution"
+                )
                 st.plotly_chart(fig_ytr)
 
             formula_transformed = transformed_response + " ~ " + " + ".join(terms)
@@ -204,11 +219,6 @@ def run():
 
     model = model_original
     active_response = response
-
-    aic_original = model_original.aic
-    aic_transformed = None
-    deviance = None
-    p_value = None
 
     if transformed:
 
@@ -236,8 +246,6 @@ def run():
         st.write(f"df: {df_diff}")
         st.write(f"p-value: {p_value:.4f}")
 
-        aic_transformed = model_transformed.aic
-
         model = model_transformed
         active_response = transformed_response
 
@@ -256,6 +264,9 @@ def run():
             f"{'Significant.' if pval < 0.05 else 'Not significant.'}"
         )
 
+
+if __name__ == "__main__":
+    run()
     # ======================================================
     # 5️⃣ Assumption Checks
     # ======================================================
