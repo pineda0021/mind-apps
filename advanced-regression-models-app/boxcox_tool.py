@@ -139,7 +139,7 @@ def run():
     # MODEL FITTING (GLM) using transformed response
     # ======================================================
     st.header("3️⃣ Model Fit (GLM on transformed response)")
-    formula_transformed = transformed_response + " ~ " + " + ".join(terms)
+    y_trans = transformed_response + " ~ " + " + ".join(terms)
     model_vars = [transformed_response] + predictors
     df_fit = df_model[model_vars].dropna()  # complete cases like R
     model = smf.glm(
