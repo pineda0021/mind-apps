@@ -139,11 +139,8 @@ def run():
     # MODEL FITTING (GLM) using transformed response
     # ======================================================
     st.header("3️⃣ Model Fit (GLM on transformed response)")
-    y_trans = transformed_response + " ~ " + " + ".join(terms)
-    model_vars = [transformed_response] + predictors
-    df_fit = df_model[model_vars].dropna()  # complete cases like R
     model = smf.glm(
-        formula=formula_transformed,
+        formula=y_trans,
         data=df_fit,
         family=sm.families.Gaussian()
     ).fit()
@@ -152,7 +149,7 @@ def run():
     # ======================================================
     # R-STYLE DEVIANCE
     # ======================================================
-    y_bar = df_fit[transformed_response].mean()
+    y_bar = df_fit[y_trans].mean()
     null_deviance = np.sum((df_fit[transformed_response]-y_bar)**2)
     residual_deviance = np.sum(model.resid_response**2)
     st.subheader("Model Diagnostics")
