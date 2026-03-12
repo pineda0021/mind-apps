@@ -4,7 +4,7 @@ import numpy as np
 import plotly.express as px
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
-from scipy.stats import shapiro, chi2
+from scipy.stats import shapiro
 
 
 # ======================================================
@@ -13,7 +13,7 @@ from scipy.stats import shapiro, chi2
 
 def transformation_info(lam):
 
-    lam_rounded = round(lam, 1)
+    lam_rounded = round(lam,1)
 
     transformations = {
 
@@ -41,7 +41,7 @@ def transformation_info(lam):
 
     return transformations.get(
         lam_rounded,
-        {"name": "Custom λ",
+        {"name":"Custom λ",
          "formula": r"\tilde{y}=\frac{y^{\lambda}-1}{\lambda}"}
     )
 
@@ -65,45 +65,38 @@ def run():
     st.dataframe(df.head())
 
     # ======================================================
-    # 1️⃣ Model Specification
+    # MODEL SPECIFICATION
     # ======================================================
 
     st.header("1️⃣ Model Specification")
 
-    response = st.selectbox("Select Response Variable (Y)", df.columns)
+    response = st.selectbox("Select Response Variable", df.columns)
 
     predictors = st.multiselect(
-        "Select Predictor Variables (X)",
+        "Select Predictor Variables",
         [col for col in df.columns if col != response]
     )
 
     if not predictors:
         return
 
-    categorical_vars = st.multiselect("Select Categorical Predictors", predictors)
-
-    reference_dict = {}
-
-    for col in categorical_vars:
-
-        df[col] = df[col].astype("category")
-
-        ref = st.selectbox(
-            f"Reference level for {col}",
-            df[col].cat.categories,
-            key=f"ref_{col}"
-        )
-
-        reference_dict[col] = ref
+    categorical_vars = st.multiselect(
+        "Select Categorical Predictors",
+        predictors
+    )
 
     terms = []
 
     for var in predictors:
 
         if var in categorical_vars:
-            ref = reference_dict[var]
-            terms.append(f'C({var}, Treatment(reference="{ref}"))')
+
+            df[var] = df[var].astype("category")
+
+            terms.append(f"C({var})")
+
         else:
+
             terms.append(var)
 
     formula_original = response + " ~ " + " + ".join(terms)
@@ -111,47 +104,49 @@ def run():
     st.code(formula_original)
 
     # ======================================================
-    # 2️⃣ Box–Cox Transformation
+    # BOX COX TRANSFORMATION
     # ======================================================
 
-    st.header("2️⃣ Box–Cox Transformation")
+    st.header("2️⃣ Box-Cox Transformation")
 
     st.latex(r"""
     \tilde{y} =
     \begin{cases}
-    \dfrac{y^{\lambda}-1}{\lambda}, & \lambda \neq 0 \\
-    \ln(y), & \lambda = 0
+    \frac{y^\lambda -1}{\lambda} & \lambda \neq 0 \\
+    \ln(y) & \lambda =0
     \end{cases}
     """)
-
-    df_model = df.copy()
 
     y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
 
     if (y_clean <= 0).any():
-        st.warning("Box–Cox requires strictly positive response values.")
+        st.warning("Response must be positive for Box-Cox.")
         return
 
-    chosen_lambda = st.number_input("Enter λ value", value=0.0, step=0.1)
+    chosen_lambda = st.number_input("Enter λ", value=0.0, step=0.1)
 
     info = transformation_info(chosen_lambda)
 
-    st.write(f"Selected transformation: **{info['name']}**")
+    st.write(f"Transformation: **{info['name']}**")
+
     st.latex(info["formula"])
+
+    df_model = df.copy()
 
     if st.checkbox("Apply Transformation"):
 
-        y = pd.to_numeric(df[response], errors="coerce")
-        transformed_response = response + "_tr"
-
         lam = round(chosen_lambda,1)
 
+        y = pd.to_numeric(df[response], errors="coerce")
+
+        transformed_response = response + "_tr"
+
         # ======================================================
-        # Apply Ladder-of-Powers Transformation
+        # Ladder of powers transformations
         # ======================================================
 
         if lam == -2.0:
-            df_model[transformed_response] = 0.5 * (1 - 1/(y**2))
+            df_model[transformed_response] = 0.5*(1 - 1/(y**2))
 
         elif lam == -1.0:
             df_model[transformed_response] = 1 - 1/y
@@ -163,16 +158,16 @@ def run():
             df_model[transformed_response] = np.log(y)
 
         elif lam == 0.5:
-            df_model[transformed_response] = 2*(np.sqrt(y) - 1)
+            df_model[transformed_response] = 2*(np.sqrt(y)-1)
 
         elif lam == 1.0:
-            df_model[transformed_response] = y - 1
+            df_model[transformed_response] = y-1
 
         elif lam == 2.0:
-            df_model[transformed_response] = 0.5*(y**2 - 1)
+            df_model[transformed_response] = 0.5*(y**2 -1)
 
         else:
-            df_model[transformed_response] = (y**lam - 1)/lam
+            df_model[transformed_response] = (y**lam -1)/lam
 
         y_trans = df_model[transformed_response].dropna()
 
@@ -182,44 +177,48 @@ def run():
 
         st.subheader("Normality Test")
 
-        qq_fig = sm.qqplot(y_trans, line='s')
-        st.pyplot(qq_fig.figure)
+        qq = sm.qqplot(y_trans, line="s")
+        st.pyplot(qq.figure)
 
-        stat, p = shapiro(y_trans)
+        stat,p = shapiro(y_trans)
 
-        st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
-        st.write(f"p-value: {p:.4f}")
+        st.write("Shapiro Statistic:",round(stat,4))
+        st.write("p-value:",round(p,4))
 
         # ======================================================
-        # 3️⃣ Model Fitting
+        # MODEL FITTING (GLM)
         # ======================================================
+
+        st.header("3️⃣ Model Fit")
 
         formula_transformed = transformed_response + " ~ " + " + ".join(terms)
 
-        st.header("3️⃣ Model Fitting")
+        model = smf.glm(
+            formula=formula_transformed,
+            data=df_model,
+            family=sm.families.Gaussian()
+        ).fit()
 
-        model = smf.ols(formula=formula_transformed, data=df_model).fit()
-        null_model = smf.ols(f"{transformed_response} ~ 1", data=df_model).fit()
-
-        st.subheader("Model Summary")
         st.text(model.summary())
 
         # ======================================================
-        # Likelihood Ratio Test
+        # R-STYLE DEVIANCE
         # ======================================================
 
-        st.subheader("Likelihood Ratio (Deviance) Test")
+        y_bar = df_model[transformed_response].mean()
 
-        deviance = -2 * (null_model.llf - model.llf)
-        df_diff = model.df_model
-        p_value = 1 - chi2.cdf(deviance, df_diff)
+        null_deviance = np.sum((df_model[transformed_response]-y_bar)**2)
 
-        st.write(f"Deviance: {deviance:.4f}")
-        st.write(f"Degrees of Freedom: {df_diff}")
-        st.write(f"p-value: {p_value:.4f}")
+        residual_deviance = np.sum(model.resid_response**2)
+
+        st.subheader("Model Diagnostics")
+
+        st.write("Null Deviance:", round(null_deviance,4))
+        st.write("Residual Deviance:", round(residual_deviance,4))
+        st.write("AIC:", round(model.aic,4))
 
         # ======================================================
-        # Prediction
+        # PREDICTION
         # ======================================================
 
         st.header("4️⃣ Prediction")
@@ -229,43 +228,46 @@ def run():
         for var in predictors:
 
             if var in categorical_vars:
-                input_dict[var] = st.selectbox(var, df[var].cat.categories)
+
+                input_dict[var] = st.selectbox(var, df[var].unique())
+
             else:
-                input_dict[var] = st.number_input(var, value=float(df[var].mean()))
+
+                input_dict[var] = st.number_input(
+                    var,
+                    value=float(df[var].mean())
+                )
 
         if st.button("Predict"):
 
             new_df = pd.DataFrame([input_dict])
 
-            for var in categorical_vars:
-                new_df[var] = pd.Categorical(new_df[var], categories=df[var].cat.categories)
-
             prediction_tr = model.predict(new_df)[0]
 
-            # Back transformation
             if lam == 0:
                 prediction = np.exp(prediction_tr)
+
             else:
-                prediction = (lam * prediction_tr + 1) ** (1/lam)
+                prediction = (lam*prediction_tr +1)**(1/lam)
 
             st.success(f"Predicted {response}: {prediction:.4f}")
 
         # ======================================================
-        # Predicted vs Actual
+        # PREDICTED VS ACTUAL
         # ======================================================
 
         st.header("5️⃣ Predicted vs Actual")
 
-        predicted_vals = model.predict(df_model)
+        predicted = model.predict(df_model)
 
-        fig2 = px.scatter(
-            x=predicted_vals,
+        fig = px.scatter(
+            x=predicted,
             y=df_model[transformed_response],
-            labels={'x': 'Predicted', 'y': 'Actual'},
-            title="Predicted vs Actual Values"
+            labels={"x":"Predicted","y":"Actual"},
+            title="Predicted vs Actual"
         )
 
-        st.plotly_chart(fig2)
+        st.plotly_chart(fig)
 
 
 # ======================================================
