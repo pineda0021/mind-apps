@@ -126,100 +126,64 @@ def run():
 
     df_model = df.copy()
     transformed = False
+    transformed_response = None
 
     y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
 
     if (y_clean <= 0).any():
-
         st.warning("Box–Cox requires strictly positive response values.")
+        return
 
-    else:
+    chosen_lambda = st.number_input("Enter λ value", value=0.0, step=0.1)
 
-        chosen_lambda = st.number_input("Enter λ value", value=0.0, step=0.1)
+    info = transformation_info(chosen_lambda)
 
-        info = transformation_info(chosen_lambda)
+    st.write(f"Selected transformation: **{info['name']}**")
+    st.latex(info["formula"])
 
-        st.write(f"Selected transformation: **{info['name']}**")
-        st.latex(info["formula"])
+    if st.checkbox("Apply Transformation"):
 
-        if st.checkbox("Apply Transformation"):
+        transformed = True
 
-            transformed = True
-
-            y = pd.to_numeric(df[response], errors="coerce")
-            transformed_response = response + "_tr"
-
-            if np.isclose(chosen_lambda, 0):
-                df_model[transformed_response] = np.log(y)
-            else:
-                df_model[transformed_response] = (y**chosen_lambda - 1) / chosen_lambda
-
-            y_trans = df_model[transformed_response].dropna()
-
-            if len(y_trans) >= 3:
-
-                _, p_val = shapiro(y_trans)
-
-                st.subheader("Normality Test (Transformed Y)")
-                st.write(f"Shapiro-Wilk p-value: {p_val:.4f}")
-    if p <= 0.05:
-
-        st.warning("Response does NOT appear normally distributed.")
-    # ======================================================
-    # 3️⃣ Response Normality Check
-    # ======================================================
-
-    st.header("3️⃣ Response Normality Check")
-
-    fig = px.histogram(df, x=response, title=f"Histogram of {response}", marginal="box")
-    st.plotly_chart(fig)
-
-    y_clean = df[response].dropna()
-
-    qq_fig = sm.qqplot(y_clean, line='s')
-    st.pyplot(qq_fig.figure)
-
-    stat, p = shapiro(y_clean)
-
-    st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
-    st.write(f"p-value: {p:.4f}")
-
-    # ======================================================
-    # 4️⃣ Model Fitting
-    # ======================================================
-
-    st.header("4️⃣ Model Fitting")
-
-    if transformed:
-
+        y = pd.to_numeric(df[response], errors="coerce")
         transformed_response = response + "_tr"
+
+        if np.isclose(chosen_lambda, 0):
+            df_model[transformed_response] = np.log(y)
+        else:
+            df_model[transformed_response] = (y**chosen_lambda - 1) / chosen_lambda
+
+        y_trans = df_model[transformed_response].dropna()
+
+        if len(y_trans) < 3:
+            st.warning("Not enough data for Shapiro-Wilk test.")
+            return
+
+        qq_fig = sm.qqplot(y_trans, line='s')
+        st.pyplot(qq_fig.figure)
+
+        stat, p = shapiro(y_trans)
+
+        st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
+        st.write(f"p-value: {p:.4f}")
+
+        # ======================================================
+        # 3️⃣ Model Fitting
+        # ======================================================
 
         formula_transformed = transformed_response + " ~ " + " + ".join(terms)
 
-        model = smf.glm(
-            formula=formula_transformed,
-            data=df_model,
-            family=sm.families.Gaussian()
-        ).fit()
+        st.success("Response appears normally distributed.")
+        st.header("3️⃣ Model Fitting Transformed")
 
-        st.subheader("Transformed Model Summary")
+        model = smf.ols(formula=formula_transformed, data=df_model).fit()
+        null_model = smf.ols(f"{transformed_response} ~ 1", data=df_model).fit()
+
+        st.subheader("Box-Cox Model Summary")
         st.text(model.summary())
 
-        resid = model.resid_response
-
-        _, p_trans = shapiro(resid)
-
-        st.subheader("Residual Normality After Transformation")
-        st.write(f"Shapiro-Wilk p-value: {p_trans:.4f}")
-
-        null_model = smf.glm(
-            formula=transformed_response + " ~ 1",
-            data=df_model,
-            family=sm.families.Gaussian()
-        ).fit()
-
         # ======================================================
-        # 5️⃣ MODEL FIT STATISTICS
+        # 5️⃣ Likelihood Ratio Test
         # ======================================================
 
         st.subheader("Likelihood Ratio (Deviance) Test")
@@ -229,7 +193,7 @@ def run():
         p_value = 1 - chi2.cdf(deviance, df_diff)
 
         st.write(f"Deviance: {deviance:.4f}")
-        st.write(f"df: {df_diff}")
+        st.write(f"Degrees of Freedom: {df_diff}")
         st.write(f"p-value: {p_value:.4f}")
 
     else:
