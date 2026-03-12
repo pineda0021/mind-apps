@@ -392,13 +392,13 @@ Fit a **Gamma GLM** if the response is positive and skewed.
     max_val = max(predicted_vals.max(), df[response].max())
 
     fig2.add_shape(
-    type="line",
-    x0=min_val,
-    y0=min_val,
-    x1=max_val,
-    y1=max_val,
+        type="line",
+        x0=min_val,
+        y0=min_val,
+        x1=max_val,
+        y1=max_val,
     line=dict(color="red", dash="dash")
-
+    )
     st.plotly_chart(fig2)
 
 
