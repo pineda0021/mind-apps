@@ -31,7 +31,8 @@ def recommend_lambda(lambda_mle):
 
 
 def transformation_info(lam):
-    lam_rounded = round(lam, 4)
+
+    lam_rounded = round(lam,1)
 
     transformations = {
         -2.0: {"name": "Inverse Square",
@@ -70,6 +71,7 @@ def run():
         return
 
     df = pd.read_csv(uploaded_file)
+
     st.subheader("Data Preview")
     st.dataframe(df.head())
 
@@ -108,14 +110,23 @@ def run():
         reference_dict[col] = ref
 
     terms = []
+
     for var in predictors:
+
         if var in categorical_vars:
+
             ref = reference_dict[var]
-            terms.append(f'C({var}, Treatment(reference="{ref}"))')
+
+            terms.append(
+                f'C({var}, Treatment(reference="{ref}"))'
+            )
+
         else:
+
             terms.append(var)
 
     formula_original = response + " ~ " + " + ".join(terms)
+
     st.code(formula_original)
 
     # ======================================================
@@ -141,48 +152,46 @@ def run():
 
     can_boxcox = True
 
-    if not np.issubdtype(y_clean.dtype, np.number):
-        st.warning("Response must be numeric for Box–Cox.")
-        can_boxcox = False
-
-    if y_clean.nunique() < 2:
-        st.warning("Response has no variation. Box–Cox skipped.")
-        can_boxcox = False
-
     if (y_clean <= 0).any():
-        st.warning("Box–Cox requires strictly positive values. Skipped.")
+        st.warning("Box–Cox requires strictly positive values.")
         can_boxcox = False
 
     if can_boxcox:
-        try:
-            lambda_mle = boxcox_normmax(y_clean, brack=(-3, 3))
-        except Exception:
-            st.warning("Box–Cox optimization failed for this dataset.")
-            can_boxcox = False
 
-    if can_boxcox:
+        lambda_mle = boxcox_normmax(y_clean, brack=(-3,3))
 
         st.write(f"MLE λ = {lambda_mle:.4f}")
 
-        recommended_lambdas = np.array([-2, -1, -0.5, 0, 0.5, 1, 2])
-        rounded_lambda = recommended_lambdas[
-            np.argmin(np.abs(recommended_lambdas - lambda_mle))
-        ]
+        recommended = recommend_lambda(lambda_mle)
 
-        st.write(f"Recommended rounded λ = {rounded_lambda}")
+        st.write(f"Recommended λ = {recommended}")
 
-        use_exact = st.checkbox("Use exact MLE λ instead of rounded")
+        chosen_lambda = st.number_input(
+            "Enter λ value",
+            value=float(recommended),
+            step=0.1
+        )
+
+        info = transformation_info(chosen_lambda)
+
+        st.write(f"Selected transformation: **{info['name']}**")
+
+        st.latex(info["formula"])
 
         if st.checkbox("Apply Box–Cox Transformation"):
 
             transformed = True
-            chosen_lambda = lambda_mle if use_exact else rounded_lambda
+
             y = pd.to_numeric(df[response], errors="coerce")
+
             transformed_response = response + "_tr"
 
-            if np.isclose(chosen_lambda, 0):
+            if np.isclose(chosen_lambda,0):
+
                 df_model[transformed_response] = np.log(y)
+
             else:
+
                 df_model[transformed_response] = (
                     y**chosen_lambda - 1
                 ) / chosen_lambda
@@ -199,7 +208,14 @@ def run():
     ).fit()
 
     st.subheader("Original Model Summary")
+
     st.text(model_original.summary())
+
+    resid_orig = model_original.resid
+
+    _, p_resid_orig = shapiro(resid_orig)
+
+    st.write(f"Residual Shapiro-Wilk p-value: {p_resid_orig:.4f}")
 
     model = model_original
     active_response = response
@@ -207,6 +223,7 @@ def run():
     if transformed and chosen_lambda is not None:
 
         transformed_response = response + "_tr"
+
         formula_transformed = (
             transformed_response + " ~ " + " + ".join(terms)
         )
@@ -218,7 +235,21 @@ def run():
         ).fit()
 
         st.subheader("Transformed Model Summary")
+
         st.text(model_transformed.summary())
+
+        resid_tr = model_transformed.resid_response
+
+        _, p_trans = shapiro(resid_tr)
+
+        st.subheader("Normality Check After Transformation")
+
+        st.write(f"Shapiro-Wilk p-value: {p_trans:.4f}")
+
+        if p_trans > 0.05:
+            st.success("Residuals appear approximately normal.")
+        else:
+            st.warning("Residuals may not be normally distributed.")
 
         null_model = smf.glm(
             formula=transformed_response + " ~ 1",
@@ -227,10 +258,13 @@ def run():
         ).fit()
 
         deviance = -2 * (null_model.llf - model_transformed.llf)
+
         df_diff = model_transformed.df_model
+
         p_value = 1 - chi2.cdf(deviance, df_diff)
 
         st.subheader("Deviance Test vs Null")
+
         st.write(f"Deviance: {deviance:.4f}")
         st.write(f"df: {df_diff}")
         st.write(f"p-value: {p_value:.4f}")
