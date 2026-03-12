@@ -387,6 +387,18 @@ Fit a **Gamma GLM** if the response is positive and skewed.
         title="Predicted vs Actual Values"
     )
 
+    # perfect prediction line
+    min_val = min(predicted_vals.min(), df[response].min())
+    max_val = max(predicted_vals.max(), df[response].max())
+
+    fig2.add_shape(
+    type="line",
+    x0=min_val,
+    y0=min_val,
+    x1=max_val,
+    y1=max_val,
+    line=dict(color="red", dash="dash")
+
     st.plotly_chart(fig2)
 
 
