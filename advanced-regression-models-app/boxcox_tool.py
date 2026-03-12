@@ -201,8 +201,7 @@ else:
                 st.success("Transformed response appears normally distributed.")
             else:
                 st.warning("Transformed response may not be normally distributed.")
-
-   
+                
     # ======================================================
     # 3️⃣ Model Fitting
     # ======================================================
