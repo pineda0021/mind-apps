@@ -1,60 +1,64 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
-from scipy.stats import shapiro, boxcox_normmax, chi2
+from scipy.stats import shapiro, chi2
 
 
 # ======================================================
-# Box–Cox Helper Functions
+# Transformation Helper
 # ======================================================
-
-def recommend_lambda(lambda_mle):
-    if -2.5 <= lambda_mle < -1.5:
-        return -2.0
-    elif -1.5 <= lambda_mle < -0.75:
-        return -1.0
-    elif -0.75 <= lambda_mle < -0.25:
-        return -0.5
-    elif -0.25 <= lambda_mle < 0.25:
-        return 0.0
-    elif 0.25 <= lambda_mle < 0.75:
-        return 0.5
-    elif 0.75 <= lambda_mle < 1.5:
-        return 1.0
-    elif 1.5 <= lambda_mle <= 2.5:
-        return 2.0
-    else:
-        return lambda_mle
-
 
 def transformation_info(lam):
 
-    lam_rounded = round(lam,1)
+    lam_rounded = round(lam, 1)
 
     transformations = {
-        -2.0: {"name": "Inverse Square",
-               "formula": r"\tilde{y} = \frac{1}{2}\left(1 - \frac{1}{y^2}\right)"},
-        -1.0: {"name": "Inverse (Reciprocal)",
-               "formula": r"\tilde{y} = 1 - \frac{1}{y}"},
-        -0.5: {"name": "Inverse Square Root",
-               "formula": r"\tilde{y} = 2\left(1 - \frac{1}{\sqrt{y}}\right)"},
-        0.0: {"name": "Natural Log",
-              "formula": r"\tilde{y} = \ln(y)"},
-        0.5: {"name": "Square Root",
-              "formula": r"\tilde{y} = 2(\sqrt{y} - 1)"},
-        1.0: {"name": "Linear",
-              "formula": r"\tilde{y} = y - 1"},
-        2.0: {"name": "Square",
-              "formula": r"\tilde{y} = \frac{1}{2}(y^2 - 1)"}
+
+        -2.0: {
+            "name": "Inverse Square",
+            "formula": r"\tilde{y} = \frac{1}{2}\left(1-\frac{1}{y^2}\right)"
+        },
+
+        -1.0: {
+            "name": "Inverse (Reciprocal)",
+            "formula": r"\tilde{y} = 1 - \frac{1}{y}"
+        },
+
+        -0.5: {
+            "name": "Inverse Square Root",
+            "formula": r"\tilde{y} = 2\left(1-\frac{1}{\sqrt{y}}\right)"
+        },
+
+        0.0: {
+            "name": "Natural Log",
+            "formula": r"\tilde{y} = \ln(y)"
+        },
+
+        0.5: {
+            "name": "Square Root",
+            "formula": r"\tilde{y} = 2(\sqrt{y}-1)"
+        },
+
+        1.0: {
+            "name": "Linear",
+            "formula": r"\tilde{y} = y-1"
+        },
+
+        2.0: {
+            "name": "Square",
+            "formula": r"\tilde{y} = \frac{1}{2}(y^2-1)"
+        }
+
     }
 
     return transformations.get(
         lam_rounded,
-        {"name": "Custom λ",
-         "formula": r"\tilde{y} = \frac{y^{\lambda}-1}{\lambda}"}
+        {
+            "name": "Custom λ",
+            "formula": r"\tilde{y}=\frac{y^{\lambda}-1}{\lambda}"
+        }
     )
 
 
@@ -67,6 +71,7 @@ def run():
     st.title("📘 General Linear Regression Model")
 
     uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
+
     if uploaded_file is None:
         return
 
@@ -81,13 +86,10 @@ def run():
 
     st.header("1️⃣ Model Specification")
 
-    response = st.selectbox("Select Response Variable (Y)", df.columns)
-
-    y_original = pd.to_numeric(df[response], errors="coerce").dropna()
-
-    if len(y_original) >= 3:
-        _, p_orig = shapiro(y_original)
-        st.write(f"Shapiro-Wilk p-value (original Y): {p_orig:.4f}")
+    response = st.selectbox(
+        "Select Response Variable (Y)",
+        df.columns
+    )
 
     predictors = st.multiselect(
         "Select Predictor Variables (X)",
@@ -97,16 +99,23 @@ def run():
     if not predictors:
         return
 
-    categorical_vars = st.multiselect("Select Categorical Predictors", predictors)
+    categorical_vars = st.multiselect(
+        "Select Categorical Predictors",
+        predictors
+    )
 
     reference_dict = {}
+
     for col in categorical_vars:
+
         df[col] = df[col].astype("category")
+
         ref = st.selectbox(
             f"Reference level for {col}",
             df[col].cat.categories,
             key=f"ref_{col}"
         )
+
         reference_dict[col] = ref
 
     terms = []
@@ -129,79 +138,80 @@ def run():
 
     st.code(formula_original)
 
-# ======================================================
-# 2️⃣ Box–Cox Transformation
-# ======================================================
+    # ======================================================
+    # 2️⃣ Box–Cox Transformation
+    # ======================================================
 
-st.header("2️⃣ Box–Cox Transformation")
+    st.header("2️⃣ Box–Cox Transformation")
 
-st.latex(r"""
-\tilde{y} =
-\begin{cases}
-\dfrac{y^{\lambda}-1}{\lambda}, & \lambda \neq 0 \\
-\ln(y), & \lambda = 0
-\end{cases}
-""")
+    st.latex(r"""
+    \tilde{y} =
+    \begin{cases}
+    \dfrac{y^{\lambda}-1}{\lambda}, & \lambda \neq 0 \\
+    \ln(y), & \lambda = 0
+    \end{cases}
+    """)
 
-df_model = df.copy()
-transformed = False
+    df_model = df.copy()
 
-y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
+    transformed = False
 
-if (y_clean <= 0).any():
-    st.warning("Box–Cox requires strictly positive response values.")
-else:
+    y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
 
-    st.subheader("Enter λ Value")
+    if (y_clean <= 0).any():
 
-    chosen_lambda = st.number_input(
-        "Enter the λ value obtained previously",
-        value=0.0,
-        step=0.1
-    )
+        st.warning("Box–Cox requires strictly positive response values.")
 
-    info = transformation_info(chosen_lambda)
+    else:
 
-    st.write(f"Selected Transformation: **{info['name']}**")
+        chosen_lambda = st.number_input(
+            "Enter λ value",
+            value=0.0,
+            step=0.1
+        )
 
-    st.latex(info["formula"])
+        info = transformation_info(chosen_lambda)
 
-    if st.checkbox("Apply Transformation"):
+        st.write(f"Selected transformation: **{info['name']}**")
 
-        transformed = True
+        st.latex(info["formula"])
 
-        y = pd.to_numeric(df[response], errors="coerce")
+        if st.checkbox("Apply Transformation"):
 
-        transformed_response = response + "_tr"
+            transformed = True
 
-        if np.isclose(chosen_lambda, 0):
+            y = pd.to_numeric(df[response], errors="coerce")
 
-            df_model[transformed_response] = np.log(y)
+            transformed_response = response + "_tr"
 
-        else:
+            if np.isclose(chosen_lambda, 0):
 
-            df_model[transformed_response] = (
-                y**chosen_lambda - 1
-            ) / chosen_lambda
+                df_model[transformed_response] = np.log(y)
 
-        # -------------------------------------------------
-        # Normality Check of Transformed Response
-        # -------------------------------------------------
-
-        y_trans = df_model[transformed_response].dropna()
-
-        if len(y_trans) >= 3:
-
-            _, p_val = shapiro(y_trans)
-
-            st.subheader("Normality Test (Transformed Y)")
-            st.write(f"Shapiro-Wilk p-value: {p_val:.4f}")
-
-            if p_val > 0.05:
-                st.success("Transformed response appears normally distributed.")
             else:
-                st.warning("Transformed response may not be normally distributed.")
-                
+
+                df_model[transformed_response] = (
+                    y**chosen_lambda - 1
+                ) / chosen_lambda
+
+            y_trans = df_model[transformed_response].dropna()
+
+            if len(y_trans) >= 3:
+
+                _, p_val = shapiro(y_trans)
+
+                st.subheader("Normality Test (Transformed Y)")
+
+                st.write(f"Shapiro-Wilk p-value: {p_val:.4f}")
+
+                if p_val > 0.05:
+
+                    st.success("Transformed response appears normally distributed.")
+
+                else:
+
+                    st.warning("Transformed response may not be normally distributed.")
+
     # ======================================================
     # 3️⃣ Model Fitting
     # ======================================================
@@ -214,7 +224,6 @@ else:
     ).fit()
 
     st.subheader("Original Model Summary")
-
     st.text(model_original.summary())
 
     resid_orig = model_original.resid
@@ -224,9 +233,8 @@ else:
     st.write(f"Residual Shapiro-Wilk p-value: {p_resid_orig:.4f}")
 
     model = model_original
-    active_response = response
 
-    if transformed and chosen_lambda is not None:
+    if transformed:
 
         transformed_response = response + "_tr"
 
@@ -248,13 +256,16 @@ else:
 
         _, p_trans = shapiro(resid_tr)
 
-        st.subheader("Normality Check After Transformation")
+        st.subheader("Residual Normality After Transformation")
 
         st.write(f"Shapiro-Wilk p-value: {p_trans:.4f}")
 
         if p_trans > 0.05:
+
             st.success("Residuals appear approximately normal.")
+
         else:
+
             st.warning("Residuals may not be normally distributed.")
 
         null_model = smf.glm(
@@ -269,15 +280,16 @@ else:
 
         p_value = 1 - chi2.cdf(deviance, df_diff)
 
-        st.subheader("Deviance Test vs Null")
+        st.subheader("Deviance Test vs Null Model")
 
         st.write(f"Deviance: {deviance:.4f}")
         st.write(f"df: {df_diff}")
         st.write(f"p-value: {p_value:.4f}")
 
-        model = model_transformed
-        active_response = transformed_response
 
+# ======================================================
+# RUN
+# ======================================================
 
 if __name__ == "__main__":
     run()
