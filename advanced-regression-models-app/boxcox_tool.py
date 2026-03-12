@@ -131,6 +131,7 @@ def run():
     y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
 
     if (y_clean <= 0).any():
+
         st.warning("Box–Cox requires strictly positive response values.")
         return
 
@@ -148,6 +149,7 @@ def run():
         y = pd.to_numeric(df[response], errors="coerce")
         transformed_response = response + "_tr"
 
+        # Apply transformation
         if np.isclose(chosen_lambda, 0):
             df_model[transformed_response] = np.log(y)
         else:
@@ -159,9 +161,11 @@ def run():
             st.warning("Not enough data for Shapiro-Wilk test.")
             return
 
+        # Q-Q plot
         qq_fig = sm.qqplot(y_trans, line='s')
         st.pyplot(qq_fig.figure)
 
+        # Shapiro test
         stat, p = shapiro(y_trans)
 
         st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
@@ -183,7 +187,7 @@ def run():
         st.text(model.summary())
 
         # ======================================================
-        # 5️⃣ Likelihood Ratio Test
+        # Likelihood Ratio Test
         # ======================================================
 
         st.subheader("Likelihood Ratio (Deviance) Test")
@@ -247,7 +251,13 @@ def run():
         for var in categorical_vars:
             new_df[var] = pd.Categorical(new_df[var], categories=df[var].cat.categories)
 
-        prediction = model.predict(new_df)[0]
+        prediction_tr = model.predict(new_df)[0]
+
+        # Back-transform prediction
+        if np.isclose(chosen_lambda, 0):
+            prediction = np.exp(prediction_tr)
+        else:
+            prediction = (chosen_lambda * prediction_tr + 1) ** (1 / chosen_lambda)
 
         st.success(f"Predicted {response}: {prediction:.4f}")
 
