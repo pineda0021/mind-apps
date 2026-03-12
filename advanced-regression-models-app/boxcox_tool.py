@@ -129,73 +129,80 @@ def run():
 
     st.code(formula_original)
 
-    # ======================================================
-    # 2️⃣ Box–Cox Transformation
-    # ======================================================
+# ======================================================
+# 2️⃣ Box–Cox Transformation
+# ======================================================
 
-    st.header("2️⃣ Box–Cox Transformation (Optional)")
+st.header("2️⃣ Box–Cox Transformation")
 
-    st.latex(r"""
-    \tilde{y} =
-    \begin{cases}
-    \dfrac{y^{\lambda}-1}{\lambda}, & \lambda \neq 0 \\
-    \ln(y), & \lambda = 0
-    \end{cases}
-    """)
+st.latex(r"""
+\tilde{y} =
+\begin{cases}
+\dfrac{y^{\lambda}-1}{\lambda}, & \lambda \neq 0 \\
+\ln(y), & \lambda = 0
+\end{cases}
+""")
 
-    transformed = False
-    chosen_lambda = None
-    df_model = df.copy()
+df_model = df.copy()
+transformed = False
 
-    y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
-    y_clean = y_clean[np.isfinite(y_clean)]
+y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
 
-    can_boxcox = True
+if (y_clean <= 0).any():
+    st.warning("Box–Cox requires strictly positive response values.")
+else:
 
-    if (y_clean <= 0).any():
-        st.warning("Box–Cox requires strictly positive values.")
-        can_boxcox = False
+    st.subheader("Enter λ Value")
 
-    if can_boxcox:
+    chosen_lambda = st.number_input(
+        "Enter the λ value obtained previously",
+        value=0.0,
+        step=0.1
+    )
 
-        lambda_mle = boxcox_normmax(y_clean, brack=(-3,3))
+    info = transformation_info(chosen_lambda)
 
-        st.write(f"MLE λ = {lambda_mle:.4f}")
+    st.write(f"Selected Transformation: **{info['name']}**")
 
-        recommended = recommend_lambda(lambda_mle)
+    st.latex(info["formula"])
 
-        st.write(f"Recommended λ = {recommended}")
+    if st.checkbox("Apply Transformation"):
 
-        chosen_lambda = st.number_input(
-            "Enter λ value",
-            value=float(recommended),
-            step=0.1
-        )
+        transformed = True
 
-        info = transformation_info(chosen_lambda)
+        y = pd.to_numeric(df[response], errors="coerce")
 
-        st.write(f"Selected transformation: **{info['name']}**")
+        transformed_response = response + "_tr"
 
-        st.latex(info["formula"])
+        if np.isclose(chosen_lambda, 0):
 
-        if st.checkbox("Apply Box–Cox Transformation"):
+            df_model[transformed_response] = np.log(y)
 
-            transformed = True
+        else:
 
-            y = pd.to_numeric(df[response], errors="coerce")
+            df_model[transformed_response] = (
+                y**chosen_lambda - 1
+            ) / chosen_lambda
 
-            transformed_response = response + "_tr"
+        # -------------------------------------------------
+        # Normality Check of Transformed Response
+        # -------------------------------------------------
 
-            if np.isclose(chosen_lambda,0):
+        y_trans = df_model[transformed_response].dropna()
 
-                df_model[transformed_response] = np.log(y)
+        if len(y_trans) >= 3:
 
+            _, p_val = shapiro(y_trans)
+
+            st.subheader("Normality Test (Transformed Y)")
+            st.write(f"Shapiro-Wilk p-value: {p_val:.4f}")
+
+            if p_val > 0.05:
+                st.success("Transformed response appears normally distributed.")
             else:
+                st.warning("Transformed response may not be normally distributed.")
 
-                df_model[transformed_response] = (
-                    y**chosen_lambda - 1
-                ) / chosen_lambda
-
+   
     # ======================================================
     # 3️⃣ Model Fitting
     # ======================================================
