@@ -162,7 +162,9 @@ def run():
 
                 st.subheader("Normality Test (Transformed Y)")
                 st.write(f"Shapiro-Wilk p-value: {p_val:.4f}")
+    if p <= 0.05:
 
+        st.warning("Response does NOT appear normally distributed.")
     # ======================================================
     # 3️⃣ Response Normality Check
     # ======================================================
