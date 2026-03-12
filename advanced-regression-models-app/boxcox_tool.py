@@ -125,13 +125,10 @@ def run():
     """)
 
     df_model = df.copy()
-    transformed = False
-    transformed_response = None
 
     y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
 
     if (y_clean <= 0).any():
-
         st.warning("Box–Cox requires strictly positive response values.")
         return
 
@@ -144,28 +141,50 @@ def run():
 
     if st.checkbox("Apply Transformation"):
 
-        transformed = True
-
         y = pd.to_numeric(df[response], errors="coerce")
         transformed_response = response + "_tr"
 
-        # Apply transformation
-        if np.isclose(chosen_lambda, 0):
+        lam = round(chosen_lambda,1)
+
+        # ======================================================
+        # Apply Ladder-of-Powers Transformation
+        # ======================================================
+
+        if lam == -2.0:
+            df_model[transformed_response] = 0.5 * (1 - 1/(y**2))
+
+        elif lam == -1.0:
+            df_model[transformed_response] = 1 - 1/y
+
+        elif lam == -0.5:
+            df_model[transformed_response] = 2*(1 - 1/np.sqrt(y))
+
+        elif lam == 0.0:
             df_model[transformed_response] = np.log(y)
+
+        elif lam == 0.5:
+            df_model[transformed_response] = 2*(np.sqrt(y) - 1)
+
+        elif lam == 1.0:
+            df_model[transformed_response] = y - 1
+
+        elif lam == 2.0:
+            df_model[transformed_response] = 0.5*(y**2 - 1)
+
         else:
-            df_model[transformed_response] = (y**chosen_lambda - 1) / chosen_lambda
+            df_model[transformed_response] = (y**lam - 1)/lam
 
         y_trans = df_model[transformed_response].dropna()
 
-        if len(y_trans) < 3:
-            st.warning("Not enough data for Shapiro-Wilk test.")
-            return
+        # ======================================================
+        # Normality Test
+        # ======================================================
 
-        # Q-Q plot
+        st.subheader("Normality Test")
+
         qq_fig = sm.qqplot(y_trans, line='s')
         st.pyplot(qq_fig.figure)
 
-        # Shapiro test
         stat, p = shapiro(y_trans)
 
         st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
@@ -177,13 +196,12 @@ def run():
 
         formula_transformed = transformed_response + " ~ " + " + ".join(terms)
 
-        st.success("Response appears normally distributed.")
-        st.header("3️⃣ Model Fitting Transformed")
+        st.header("3️⃣ Model Fitting")
 
         model = smf.ols(formula=formula_transformed, data=df_model).fit()
         null_model = smf.ols(f"{transformed_response} ~ 1", data=df_model).fit()
 
-        st.subheader("Box-Cox Model Summary")
+        st.subheader("Model Summary")
         st.text(model.summary())
 
         # ======================================================
@@ -200,95 +218,54 @@ def run():
         st.write(f"Degrees of Freedom: {df_diff}")
         st.write(f"p-value: {p_value:.4f}")
 
-    else:
-        st.warning("Please apply a transformation before fitting the model.")
-        return
+        # ======================================================
+        # Prediction
+        # ======================================================
 
-    # ======================================================
-    # 6️⃣ EQUATION BUILDER
-    # ======================================================
+        st.header("4️⃣ Prediction")
 
-    def build_equation(model, response):
+        input_dict = {}
 
-        params = model.params
-        equation = f"\\widehat{{\\mathbb{{E}}}}({response}) = {round(params['Intercept'],4)}"
+        for var in predictors:
 
-        for name in params.index:
+            if var in categorical_vars:
+                input_dict[var] = st.selectbox(var, df[var].cat.categories)
+            else:
+                input_dict[var] = st.number_input(var, value=float(df[var].mean()))
 
-            if name == "Intercept":
-                continue
+        if st.button("Predict"):
 
-            coef = round(params[name], 4)
-            sign = "+" if coef >= 0 else "-"
+            new_df = pd.DataFrame([input_dict])
 
-            equation += f" {sign} {abs(coef)} {name}"
+            for var in categorical_vars:
+                new_df[var] = pd.Categorical(new_df[var], categories=df[var].cat.categories)
 
-        return equation
+            prediction_tr = model.predict(new_df)[0]
 
-    st.subheader("Fitted Regression Equation")
-    st.latex(build_equation(model, response))
+            # Back transformation
+            if lam == 0:
+                prediction = np.exp(prediction_tr)
+            else:
+                prediction = (lam * prediction_tr + 1) ** (1/lam)
 
-    # ======================================================
-    # 7️⃣ Prediction
-    # ======================================================
+            st.success(f"Predicted {response}: {prediction:.4f}")
 
-    st.header("7️⃣ Prediction")
+        # ======================================================
+        # Predicted vs Actual
+        # ======================================================
 
-    input_dict = {}
+        st.header("5️⃣ Predicted vs Actual")
 
-    for var in predictors:
+        predicted_vals = model.predict(df_model)
 
-        if var in categorical_vars:
-            input_dict[var] = st.selectbox(var, df[var].cat.categories)
-        else:
-            numeric_series = pd.to_numeric(df[var], errors="coerce")
-            input_dict[var] = st.number_input(var, value=float(numeric_series.mean()))
+        fig2 = px.scatter(
+            x=predicted_vals,
+            y=df_model[transformed_response],
+            labels={'x': 'Predicted', 'y': 'Actual'},
+            title="Predicted vs Actual Values"
+        )
 
-    if st.button("Predict"):
-
-        new_df = pd.DataFrame([input_dict])
-
-        for var in categorical_vars:
-            new_df[var] = pd.Categorical(new_df[var], categories=df[var].cat.categories)
-
-        prediction_tr = model.predict(new_df)[0]
-
-        # Back-transform prediction
-        if np.isclose(chosen_lambda, 0):
-            prediction = np.exp(prediction_tr)
-        else:
-            prediction = (chosen_lambda * prediction_tr + 1) ** (1 / chosen_lambda)
-
-        st.success(f"Predicted {response}: {prediction:.4f}")
-
-    # ======================================================
-    # 8️⃣ Predicted vs Actual
-    # ======================================================
-
-    st.header("8️⃣ Predicted vs Actual")
-
-    predicted_vals = model.predict(df_model)
-
-    fig2 = px.scatter(
-        x=predicted_vals,
-        y=df_model[transformed_response],
-        labels={'x': 'Predicted', 'y': 'Actual'},
-        title="Predicted vs Actual Values"
-    )
-
-    min_val = min(predicted_vals.min(), df_model[transformed_response].min())
-    max_val = max(predicted_vals.max(), df_model[transformed_response].max())
-
-    fig2.add_shape(
-        type="line",
-        x0=min_val,
-        y0=min_val,
-        x1=max_val,
-        y1=max_val,
-        line=dict(color="red", dash="dash")
-    )
-
-    st.plotly_chart(fig2)
+        st.plotly_chart(fig2)
 
 
 # ======================================================
