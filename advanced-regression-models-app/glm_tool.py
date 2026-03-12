@@ -194,21 +194,10 @@ Fit a **Gamma GLM** if the response is positive and skewed.
         st.stop()
 
     # ======================================================
-    # IF NORMAL → PROCEED WITH OLS
+    # 5. FIT MODEL IF NORMAL → PROCEED WITH OLS
     # ======================================================
 
     st.success("Response appears normally distributed.")
-
-    st.header("3️⃣ Fit General Linear Model")
-
-    model = smf.ols(formula=formula, data=df).fit()
-
-    st.subheader("Model Summary")
-    st.text(model.summary())
-
-    # ======================================================
-    # 5. FIT MODEL
-    # ======================================================
 
     st.header("3️⃣ Fit General Linear Model")
 
