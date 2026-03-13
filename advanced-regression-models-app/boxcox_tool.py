@@ -307,34 +307,70 @@ def run():
                     f"- {interpretation}  \n"
                     f"- {significance}")
 
+# ======================================================
+# 7️⃣ Prediction
+# ======================================================
+
+st.header("6️⃣ Prediction")
+
+input_dict = {}
+
+for var in predictors:
+    if var in categorical_vars:
+        input_dict[var] = st.selectbox(var, df[var].cat.categories)
+    else:
+        numeric_series = pd.to_numeric(df[var], errors="coerce")
+        input_dict[var] = st.number_input(var, value=float(numeric_series.mean()))
+
+if st.button("Predict"):
+
+    new_df = pd.DataFrame([input_dict])
+
+    for var in categorical_vars:
+        new_df[var] = pd.Categorical(
+            new_df[var],
+            categories=df[var].cat.categories
+        )
+
+    # Prediction on transformed scale
+    y_trans_pred = model.predict(new_df)[0]
+
     # ======================================================
-    # 7️⃣ Prediction
+    # Exact Inverse Transformations (Matching Your Table)
     # ======================================================
 
-    st.header("6️⃣ Prediction")
+    if lambda_value == -2:
+        y_original_pred = 1 / np.sqrt(1 - 2 * y_trans_pred)
 
-    input_dict = {}
+    elif lambda_value == -1:
+        y_original_pred = 1 / (1 - y_trans_pred)
 
-    for var in predictors:
-        if var in categorical_vars:
-            input_dict[var] = st.selectbox(var, df[var].cat.categories)
-        else:
-            numeric_series = pd.to_numeric(df[var], errors="coerce")
-            input_dict[var] = st.number_input(var, value=float(numeric_series.mean()))
+    elif lambda_value == -0.5:
+        y_original_pred = 1 / (1 - y_trans_pred / 2) ** 2
 
-    if st.button("Predict"):
+    elif lambda_value == 0:
+        y_original_pred = np.exp(y_trans_pred)
 
-        new_df = pd.DataFrame([input_dict])
+    elif lambda_value == 0.5:
+        y_original_pred = (y_trans_pred / 2 + 1) ** 2
 
-        for var in categorical_vars:
-            new_df[var] = pd.Categorical(
-                new_df[var],
-                categories=df[var].cat.categories
-            )
+    elif lambda_value == 1:
+        y_original_pred = y_trans_pred + 1
 
-        prediction = model.predict(new_df)[0]
-        st.success(f"Predicted transformed {response}: {prediction:.4f}")
+    elif lambda_value == 2:
+        y_original_pred = np.sqrt(2 * y_trans_pred + 1)
 
+    else:
+        # fallback to general Box–Cox inverse
+        y_original_pred = (lambda_value * y_trans_pred + 1) ** (1 / lambda_value)
+
+    st.subheader("Prediction Results")
+
+    st.write(f"Predicted transformed value: {y_trans_pred:.4f}")
+    st.success(f"Predicted original {response}: {y_original_pred:.4f}")
+
+
+    
     # ======================================================
     # 8️⃣ Predicted vs Actual
     # ======================================================
