@@ -184,7 +184,7 @@ def run():
 ### Next Step
 
 Write down the recommended λ = **{best_lambda:.4f}**  
-and fit a **Box-Cox Transformed Linear Model**,  
+and fit a **Box-Cox Transformation GLM**,  
 
 OR  
 
