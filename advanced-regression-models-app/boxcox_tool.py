@@ -12,11 +12,12 @@ from scipy.stats import shapiro, chi2
 # ======================================================
 
 def transformation_info(lam):
+
     lam_rounded = round(lam, 1)
 
     transformations = {
         -2.0: {"name": "Inverse Square"},
-        -1.0: {"name": "Inverse"},
+        -1.0: {"name": "Inverse (Reciprocal)"},
         -0.5: {"name": "Inverse Square Root"},
         0.0: {"name": "Natural Log"},
         0.5: {"name": "Square Root"},
@@ -43,6 +44,7 @@ def run():
         return
 
     df = pd.read_csv(uploaded_file)
+
     st.subheader("Data Preview")
     st.dataframe(df.head())
 
@@ -76,6 +78,7 @@ def run():
         reference_dict[col] = ref
 
     terms = []
+
     for var in predictors:
         if var in categorical_vars:
             ref = reference_dict[var]
@@ -87,18 +90,19 @@ def run():
     st.code(formula_original)
 
     # ======================================================
-    # 2️⃣ Box–Cox Transformation
+    # 2️⃣ Box–Cox Transformation (FIXED)
     # ======================================================
 
     st.header("2️⃣ Box–Cox Transformation")
 
     df_model = df.copy()
+    transformed = False
     transformed_response = response
-    chosen_lambda = 1.0
 
-    y_numeric = pd.to_numeric(df[response], errors="coerce")
+    df_model[response] = pd.to_numeric(df_model[response], errors="coerce")
+    y_clean = df_model[response].dropna()
 
-    if (y_numeric <= 0).any():
+    if (y_clean <= 0).any():
         st.warning("Box–Cox requires strictly positive response values.")
     else:
         chosen_lambda = st.number_input("Enter λ value", value=0.0, step=0.1)
@@ -108,25 +112,27 @@ def run():
 
         if st.checkbox("Apply Transformation"):
 
+            transformed = True
             transformed_response = response + "_tr"
 
             if np.isclose(chosen_lambda, 0):
-                df_model[transformed_response] = np.log(y_numeric)
+                df_model[transformed_response] = np.log(df_model[response])
             else:
                 df_model[transformed_response] = (
-                    y_numeric**chosen_lambda - 1
+                    np.power(df_model[response], chosen_lambda) - 1
                 ) / chosen_lambda
 
-            # Display both responses
+            # Drop missing after transformation
+            df_model = df_model.dropna(subset=[transformed_response] + predictors)
+
+            # Display both Y and Y_trans
             st.subheader("Original vs Transformed Response")
-            display_df = df_model[[response, transformed_response]].dropna()
-            st.dataframe(display_df.head(20))
+            st.dataframe(df_model[[response, transformed_response]].head(20))
 
             # Normality of transformed response
-            if len(display_df) >= 3:
-                stat_y, p_y = shapiro(display_df[transformed_response])
-
-                st.subheader("Normality Test: Transformed Response")
+            if len(df_model[transformed_response]) >= 3:
+                stat_y, p_y = shapiro(df_model[transformed_response])
+                st.subheader("Normality Test (Transformed Response)")
                 st.write(f"Shapiro-Wilk Statistic: {stat_y:.4f}")
                 st.write(f"p-value: {p_y:.4f}")
 
@@ -136,13 +142,18 @@ def run():
                     st.success("Transformed response appears normally distributed.")
 
     # ======================================================
-    # 3️⃣ Model Fitting
+    # 3️⃣ Model Fitting (Original GLM kept)
     # ======================================================
 
     st.header("3️⃣ Model Fitting")
 
     formula_final = transformed_response + " ~ " + " + ".join(terms)
-    model = smf.ols(formula=formula_final, data=df_model).fit()
+
+    model = smf.glm(
+        formula=formula_final,
+        data=df_model,
+        family=sm.families.Gaussian()
+    ).fit()
 
     st.subheader("Model Summary")
     st.text(model.summary())
@@ -151,12 +162,12 @@ def run():
     # 4️⃣ Residual Normality
     # ======================================================
 
-    resid = model.resid.dropna()
+    resid = model.resid_response.dropna()
 
     if len(resid) >= 3:
         stat_resid, p_resid = shapiro(resid)
 
-        st.subheader("Normality Test: Model Residuals")
+        st.subheader("Normality Test (Model Residuals)")
         st.write(f"Shapiro-Wilk Statistic: {stat_resid:.4f}")
         st.write(f"p-value: {p_resid:.4f}")
 
@@ -166,27 +177,23 @@ def run():
             st.success("Residuals appear normally distributed.")
 
     # ======================================================
-    # 5️⃣ Deviance (Likelihood Ratio) Test
+    # 5️⃣ Likelihood Ratio (Deviance) Test (Original kept)
     # ======================================================
 
-    null_model = smf.ols(
+    null_model = smf.glm(
         formula=transformed_response + " ~ 1",
-        data=df_model
+        data=df_model,
+        family=sm.families.Gaussian()
     ).fit()
 
     deviance = -2 * (null_model.llf - model.llf)
     df_diff = model.df_model - null_model.df_model
-    p_dev = 1 - chi2.cdf(deviance, df_diff)
+    p_value = 1 - chi2.cdf(deviance, df_diff)
 
     st.subheader("Likelihood Ratio (Deviance) Test")
     st.write(f"Deviance: {deviance:.4f}")
     st.write(f"Degrees of Freedom: {df_diff}")
-    st.write(f"p-value: {p_dev:.4f}")
-
-    if p_dev <= 0.05:
-        st.success("The full model significantly improves fit over the null model.")
-    else:
-        st.warning("The model does NOT significantly improve over the null model.")
+    st.write(f"p-value: {p_value:.4f}")
 
     # ======================================================
     # 6️⃣ Interpretation of Coefficients
@@ -209,9 +216,8 @@ def run():
             )
         else:
             interpretation = (
-                f"A one-unit increase in '{term}' is associated with "
-                f"a {coef:.4f} change in the expected {transformed_response}, "
-                f"holding other variables constant."
+                f"A one-unit increase in '{term}' changes the expected "
+                f"{transformed_response} by {coef:.4f}, holding other variables constant."
             )
 
         significance = (
@@ -225,7 +231,7 @@ def run():
                     f"- p-value: {pval:.4f}  \n"
                     f"- {interpretation}  \n"
                     f"- {significance}")
-        
+
 
 # ======================================================
 # RUN
