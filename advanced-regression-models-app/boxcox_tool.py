@@ -1,18 +1,19 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
+import matplotlib.pyplot as plt
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
-from scipy.stats import shapiro, chi2, norm
+from scipy import stats
+from scipy.stats import chi2
 
 
 def run():
 
-    st.title("📘 Gaussian GLM with Ladder-of-Powers Transformation")
+    st.title("📘 Gaussian Linear Model with Ladder-of-Powers Transformation")
 
     # ======================================================
-    # DATA UPLOAD
+    # 1. DATA UPLOAD
     # ======================================================
 
     uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
@@ -26,7 +27,7 @@ def run():
     st.dataframe(df.head())
 
     # ======================================================
-    # VARIABLE SELECTION (WITH REFERENCES)
+    # 2. VARIABLE SELECTION (WITH REFERENCES)
     # ======================================================
 
     st.header("1️⃣ Select Variables")
@@ -66,7 +67,7 @@ def run():
             terms.append(var)
 
     # ======================================================
-    # LADDER-OF-POWERS λ SELECTION
+    # 3. LADDER-OF-POWERS TRANSFORMATION
     # ======================================================
 
     st.header("2️⃣ Ladder-of-Powers Transformation")
@@ -81,29 +82,23 @@ def run():
 
     ladder_values = [-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0]
 
-    lam = st.selectbox(
-        "Select λ (Ladder of Powers)",
-        ladder_values,
-        index=1
-    )
+    lam = st.selectbox("Select λ", ladder_values, index=1)
 
-    # ======================================================
-    # DISPLAY TRANSFORMATION + INVERSE FORMULAS
-    # ======================================================
+    # Display transformation + inverse formulas
 
     st.subheader("Transformation Formula")
 
     if lam == -2.0:
-        st.latex(r"\tilde{y} = \frac{1}{2}\left(1 - \frac{1}{y^2}\right)")
-        st.latex(r"y = \left(\frac{1}{1 - 2\tilde{y}}\right)^{1/2}")
+        st.latex(r"\tilde{y} = \frac{1}{2}(1 - 1/y^2)")
+        st.latex(r"y = (1/(1-2\tilde{y}))^{1/2}")
 
     elif lam == -1.0:
         st.latex(r"\tilde{y} = 1 - \frac{1}{y}")
-        st.latex(r"y = \frac{1}{1 - \tilde{y}}")
+        st.latex(r"y = \frac{1}{1-\tilde{y}}")
 
     elif lam == -0.5:
-        st.latex(r"\tilde{y} = 2\left(1 - \frac{1}{\sqrt{y}}\right)")
-        st.latex(r"y = \left(\frac{1}{1 - \tilde{y}/2}\right)^2")
+        st.latex(r"\tilde{y} = 2(1 - 1/\sqrt{y})")
+        st.latex(r"y = (1/(1-\tilde{y}/2))^2")
 
     elif lam == 0.0:
         st.latex(r"\tilde{y} = \ln(y)")
@@ -111,7 +106,7 @@ def run():
 
     elif lam == 0.5:
         st.latex(r"\tilde{y} = 2(\sqrt{y} - 1)")
-        st.latex(r"y = \left(\frac{\tilde{y}}{2} + 1\right)^2")
+        st.latex(r"y = (\tilde{y}/2 + 1)^2")
 
     elif lam == 1.0:
         st.latex(r"\tilde{y} = y - 1")
@@ -119,11 +114,9 @@ def run():
 
     elif lam == 2.0:
         st.latex(r"\tilde{y} = \frac{1}{2}(y^2 - 1)")
-        st.latex(r"y = \sqrt{2\tilde{y} + 1}")
+        st.latex(r"y = \sqrt{2\tilde{y}+1}")
 
-    # ======================================================
-    # APPLY TRANSFORMATION
-    # ======================================================
+    # Apply transformation
 
     df_model = df.copy()
     y = pd.to_numeric(df_model[response], errors="coerce")
@@ -144,82 +137,90 @@ def run():
     elif lam == 2.0:
         df_model[transformed_response] = 0.5 * (y**2 - 1)
 
-    # ======================================================
-    # SIDE-BY-SIDE HISTOGRAM COMPARISON
-    # ======================================================
-
-    st.header("3️⃣ Distribution Comparison")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        fig_orig = px.histogram(df, x=response, nbins=15,
-                                title="Original Response",
-                                marginal="box")
-        st.plotly_chart(fig_orig)
-
-    with col2:
-        fig_trans = px.histogram(df_model, x=transformed_response,
-                                 nbins=15,
-                                 title="Transformed Response",
-                                 marginal="box")
-        st.plotly_chart(fig_trans)
-
-    # ======================================================
-    # NORMALITY COMPARISON
-    # ======================================================
-
-    st.header("4️⃣ Normality Comparison")
-
-    y_orig = df[response].dropna()
     y_trans = df_model[transformed_response].dropna()
 
-    stat_orig, p_orig = shapiro(y_orig)
-    stat_trans, p_trans = shapiro(y_trans)
+    # ======================================================
+    # 4. HISTOGRAM + NORMAL OVERLAY
+    # ======================================================
 
-    st.write(f"Original p-value: {p_orig:.4f}")
-    st.write(f"Transformed p-value: {p_trans:.4f}")
+    st.header("3️⃣ Histogram with Normal Overlay")
 
-    if p_trans > p_orig:
-        st.success("Transformation improves normality.")
+    fig, ax = plt.subplots(figsize=(8,6))
+
+    ax.hist(y_trans, bins=9, density=True)
+
+    mean_val = np.mean(y_trans)
+    sd_val = np.std(y_trans)
+
+    xmin, xmax = ax.get_xlim()
+    x = np.linspace(xmin, xmax, 100)
+    p = stats.norm.pdf(x, mean_val, sd_val)
+
+    ax.plot(x, p, 'r')
+    ax.set_title("Histogram of Transformed Response with Normal Curve")
+    ax.set_xlabel("Transformed Response")
+
+    st.pyplot(fig)
+
+    # ======================================================
+    # 5. SHAPIRO-WILK TEST
+    # ======================================================
+
+    st.header("4️⃣ Shapiro-Wilk Test")
+
+    stat, p_value = stats.shapiro(y_trans)
+
+    st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
+    st.write(f"P-Value: {p_value:.4f}")
+
+    if p_value > 0.05:
+        st.success("Conclusion: Fail to reject H₀ → Data appears normally distributed.")
     else:
-        st.warning("Transformation does NOT improve normality.")
+        st.warning("Conclusion: Reject H₀ → Data is NOT normally distributed.")
 
     # ======================================================
-    # FIT GAUSSIAN GLM
+    # 6. FIT OLS MODEL
     # ======================================================
 
-    st.header("5️⃣ Fit Gaussian GLM (Transformed Scale)")
+    st.header("5️⃣ Fit General Linear Model (OLS)")
 
     df_fit = df_model[[transformed_response] + predictors].dropna()
 
     formula_transformed = transformed_response + " ~ " + " + ".join(terms)
 
-    model = smf.glm(
-        formula=formula_transformed,
-        data=df_fit,
-        family=sm.families.Gaussian(link=sm.families.links.identity())
-    ).fit()
+    model = smf.ols(formula=formula_transformed, data=df_fit).fit()
 
     st.text(model.summary())
 
     # ======================================================
-    # LR DEVIANCE (MATCH R)
+    # 7. ERROR ESTIMATES
     # ======================================================
 
-    null_model = smf.glm(
-        transformed_response + " ~ 1",
-        data=df_fit,
-        family=sm.families.Gaussian()
-    ).fit()
+    st.subheader("Error Estimates")
 
-    lr_deviance = -2 * (null_model.llf - model.llf)
+    sigma_unbiased = np.sqrt(model.mse_resid)
+    sigma_mle = np.sqrt(model.ssr / model.nobs)
 
-    st.subheader("Likelihood Ratio Deviance")
-    st.write(f"LR Deviance: {lr_deviance:.6f}")
+    st.write(f"√MSE (Unbiased σ̂): {sigma_unbiased:.6f}")
+    st.write(f"√(SSR/n) (MLE σ): {sigma_mle:.6f}")
 
     # ======================================================
-    # PREDICTION
+    # 8. LR DEVIANCE (MATCH R)
+    # ======================================================
+
+    null_model = smf.ols(transformed_response + " ~ 1", data=df_fit).fit()
+
+    lr_stat = 2 * (model.llf - null_model.llf)
+    df_diff = int(model.df_model)
+    p_lr = chi2.sf(lr_stat, df_diff)
+
+    st.subheader("Likelihood Ratio Test")
+    st.write(f"LR Statistic: {lr_stat:.6f}")
+    st.write(f"Degrees of Freedom: {df_diff}")
+    st.write(f"P-Value: {p_lr:.6f}")
+
+    # ======================================================
+    # 9. PREDICTION
     # ======================================================
 
     st.header("6️⃣ Prediction")
@@ -240,10 +241,7 @@ def run():
         new_df = pd.DataFrame([input_dict])
 
         for var in categorical_vars:
-            new_df[var] = pd.Categorical(
-                new_df[var],
-                categories=df[var].cat.categories
-            )
+            new_df[var] = pd.Categorical(new_df[var], categories=df[var].cat.categories)
 
         prediction_tr = model.predict(new_df)[0]
 
