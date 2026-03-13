@@ -4,7 +4,7 @@ import numpy as np
 import plotly.express as px
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
-from scipy.stats import shapiro, chi2
+from scipy.stats import shapiro, chi2, norm
 
 
 def run():
@@ -26,7 +26,7 @@ def run():
     st.dataframe(df.head())
 
     # ======================================================
-    # VARIABLE SELECTION WITH REFERENCE LEVELS
+    # VARIABLE SELECTION (WITH REFERENCES)
     # ======================================================
 
     st.header("1️⃣ Select Variables")
@@ -65,14 +65,11 @@ def run():
         else:
             terms.append(var)
 
-    formula_original = response + " ~ " + " + ".join(terms)
-    st.code(formula_original)
-
     # ======================================================
-    # LADDER-OF-POWERS TRANSFORMATION (MATCH R)
+    # LADDER-OF-POWERS λ SELECTION
     # ======================================================
 
-    st.header("2️⃣ Enter λ for Transformation")
+    st.header("2️⃣ Ladder-of-Powers Transformation")
 
     if not pd.api.types.is_numeric_dtype(df[response]):
         st.error("Response must be numeric.")
@@ -82,61 +79,121 @@ def run():
         st.error("Transformation requires strictly positive response.")
         return
 
-    lam = st.number_input("Enter λ", value=-1.0, step=0.1)
+    ladder_values = [-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0]
+
+    lam = st.selectbox(
+        "Select λ (Ladder of Powers)",
+        ladder_values,
+        index=1
+    )
+
+    # ======================================================
+    # DISPLAY TRANSFORMATION + INVERSE FORMULAS
+    # ======================================================
+
+    st.subheader("Transformation Formula")
+
+    if lam == -2.0:
+        st.latex(r"\tilde{y} = \frac{1}{2}\left(1 - \frac{1}{y^2}\right)")
+        st.latex(r"y = \left(\frac{1}{1 - 2\tilde{y}}\right)^{1/2}")
+
+    elif lam == -1.0:
+        st.latex(r"\tilde{y} = 1 - \frac{1}{y}")
+        st.latex(r"y = \frac{1}{1 - \tilde{y}}")
+
+    elif lam == -0.5:
+        st.latex(r"\tilde{y} = 2\left(1 - \frac{1}{\sqrt{y}}\right)")
+        st.latex(r"y = \left(\frac{1}{1 - \tilde{y}/2}\right)^2")
+
+    elif lam == 0.0:
+        st.latex(r"\tilde{y} = \ln(y)")
+        st.latex(r"y = e^{\tilde{y}}")
+
+    elif lam == 0.5:
+        st.latex(r"\tilde{y} = 2(\sqrt{y} - 1)")
+        st.latex(r"y = \left(\frac{\tilde{y}}{2} + 1\right)^2")
+
+    elif lam == 1.0:
+        st.latex(r"\tilde{y} = y - 1")
+        st.latex(r"y = \tilde{y} + 1")
+
+    elif lam == 2.0:
+        st.latex(r"\tilde{y} = \frac{1}{2}(y^2 - 1)")
+        st.latex(r"y = \sqrt{2\tilde{y} + 1}")
+
+    # ======================================================
+    # APPLY TRANSFORMATION
+    # ======================================================
 
     df_model = df.copy()
     y = pd.to_numeric(df_model[response], errors="coerce")
     transformed_response = response + "_tr"
 
-    # Exact ladder transformations (match your R code)
     if lam == -2.0:
         df_model[transformed_response] = 0.5 * (1 - 1/(y**2))
-
     elif lam == -1.0:
         df_model[transformed_response] = 1 - (1 / y)
-
     elif lam == -0.5:
         df_model[transformed_response] = 2 * (1 - 1/np.sqrt(y))
-
     elif lam == 0.0:
         df_model[transformed_response] = np.log(y)
-
     elif lam == 0.5:
         df_model[transformed_response] = 2 * (np.sqrt(y) - 1)
-
     elif lam == 1.0:
         df_model[transformed_response] = y - 1
-
     elif lam == 2.0:
         df_model[transformed_response] = 0.5 * (y**2 - 1)
 
+    # ======================================================
+    # SIDE-BY-SIDE HISTOGRAM COMPARISON
+    # ======================================================
+
+    st.header("3️⃣ Distribution Comparison")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        fig_orig = px.histogram(df, x=response, nbins=15,
+                                title="Original Response",
+                                marginal="box")
+        st.plotly_chart(fig_orig)
+
+    with col2:
+        fig_trans = px.histogram(df_model, x=transformed_response,
+                                 nbins=15,
+                                 title="Transformed Response",
+                                 marginal="box")
+        st.plotly_chart(fig_trans)
+
+    # ======================================================
+    # NORMALITY COMPARISON
+    # ======================================================
+
+    st.header("4️⃣ Normality Comparison")
+
+    y_orig = df[response].dropna()
+    y_trans = df_model[transformed_response].dropna()
+
+    stat_orig, p_orig = shapiro(y_orig)
+    stat_trans, p_trans = shapiro(y_trans)
+
+    st.write(f"Original p-value: {p_orig:.4f}")
+    st.write(f"Transformed p-value: {p_trans:.4f}")
+
+    if p_trans > p_orig:
+        st.success("Transformation improves normality.")
     else:
-        df_model[transformed_response] = (y**lam - 1) / lam
+        st.warning("Transformation does NOT improve normality.")
 
     # ======================================================
-    # NORMALITY TEST (TRANSFORMED RESPONSE)
+    # FIT GAUSSIAN GLM
     # ======================================================
 
-    st.header("3️⃣ Normality Check (Transformed Response)")
+    st.header("5️⃣ Fit Gaussian GLM (Transformed Scale)")
 
     df_fit = df_model[[transformed_response] + predictors].dropna()
-    y_trans = df_fit[transformed_response]
 
-    qq_fig = sm.qqplot(y_trans, line="s")
-    st.pyplot(qq_fig.figure)
-
-    stat, p = shapiro(y_trans)
-
-    st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
-    st.write(f"p-value: {p:.4f}")
-
-    # ======================================================
-    # FIT GAUSSIAN GLM (IDENTITY LINK)
-    # ======================================================
-
-    st.header("4️⃣ Fit Gaussian GLM")
-
-    formula_transformed = df_fit  + " ~ " + " + ".join(terms)
+    formula_transformed = transformed_response + " ~ " + " + ".join(terms)
 
     model = smf.glm(
         formula=formula_transformed,
@@ -144,61 +201,25 @@ def run():
         family=sm.families.Gaussian(link=sm.families.links.identity())
     ).fit()
 
-    st.subheader("Model Summary")
     st.text(model.summary())
 
     # ======================================================
-    # DEVIANCE (MATCH R EXACTLY)
+    # LR DEVIANCE (MATCH R)
     # ======================================================
-
-    st.header("5️⃣ Deviance (Likelihood Ratio)")
 
     null_model = smf.glm(
         transformed_response + " ~ 1",
         data=df_fit,
-        family=sm.families.Gaussian(link=sm.families.links.identity())
+        family=sm.families.Gaussian()
     ).fit()
 
     lr_deviance = -2 * (null_model.llf - model.llf)
 
-    st.write(f"Deviance (LR): {lr_deviance:.6f}")
+    st.subheader("Likelihood Ratio Deviance")
+    st.write(f"LR Deviance: {lr_deviance:.6f}")
 
     # ======================================================
-    # COEFFICIENT INTERPRETATION
-    # ======================================================
-
-    st.subheader("Coefficient Interpretation (Transformed Scale)")
-
-    for name in model.params.index:
-
-        coef = round(model.params[name], 4)
-        pval = model.pvalues[name]
-
-        if name == "Intercept":
-            st.markdown(
-                f"**Intercept ({coef})**: Mean of transformed response "
-                f"when predictors are at reference levels."
-            )
-
-        elif name.startswith("C(") and "T." in name:
-            var_name = name.split("[")[0]
-            var_name = var_name.replace("C(", "").split(",")[0]
-            level = name.split("T.")[1].rstrip("]")
-            st.markdown(
-                f"**{var_name} = {level} (β = {coef})**: "
-                f"Difference in transformed mean compared to reference level. "
-                f"{'Statistically significant.' if pval < 0.05 else 'Not statistically significant.'}"
-            )
-
-        else:
-            st.markdown(
-                f"**{name} (β = {coef})**: "
-                f"One-unit increase changes transformed response by {coef}. "
-                f"{'Statistically significant.' if pval < 0.05 else 'Not statistically significant.'}"
-            )
-
-    # ======================================================
-    # PREDICTION (MATCH R INVERSE)
+    # PREDICTION
     # ======================================================
 
     st.header("6️⃣ Prediction")
@@ -226,15 +247,18 @@ def run():
 
         prediction_tr = model.predict(new_df)[0]
 
-        # Exact inverse (λ = −1 case matches your R code)
         if lam == -1.0:
             prediction = 1 / (1 - prediction_tr)
-
-        elif lam == 0:
+        elif lam == 0.0:
             prediction = np.exp(prediction_tr)
-
+        elif lam == 0.5:
+            prediction = (prediction_tr/2 + 1)**2
+        elif lam == 1.0:
+            prediction = prediction_tr + 1
+        elif lam == 2.0:
+            prediction = np.sqrt(2*prediction_tr + 1)
         else:
-            prediction = (lam * prediction_tr + 1) ** (1 / lam)
+            prediction = (lam * prediction_tr + 1)**(1/lam)
 
         st.success(f"Predicted {response}: {prediction:.6f}")
 
