@@ -311,50 +311,61 @@ Fit a **Gamma GLM** if the response is positive and skewed.
     st.subheader("Fitted Regression Equation (Full Model)")
     st.latex(build_equation(model, response))
 
-    # ======================================================
-    # Coefficient Interpretation
-    # ======================================================
+# ======================================================
+# Coefficient Interpretation
+# ======================================================
 
-    st.subheader("Coefficient Interpretation")
+st.subheader("Coefficient Interpretation")
 
-    for name in model.params.index:
+for name in model.params.index:
 
-        coef = round(model.params[name], 4)
-        pval = model.pvalues[name]
+    coef = round(model.params[name], 4)
+    pval = model.pvalues[name]
 
-        if name == "Intercept":
-            st.markdown(
-                f"**Intercept ({coef})**: Estimated mean of {response} "
-                f"when all predictors are at their reference levels or equal to zero."
-            )
-        elif name.startswith("C(") and "T." in name:
-            var_name = name.split("[")[0]
-            var_name = var_name.replace("C(", "").split(",")[0]
-            level = name.split("T.")[1].rstrip("]")
-            st.markdown(
-                f"**{var_name} = {level} (β = {coef})**: The estimated mean difference in {response} "
-                f"between {level} and the reference level, holding other variables constant. "
-                f"{'Statistically significant.' if pval < 0.05 else 'Not statistically significant.'}"
-            )
-        else:
-            st.markdown(
-                f"**{name} (β = {coef})**: For each one-unit increase in {name}, "
-                f"{response} changes by {coef} units, holding other predictors constant. "
-                f"{'Statistically significant.' if pval < 0.05 else 'Not statistically significant.'}"
-            )
-           
-        significance = (
-            "Statistically significant."
-            if pval <= 0.05
-            else "Not statistically significant."
+    significance = (
+        "Statistically significant."
+        if pval <= 0.05
+        else "Not statistically significant."
+    )
+
+    # Intercept
+    if name == "Intercept":
+        interpretation = (
+            f"Estimated mean of {response} when all predictors "
+            f"are at their reference levels or equal to zero."
         )
+        term_label = f"Intercept"
 
-        st.markdown(f"**{term}**  \n"
-                    f"- Coefficient: {coef:.4f}  \n"
-                    f"- p-value: {pval:.4f}  \n"
-                    f"- {interpretation}  \n"
-                    f"- {significance}")
+    # Categorical predictors (dummy variables)
+    elif name.startswith("C(") and "T." in name:
+        var_name = name.split("[")[0]
+        var_name = var_name.replace("C(", "").split(",")[0]
+        level = name.split("T.")[1].rstrip("]")
 
+        interpretation = (
+            f"The estimated mean difference in {response} between "
+            f"{level} and the reference level, holding other variables constant."
+        )
+        term_label = f"{var_name} = {level}"
+
+    # Continuous predictors
+    else:
+        interpretation = (
+            f"For each one-unit increase in {name}, {response} changes "
+            f"by {coef} units, holding other predictors constant."
+        )
+        term_label = name
+
+    # Display
+    st.markdown(
+        f"**{term_label}**  \n"
+        f"- Coefficient (β): {coef:.4f}  \n"
+        f"- p-value: {pval:.4f}  \n"
+        f"- Interpretation: {interpretation}  \n"
+        f"- {significance}"
+    )
+
+    
     # ======================================================
     # 9. PREDICTION
     # ======================================================
