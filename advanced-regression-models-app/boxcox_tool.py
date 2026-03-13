@@ -9,7 +9,7 @@ from scipy.stats import chi2
 
 def run():
 
-    st.title("📘 Gaussian Linear Model (Ladder-of-Powers λ = -1)")
+    st.title("📘 Gaussian Linear Model (λ = -1 Transformation)")
 
     # ======================================================
     # 1. DATA UPLOAD
@@ -25,61 +25,46 @@ def run():
     st.dataframe(df.head())
 
     # ======================================================
-    # 2. VARIABLE SELECTION
+    # 2. SELECT COLUMN TO TRANSFORM (CRITICAL FIX)
     # ======================================================
 
-    st.header("1️⃣ Select Variables")
+    st.header("1️⃣ Select Column to Transform")
 
-    response = st.selectbox("Select Response Variable (Y)", df.columns)
-
-    predictors = st.multiselect(
-        "Select Predictor Variables (X)",
-        [col for col in df.columns if col != response]
+    transform_col = st.selectbox(
+        "Select the SAME column used in Colab",
+        df.columns
     )
 
-    if not predictors:
+    if not pd.api.types.is_numeric_dtype(df[transform_col]):
+        st.error("Selected column must be numeric.")
         return
 
-    categorical_vars = st.multiselect(
-        "Select Categorical Variables (Factors)",
-        predictors
-    )
-
-    # ======================================================
-    # 3. FORCE CATEGORY ORDER (CRITICAL FOR MATCHING OUTPUT)
-    # ======================================================
-
-    for col in categorical_vars:
-        df[col] = df[col].astype("category")
-
-    # ======================================================
-    # 4. APPLY λ = -1 TRANSFORMATION EXACTLY
-    # ======================================================
-
-    st.header("2️⃣ Transformation (λ = -1)")
-
-    if (df[response] <= 0).any():
-        st.error("Response must be strictly positive for λ = -1.")
+    if (df[transform_col] <= 0).any():
+        st.error("Values must be strictly positive for λ = -1.")
         return
 
-    df["tr_score"] = 1 - (1 / df[response])
+    # Apply exact λ = -1 transformation
+    df["tr_score"] = 1 - (1 / df[transform_col])
 
     # ======================================================
     # DISPLAY ORIGINAL VS TRANSFORMED
     # ======================================================
 
-    st.subheader("Original vs Transformed Response")
+    st.subheader("Verification: Original vs Transformed")
 
-    comparison_df = df[[response]].copy()
+    comparison_df = df[[transform_col]].copy()
     comparison_df["tr_score"] = df["tr_score"]
 
     st.dataframe(comparison_df)
 
+    st.write("Mean original:", df[transform_col].mean())
+    st.write("Mean transformed:", df["tr_score"].mean())
+
     # ======================================================
-    # 5. HISTOGRAM + NORMAL OVERLAY (MATCH COLAB)
+    # 3. HISTOGRAM + NORMAL OVERLAY
     # ======================================================
 
-    st.header("3️⃣ Histogram with Normal Overlay")
+    st.header("2️⃣ Histogram with Normal Overlay")
 
     y_trans = df["tr_score"].dropna()
 
@@ -99,10 +84,10 @@ def run():
     st.pyplot(fig)
 
     # ======================================================
-    # 6. SHAPIRO-WILK TEST
+    # 4. SHAPIRO-WILK TEST
     # ======================================================
 
-    st.header("4️⃣ Shapiro-Wilk Test")
+    st.header("3️⃣ Shapiro-Wilk Test")
 
     stat, p_value = stats.shapiro(y_trans)
 
@@ -115,14 +100,32 @@ def run():
         st.warning("Conclusion: Reject H₀ → Data is NOT normally distributed.")
 
     # ======================================================
-    # 7. BUILD FORMULA SAFELY
+    # 5. SELECT PREDICTORS
     # ======================================================
 
-    terms = []
+    st.header("4️⃣ Select Predictors")
 
+    predictors = st.multiselect(
+        "Select Predictor Variables",
+        [col for col in df.columns if col not in ["tr_score"]]
+    )
+
+    if not predictors:
+        return
+
+    categorical_vars = st.multiselect(
+        "Select Categorical Variables",
+        predictors
+    )
+
+    # Force categorical dtype
+    for col in categorical_vars:
+        df[col] = df[col].astype("category")
+
+    # Build formula dynamically
+    terms = []
     for var in predictors:
         if var in categorical_vars:
-            # User chooses reference
             ref = st.selectbox(
                 f"Reference level for {var}",
                 df[var].cat.categories,
@@ -137,20 +140,17 @@ def run():
     st.code(formula)
 
     # ======================================================
-    # 8. FIT OLS (MATCH COLAB EXACTLY)
+    # 6. FIT OLS (MATCH COLAB EXACTLY)
     # ======================================================
 
     st.header("5️⃣ Fit General Linear Model (OLS)")
 
-    model = sm.ols(
-        formula=formula,
-        data=df
-    ).fit()
+    model = sm.ols(formula=formula, data=df).fit()
 
     st.text(model.summary())
 
     # ======================================================
-    # 9. ERROR ESTIMATES (MATCH YOUR PRINT)
+    # 7. ERROR ESTIMATES (MATCH YOUR COLAB PRINT)
     # ======================================================
 
     st.subheader("Error Estimates")
@@ -162,7 +162,7 @@ def run():
     st.write("MLE:", sigma_mle)
 
     # ======================================================
-    # 10. LIKELIHOOD RATIO TEST (R STYLE)
+    # 8. LIKELIHOOD RATIO TEST (R-STYLE)
     # ======================================================
 
     null_model = sm.ols("tr_score ~ 1", data=df).fit()
