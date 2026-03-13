@@ -12,30 +12,21 @@ from scipy.stats import shapiro, chi2
 # ======================================================
 
 def transformation_info(lam):
-
     lam_rounded = round(lam, 1)
 
     transformations = {
-        -2.0: {"name": "Inverse Square",
-               "formula": r"\tilde{y} = \frac{1}{2}\left(1-\frac{1}{y^2}\right)"},
-        -1.0: {"name": "Inverse (Reciprocal)",
-               "formula": r"\tilde{y} = 1 - \frac{1}{y}"},
-        -0.5: {"name": "Inverse Square Root",
-               "formula": r"\tilde{y} = 2\left(1-\frac{1}{\sqrt{y}}\right)"},
-        0.0: {"name": "Natural Log",
-              "formula": r"\tilde{y} = \ln(y)"},
-        0.5: {"name": "Square Root",
-              "formula": r"\tilde{y} = 2(\sqrt{y}-1)"},
-        1.0: {"name": "Linear",
-              "formula": r"\tilde{y} = y-1"},
-        2.0: {"name": "Square",
-              "formula": r"\tilde{y} = \frac{1}{2}(y^2-1)"}
+        -2.0: {"name": "Inverse Square"},
+        -1.0: {"name": "Inverse"},
+        -0.5: {"name": "Inverse Square Root"},
+        0.0: {"name": "Natural Log"},
+        0.5: {"name": "Square Root"},
+        1.0: {"name": "Linear"},
+        2.0: {"name": "Square"}
     }
 
     return transformations.get(
         lam_rounded,
-        {"name": "Custom λ",
-         "formula": r"\tilde{y}=\frac{y^{\lambda}-1}{\lambda}"}
+        {"name": "Custom λ Transformation"}
     )
 
 
@@ -48,12 +39,10 @@ def run():
     st.title("📘 General Linear Regression Model")
 
     uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
-
     if uploaded_file is None:
         return
 
     df = pd.read_csv(uploaded_file)
-
     st.subheader("Data Preview")
     st.dataframe(df.head())
 
@@ -79,17 +68,14 @@ def run():
 
     for col in categorical_vars:
         df[col] = df[col].astype("category")
-
         ref = st.selectbox(
             f"Reference level for {col}",
             df[col].cat.categories,
             key=f"ref_{col}"
         )
-
         reference_dict[col] = ref
 
     terms = []
-
     for var in predictors:
         if var in categorical_vars:
             ref = reference_dict[var]
@@ -98,7 +84,6 @@ def run():
             terms.append(var)
 
     formula_original = response + " ~ " + " + ".join(terms)
-
     st.code(formula_original)
 
     # ======================================================
@@ -108,92 +93,80 @@ def run():
     st.header("2️⃣ Box–Cox Transformation")
 
     df_model = df.copy()
-    transformed = False
     transformed_response = response
+    chosen_lambda = 1.0
 
-    y_clean = pd.to_numeric(df[response], errors="coerce").dropna()
+    y_numeric = pd.to_numeric(df[response], errors="coerce")
 
-    if (y_clean <= 0).any():
+    if (y_numeric <= 0).any():
         st.warning("Box–Cox requires strictly positive response values.")
     else:
         chosen_lambda = st.number_input("Enter λ value", value=0.0, step=0.1)
 
         info = transformation_info(chosen_lambda)
-
         st.write(f"Selected transformation: **{info['name']}**")
-        st.latex(info["formula"])
 
         if st.checkbox("Apply Transformation"):
 
-            transformed = True
             transformed_response = response + "_tr"
 
-            y = pd.to_numeric(df[response], errors="coerce")
-
             if np.isclose(chosen_lambda, 0):
-                df_model[transformed_response] = np.log(y)
+                df_model[transformed_response] = np.log(y_numeric)
             else:
-                df_model[transformed_response] = (y**chosen_lambda - 1) / chosen_lambda
+                df_model[transformed_response] = (
+                    y_numeric**chosen_lambda - 1
+                ) / chosen_lambda
 
-            y_trans = df_model[transformed_response].dropna()
+            # Display both responses
+            st.subheader("Original vs Transformed Response")
+            display_df = df_model[[response, transformed_response]].dropna()
+            st.dataframe(display_df.head(20))
 
-            if len(y_trans) >= 3:
-                stat_trans, p_val = shapiro(y_trans)
+            # Normality of transformed response
+            if len(display_df) >= 3:
+                stat_y, p_y = shapiro(display_df[transformed_response])
 
-                st.subheader("Normality Test (Transformed Y)")
-                st.write(f"Shapiro-Wilk Statistic: {stat_trans:.4f}")
-                st.write(f"p-value: {p_val:.4f}")
+                st.subheader("Normality Test: Transformed Response")
+                st.write(f"Shapiro-Wilk Statistic: {stat_y:.4f}")
+                st.write(f"p-value: {p_y:.4f}")
 
-                if p_val <= 0.05:
-                    st.warning("Transformed response does NOT appear normally distributed.")
+                if p_y <= 0.05:
+                    st.warning("Transformed response is NOT normally distributed.")
                 else:
-                    st.success("Transformed response appears approximately normal.")
+                    st.success("Transformed response appears normally distributed.")
 
     # ======================================================
-    # 3️⃣ Response Normality Check
+    # 3️⃣ Model Fitting
     # ======================================================
 
-    st.header("3️⃣ Response Normality Check")
-
-    fig = px.histogram(df, x=response, title=f"Histogram of {response}", marginal="box")
-    st.plotly_chart(fig)
-
-    qq_fig = sm.qqplot(y_clean, line='s')
-    st.pyplot(qq_fig.figure)
-
-    if len(y_clean) >= 3:
-        stat, p = shapiro(y_clean)
-
-        st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
-        st.write(f"p-value: {p:.4f}")
-
-        if p <= 0.05:
-            st.warning("Response does NOT appear normally distributed.")
-        else:
-            st.success("Response appears approximately normally distributed.")
-
-    # ======================================================
-    # 4️⃣ Model Fitting (OLS — Correct for Gaussian GLM)
-    # ======================================================
-
-    st.header("4️⃣ Model Fitting")
+    st.header("3️⃣ Model Fitting")
 
     formula_final = transformed_response + " ~ " + " + ".join(terms)
-
     model = smf.ols(formula=formula_final, data=df_model).fit()
 
     st.subheader("Model Summary")
     st.text(model.summary())
 
-    resid = model.resid
+    # ======================================================
+    # 4️⃣ Residual Normality
+    # ======================================================
+
+    resid = model.resid.dropna()
 
     if len(resid) >= 3:
-        _, p_resid = shapiro(resid)
-        st.subheader("Residual Normality Test")
-        st.write(f"Shapiro-Wilk p-value: {p_resid:.4f}")
+        stat_resid, p_resid = shapiro(resid)
+
+        st.subheader("Normality Test: Model Residuals")
+        st.write(f"Shapiro-Wilk Statistic: {stat_resid:.4f}")
+        st.write(f"p-value: {p_resid:.4f}")
+
+        if p_resid <= 0.05:
+            st.warning("Residuals are NOT normally distributed.")
+        else:
+            st.success("Residuals appear normally distributed.")
 
     # ======================================================
-    # 5️⃣ Likelihood Ratio Test
+    # 5️⃣ Deviance (Likelihood Ratio) Test
     # ======================================================
 
     null_model = smf.ols(
@@ -201,93 +174,58 @@ def run():
         data=df_model
     ).fit()
 
-    st.subheader("Likelihood Ratio Test")
-
     deviance = -2 * (null_model.llf - model.llf)
     df_diff = model.df_model - null_model.df_model
-    p_value = 1 - chi2.cdf(deviance, df_diff)
+    p_dev = 1 - chi2.cdf(deviance, df_diff)
 
+    st.subheader("Likelihood Ratio (Deviance) Test")
     st.write(f"Deviance: {deviance:.4f}")
-    st.write(f"df: {df_diff}")
-    st.write(f"p-value: {p_value:.4f}")
+    st.write(f"Degrees of Freedom: {df_diff}")
+    st.write(f"p-value: {p_dev:.4f}")
+
+    if p_dev <= 0.05:
+        st.success("The full model significantly improves fit over the null model.")
+    else:
+        st.warning("The model does NOT significantly improve over the null model.")
 
     # ======================================================
-    # 6️⃣ Equation Builder
+    # 6️⃣ Interpretation of Coefficients
     # ======================================================
 
-    def build_equation(model, response):
+    st.header("4️⃣ Interpretation of Coefficients")
 
-        params = model.params
-        equation = f"\\widehat{{\\mathbb{{E}}}}({response}) = {round(params['Intercept'],4)}"
+    params = model.params
+    pvalues = model.pvalues
 
-        for name in params.index:
-            if name == "Intercept":
-                continue
+    for term in params.index:
 
-            coef = round(params[name], 4)
-            sign = "+" if coef >= 0 else "-"
-            equation += f" {sign} {abs(coef)} {name}"
+        coef = params[term]
+        pval = pvalues[term]
 
-        return equation
-
-    st.subheader("Fitted Regression Equation")
-    st.latex(build_equation(model, transformed_response))
-
-    # ======================================================
-    # 7️⃣ Prediction
-    # ======================================================
-
-    st.header("7️⃣ Prediction")
-
-    input_dict = {}
-
-    for var in predictors:
-        if var in categorical_vars:
-            input_dict[var] = st.selectbox(var, df[var].cat.categories)
+        if term == "Intercept":
+            interpretation = (
+                f"When all predictors are at reference levels or zero, "
+                f"the expected value of {transformed_response} is {coef:.4f}."
+            )
         else:
-            numeric_series = pd.to_numeric(df[var], errors="coerce")
-            input_dict[var] = st.number_input(var, value=float(numeric_series.mean()))
+            interpretation = (
+                f"A one-unit increase in '{term}' is associated with "
+                f"a {coef:.4f} change in the expected {transformed_response}, "
+                f"holding other variables constant."
+            )
 
-    if st.button("Predict"):
+        significance = (
+            "Statistically significant."
+            if pval <= 0.05
+            else "Not statistically significant."
+        )
 
-        new_df = pd.DataFrame([input_dict])
-
-        for var in categorical_vars:
-            new_df[var] = pd.Categorical(new_df[var], categories=df[var].cat.categories)
-
-        prediction = model.predict(new_df)[0]
-
-        st.success(f"Predicted {transformed_response}: {prediction:.4f}")
-
-    # ======================================================
-    # 8️⃣ Predicted vs Actual
-    # ======================================================
-
-    st.header("8️⃣ Predicted vs Actual")
-
-    predicted_vals = model.predict(df_model)
-
-    fig2 = px.scatter(
-        x=predicted_vals,
-        y=df_model[transformed_response],
-        labels={'x': 'Predicted', 'y': 'Actual'},
-        title="Predicted vs Actual Values"
-    )
-
-    min_val = min(predicted_vals.min(), df_model[transformed_response].min())
-    max_val = max(predicted_vals.max(), df_model[transformed_response].max())
-
-    fig2.add_shape(
-        type="line",
-        x0=min_val,
-        y0=min_val,
-        x1=max_val,
-        y1=max_val,
-        line=dict(color="red", dash="dash")
-    )
-
-    st.plotly_chart(fig2)
-
+        st.markdown(f"**{term}**  \n"
+                    f"- Coefficient: {coef:.4f}  \n"
+                    f"- p-value: {pval:.4f}  \n"
+                    f"- {interpretation}  \n"
+                    f"- {significance}")
+        
 
 # ======================================================
 # RUN
