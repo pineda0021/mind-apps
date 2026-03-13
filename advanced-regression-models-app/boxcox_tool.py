@@ -7,65 +7,13 @@ import statsmodels.api as sm
 from scipy.stats import shapiro, chi2
 
 
-# ======================================================
-# Transformation Helper
-# ======================================================
-
-def transformation_info(lam):
-
-    lam_rounded = round(lam, 1)
-
-    transformations = {
-        -2.0: {"name": "Inverse Square"},
-        -1.0: {"name": "Inverse (Reciprocal)"},
-        -0.5: {"name": "Inverse Square Root"},
-        0.0: {"name": "Natural Log"},
-        0.5: {"name": "Square Root"},
-        1.0: {"name": "Linear"},
-        2.0: {"name": "Square"}
-    }
-
-    return transformations.get(
-        lam_rounded,
-        {"name": "Custom λ"}
-    )
-
-
-# ======================================================
-# Equation Builder
-# ======================================================
-
-def build_equation(model, response_name):
-
-    params = model.params
-    equation = f"\\widehat{{\\mathbb{{E}}}}({response_name}) = {round(params['Intercept'],4)}"
-
-    for name in params.index:
-
-        if name == "Intercept":
-            continue
-
-        coef = round(params[name], 4)
-        sign = "+" if coef >= 0 else "-"
-
-        if name.startswith("C(") and "T." in name:
-            var_name = name.split("[")[0]
-            var_name = var_name.replace("C(", "").split(",")[0]
-            level = name.split("T.")[1].rstrip("]")
-            equation += f" {sign} {abs(coef)} D_{{{var_name}={level}}}"
-        else:
-            equation += f" {sign} {abs(coef)} \\cdot {name}"
-
-    return equation
-
-
-# ======================================================
-# APP
-# ======================================================
-
 def run():
 
-    st.title("📘 Gaussian GLM with Box-Cox Transformation")
+    st.title("📘 Gaussian GLM with User-Specified Box-Cox Transformation")
+
+    # ======================================================
+    # DATA UPLOAD
+    # ======================================================
 
     uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
 
@@ -78,7 +26,7 @@ def run():
     st.dataframe(df.head())
 
     # ======================================================
-    # Variable Selection
+    # VARIABLE SELECTION (WITH REFERENCE LEVELS)
     # ======================================================
 
     st.header("1️⃣ Select Variables")
@@ -94,15 +42,26 @@ def run():
         return
 
     categorical_vars = st.multiselect(
-        "Select Categorical Variables",
+        "Select Categorical Variables (Factors)",
         predictors
     )
+
+    reference_dict = {}
+
+    for col in categorical_vars:
+        df[col] = df[col].astype("category")
+        ref = st.selectbox(
+            f"Select reference level for {col}",
+            df[col].cat.categories,
+            key=f"ref_{col}"
+        )
+        reference_dict[col] = ref
 
     terms = []
     for var in predictors:
         if var in categorical_vars:
-            df[var] = df[var].astype("category")
-            terms.append(f"C({var})")
+            ref = reference_dict[var]
+            terms.append(f'C({var}, Treatment(reference="{ref}"))')
         else:
             terms.append(var)
 
@@ -110,7 +69,7 @@ def run():
     st.code(formula_original)
 
     # ======================================================
-    # Box-Cox Transformation
+    # BOX-COX TRANSFORMATION (USER λ)
     # ======================================================
 
     st.header("2️⃣ Box-Cox Transformation")
@@ -120,48 +79,43 @@ def run():
         return
 
     if (df[response] <= 0).any():
-        st.error("Box-Cox requires strictly positive response values.")
+        st.error("Box-Cox requires strictly positive response.")
         return
 
-    chosen_lambda = st.number_input("Enter λ", value=0.0, step=0.1)
-
-    info = transformation_info(chosen_lambda)
-    st.write(f"Transformation: **{info['name']}**")
-
-    lam = float(chosen_lambda)
+    lam = st.number_input("Enter λ", value=0.0, step=0.1)
 
     df_model = df.copy()
     y = pd.to_numeric(df_model[response], errors="coerce")
 
     transformed_response = response + "_tr"
 
-    if lam == 0:
+    if abs(lam) < 1e-8:
         df_model[transformed_response] = np.log(y)
     else:
         df_model[transformed_response] = (y**lam - 1) / lam
 
     # ======================================================
-    # Normality Test
+    # NORMALITY TEST ON TRANSFORMED RESPONSE
     # ======================================================
 
     st.header("3️⃣ Normality Check (Transformed Response)")
 
     df_fit = df_model[[transformed_response] + predictors].dropna()
-    y_trans_clean = df_fit[transformed_response]
+    y_trans = df_fit[transformed_response]
 
-    qq_fig = sm.qqplot(y_trans_clean, line='s')
+    qq_fig = sm.qqplot(y_trans, line="s")
     st.pyplot(qq_fig.figure)
 
-    stat, p = shapiro(y_trans_clean)
+    stat, p = shapiro(y_trans)
 
     st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
     st.write(f"p-value: {p:.4f}")
 
     # ======================================================
-    # Fit GLM
+    # FIT GAUSSIAN GLM (TRANSFORMED RESPONSE)
     # ======================================================
 
-    st.header("4️⃣ Fit GLM on Transformed Response")
+    st.header("4️⃣ Fit Gaussian GLM (Transformed Scale)")
 
     formula_transformed = transformed_response + " ~ " + " + ".join(terms)
 
@@ -175,14 +129,63 @@ def run():
     st.text(model.summary())
 
     # ======================================================
-    # Fitted Equation
+    # CORRECT GAUSSIAN DEVIANCE (R-COMPATIBLE)
     # ======================================================
 
-    st.subheader("Fitted Regression Equation (Transformed Scale)")
-    st.latex(build_equation(model, transformed_response))
+    st.header("5️⃣ Model Fit Evaluation")
+
+    fitted_vals = model.fittedvalues
+    residuals = y_trans - fitted_vals
+
+    # For Gaussian with identity link:
+    # Deviance = SSE
+
+    residual_deviance = np.sum(residuals**2)
+
+    y_bar = np.mean(y_trans)
+    null_deviance = np.sum((y_trans - y_bar)**2)
+
+    n = len(y_trans)
+    k = model.df_model + 1
+
+    aic = model.aic
+
+    if (n - k - 1) > 0:
+        aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
+    else:
+        aicc = float("nan")
+
+    sigma_hat = np.sqrt(residual_deviance / (n - k))
+    rmse = np.sqrt(np.mean(residuals**2))
+
+    st.write(f"Null Deviance: {null_deviance:.4f}")
+    st.write(f"Residual Deviance: {residual_deviance:.4f}")
+    st.write(f"AIC: {aic:.4f}")
+    st.write(f"AICc: {aicc:.4f}")
+    st.write(f"Residual SD (σ̂): {sigma_hat:.4f}")
+    st.write(f"RMSE (Transformed Scale): {rmse:.4f}")
 
     # ======================================================
-    # Coefficient Interpretation
+    # LIKELIHOOD RATIO TEST (R-STYLE)
+    # ======================================================
+
+    null_model = smf.glm(
+        transformed_response + " ~ 1",
+        data=df_fit,
+        family=sm.families.Gaussian()
+    ).fit()
+
+    lr_stat = 2 * (model.llf - null_model.llf)
+    df_diff = int(model.df_model)
+    p_value_lr = chi2.sf(lr_stat, df_diff)
+
+    st.subheader("Likelihood Ratio Test")
+    st.write(f"LR Statistic: {lr_stat:.4f}")
+    st.write(f"Degrees of Freedom: {df_diff}")
+    st.write(f"p-value: {p_value_lr:.6f}")
+
+    # ======================================================
+    # COEFFICIENT INTERPRETATION
     # ======================================================
 
     st.subheader("Coefficient Interpretation (Transformed Scale)")
@@ -194,57 +197,26 @@ def run():
 
         if name == "Intercept":
             st.markdown(
-                f"**Intercept ({coef})**: Estimated mean of the transformed response "
-                f"when all predictors are at reference levels or zero."
+                f"**Intercept ({coef})**: Mean of the transformed response "
+                f"when predictors are at reference levels or zero."
             )
 
         elif name.startswith("C(") and "T." in name:
             var_name = name.split("[")[0]
             var_name = var_name.replace("C(", "").split(",")[0]
             level = name.split("T.")[1].rstrip("]")
-
             st.markdown(
                 f"**{var_name} = {level} (β = {coef})**: "
-                f"Mean difference in the transformed response compared to the reference level, "
-                f"holding other variables constant. "
+                f"Difference in transformed mean compared to reference level. "
                 f"{'Statistically significant.' if pval < 0.05 else 'Not statistically significant.'}"
             )
 
         else:
             st.markdown(
-                f"**{name} (β = {coef})**: For each one-unit increase in {name}, "
-                f"the transformed response changes by {coef} units, "
-                f"holding other predictors constant. "
+                f"**{name} (β = {coef})**: "
+                f"One-unit increase changes transformed response by {coef}. "
                 f"{'Statistically significant.' if pval < 0.05 else 'Not statistically significant.'}"
             )
-
-    # ======================================================
-    # Model Fit Statistics
-    # ======================================================
-
-    st.header("5️⃣ Model Fit Evaluation (Transformed Scale)")
-
-    n = model.nobs
-    k = model.df_model + 1
-
-    residual_deviance = model.deviance
-    null_deviance = model.null_deviance
-    aic = model.aic
-
-    if (n - k - 1) > 0:
-        aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
-    else:
-        aicc = float("nan")
-
-    sigma_hat = np.sqrt(model.scale)
-    rmse = np.sqrt(np.mean(model.resid_response**2))
-
-    st.write(f"Null Deviance: {null_deviance:.4f}")
-    st.write(f"Residual Deviance: {residual_deviance:.4f}")
-    st.write(f"AIC: {aic:.4f}")
-    st.write(f"AICc: {aicc:.4f}")
-    st.write(f"Residual SD (σ̂): {sigma_hat:.4f}")
-    st.write(f"RMSE (Transformed Scale): {rmse:.4f}")
 
 
 if __name__ == "__main__":
