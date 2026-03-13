@@ -354,9 +354,9 @@ Fit a **Gamma GLM** if the response is positive and skewed.
             interpretation = (
                 f"For each one-unit increase in {name}, {response} changes "
                 f"by {coef} units, holding other predictors constant."
-        )
-        term_label = name
-
+            )
+            term_label = name
+       
         # Display
         st.markdown(
             f"**{term_label}**  \n"
