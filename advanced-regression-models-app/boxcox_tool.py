@@ -139,7 +139,7 @@ def run():
     formula_transformed = y_trans + " ~ " + " + ".join(terms)
 
     model = smf.glm(
-        formula=y_trans,
+        formula=formula_transformed,
         data=df_fit,
         family=sm.families.Gaussian(link=sm.families.links.identity())
     ).fit()
