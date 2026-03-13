@@ -249,8 +249,8 @@ Fit a **Gamma GLM** if the response is positive and skewed.
     st.latex(r"AIC = -2\ell + 2k")
     st.markdown("Balances model fit and complexity. Lower values are preferred.")
 
-    st.markdown("**AICc**")
-    st.latex(r"AIC_c = AIC + \frac{2k(k+1)}{n-k-1}")
+    st.markdown("**AICC**")
+    st.latex(r"AICC = AIC + \frac{2k(k+1)}{n-k-1}")
     st.markdown("Small-sample corrected AIC. Lower values are preferred.")
 
     st.markdown("**BIC**")
