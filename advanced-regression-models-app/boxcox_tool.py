@@ -1,4 +1,4 @@
-import streamlit as st
+iimport streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -6,10 +6,6 @@ import statsmodels.formula.api as smf
 import statsmodels.api as sm
 from scipy.stats import shapiro, chi2
 
-
-# ======================================================
-# APP
-# ======================================================
 
 def run():
 
@@ -54,7 +50,6 @@ def run():
         reference_dict[col] = ref
 
     terms = []
-
     for var in predictors:
         if var in categorical_vars:
             ref = reference_dict[var]
@@ -66,48 +61,34 @@ def run():
     st.code(formula_original)
 
     # ======================================================
-    # 2️⃣ Box–Cox Transformation (Corrected)
+    # 2️⃣ Transformation (EXPLICIT 1 - 1/y)
     # ======================================================
 
-    st.header("2️⃣ Box–Cox Transformation")
+    st.header("2️⃣ Transformation: 1 - (1 / y)")
 
     df_model = df.copy()
-    transformed_response = response
-
-    # Force numeric conversion
     df_model[response] = pd.to_numeric(df_model[response], errors="coerce")
 
-    y_clean = df_model[response].dropna()
-
-    if (y_clean <= 0).any():
-        st.warning("Box–Cox requires strictly positive response values.")
+    if (df_model[response] <= 0).any():
+        st.warning("Response must be strictly positive.")
         return
 
-    # Default λ = -1 to match your expected transformation
-    chosen_lambda = st.number_input("Enter λ value", value=-1.0, step=0.1)
-
-    if st.checkbox("Apply Transformation"):
+    if st.checkbox("Apply Transformation (1 - 1/y)"):
 
         transformed_response = response + "_tr"
 
-        if np.isclose(chosen_lambda, 0):
-            df_model[transformed_response] = np.log(df_model[response])
-        else:
-            df_model[transformed_response] = (
-                np.power(df_model[response], chosen_lambda) - 1
-            ) / chosen_lambda
+        # 🔴 Explicit formula — no λ confusion
+        df_model[transformed_response] = 1 - (1 / df_model[response])
 
-        # Drop rows with missing after transformation
+        # Drop missing rows
         df_model = df_model.dropna(subset=[transformed_response] + predictors)
 
-        # Display both columns
         st.subheader("Original vs Transformed Response")
         st.dataframe(df_model[[response, transformed_response]].head(20))
 
-        # Normality test on transformed response
+        # Normality of transformed response
         if len(df_model[transformed_response]) >= 3:
             stat_y, p_y = shapiro(df_model[transformed_response])
-
             st.subheader("Normality Test (Transformed Response)")
             st.write(f"Shapiro-Wilk Statistic: {stat_y:.4f}")
             st.write(f"p-value: {p_y:.4f}")
@@ -145,13 +126,12 @@ def run():
 
     if len(resid) >= 3:
         stat_resid, p_resid = shapiro(resid)
-
         st.subheader("Normality Test (Model Residuals)")
         st.write(f"Shapiro-Wilk Statistic: {stat_resid:.4f}")
         st.write(f"p-value: {p_resid:.4f}")
 
     # ======================================================
-    # 5️⃣ Deviance Test (Original Structure Preserved)
+    # 5️⃣ Deviance Test
     # ======================================================
 
     null_model = smf.glm(
@@ -170,28 +150,25 @@ def run():
     st.write(f"p-value: {p_value:.4f}")
 
     # ======================================================
-    # 6️⃣ Coefficient Interpretation
+    # 6️⃣ Interpretation
     # ======================================================
 
     st.header("4️⃣ Interpretation of Coefficients")
 
-    params = model.params
-    pvalues = model.pvalues
+    for term in model.params.index:
 
-    for term in params.index:
-
-        coef = params[term]
-        pval = pvalues[term]
+        coef = model.params[term]
+        pval = model.pvalues[term]
 
         if term == "Intercept":
             interpretation = (
                 f"When all predictors are at reference levels or zero, "
-                f"the expected value of {transformed_response} is {coef:.4f}."
+                f"the expected transformed response is {coef:.4f}."
             )
         else:
             interpretation = (
                 f"A one-unit increase in '{term}' changes the expected "
-                f"{transformed_response} by {coef:.4f}, holding other variables constant."
+                f"transformed response by {coef:.4f}, holding other variables constant."
             )
 
         significance = (
@@ -206,10 +183,6 @@ def run():
                     f"- {interpretation}  \n"
                     f"- {significance}")
 
-
-# ======================================================
-# RUN
-# ======================================================
 
 if __name__ == "__main__":
     run()
