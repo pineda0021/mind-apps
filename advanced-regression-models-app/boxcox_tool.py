@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import statsmodels.formula.api as smf
-import statsmodels.api as sm
 from scipy import stats
 from scipy.stats import chi2
 
@@ -17,7 +16,6 @@ def run():
     # ======================================================
 
     uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
-
     if uploaded_file is None:
         return
 
@@ -81,60 +79,53 @@ def run():
         return
 
     ladder_values = [-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0]
-
     lam = st.selectbox("Select λ", ladder_values, index=1)
 
     # Display transformation + inverse formulas
 
     st.subheader("Transformation Formula")
 
-    if lam == -2.0:
-        st.latex(r"\tilde{y} = \frac{1}{2}(1 - 1/y^2)")
-        st.latex(r"y = (1/(1-2\tilde{y}))^{1/2}")
-
-    elif lam == -1.0:
+    if np.isclose(lam, -1.0):
         st.latex(r"\tilde{y} = 1 - \frac{1}{y}")
         st.latex(r"y = \frac{1}{1-\tilde{y}}")
-
-    elif lam == -0.5:
+    elif np.isclose(lam, 0.0):
+        st.latex(r"\tilde{y} = \ln(y)")
+        st.latex(r"y = e^{\tilde{y}}")
+    elif np.isclose(lam, 0.5):
+        st.latex(r"\tilde{y} = 2(\sqrt{y}-1)")
+        st.latex(r"y = (\tilde{y}/2 + 1)^2")
+    elif np.isclose(lam, 1.0):
+        st.latex(r"\tilde{y} = y - 1")
+        st.latex(r"y = \tilde{y} + 1")
+    elif np.isclose(lam, 2.0):
+        st.latex(r"\tilde{y} = \frac{1}{2}(y^2 - 1)")
+        st.latex(r"y = \sqrt{2\tilde{y}+1}")
+    elif np.isclose(lam, -2.0):
+        st.latex(r"\tilde{y} = \frac{1}{2}(1 - 1/y^2)")
+        st.latex(r"y = (1/(1-2\tilde{y}))^{1/2}")
+    elif np.isclose(lam, -0.5):
         st.latex(r"\tilde{y} = 2(1 - 1/\sqrt{y})")
         st.latex(r"y = (1/(1-\tilde{y}/2))^2")
 
-    elif lam == 0.0:
-        st.latex(r"\tilde{y} = \ln(y)")
-        st.latex(r"y = e^{\tilde{y}}")
-
-    elif lam == 0.5:
-        st.latex(r"\tilde{y} = 2(\sqrt{y} - 1)")
-        st.latex(r"y = (\tilde{y}/2 + 1)^2")
-
-    elif lam == 1.0:
-        st.latex(r"\tilde{y} = y - 1")
-        st.latex(r"y = \tilde{y} + 1")
-
-    elif lam == 2.0:
-        st.latex(r"\tilde{y} = \frac{1}{2}(y^2 - 1)")
-        st.latex(r"y = \sqrt{2\tilde{y}+1}")
-
-    # Apply transformation
+    # Apply transformation safely
 
     df_model = df.copy()
     y = pd.to_numeric(df_model[response], errors="coerce")
     transformed_response = response + "_tr"
 
-    if lam == -2.0:
+    if np.isclose(lam, -2.0):
         df_model[transformed_response] = 0.5 * (1 - 1/(y**2))
-    elif lam == -1.0:
+    elif np.isclose(lam, -1.0):
         df_model[transformed_response] = 1 - (1 / y)
-    elif lam == -0.5:
+    elif np.isclose(lam, -0.5):
         df_model[transformed_response] = 2 * (1 - 1/np.sqrt(y))
-    elif lam == 0.0:
+    elif np.isclose(lam, 0.0):
         df_model[transformed_response] = np.log(y)
-    elif lam == 0.5:
+    elif np.isclose(lam, 0.5):
         df_model[transformed_response] = 2 * (np.sqrt(y) - 1)
-    elif lam == 1.0:
+    elif np.isclose(lam, 1.0):
         df_model[transformed_response] = y - 1
-    elif lam == 2.0:
+    elif np.isclose(lam, 2.0):
         df_model[transformed_response] = 0.5 * (y**2 - 1)
 
     y_trans = df_model[transformed_response].dropna()
@@ -146,7 +137,6 @@ def run():
     st.header("3️⃣ Histogram with Normal Overlay")
 
     fig, ax = plt.subplots(figsize=(8,6))
-
     ax.hist(y_trans, bins=9, density=True)
 
     mean_val = np.mean(y_trans)
@@ -157,9 +147,6 @@ def run():
     p = stats.norm.pdf(x, mean_val, sd_val)
 
     ax.plot(x, p, 'r')
-    ax.set_title("Histogram of Transformed Response with Normal Curve")
-    ax.set_xlabel("Transformed Response")
-
     st.pyplot(fig)
 
     # ======================================================
@@ -170,7 +157,7 @@ def run():
 
     stat, p_value = stats.shapiro(y_trans)
 
-    st.write(f"Shapiro-Wilk Statistic: {stat:.4f}")
+    st.write(f"Shapiro-Wilk Test Statistic: {stat:.4f}")
     st.write(f"P-Value: {p_value:.4f}")
 
     if p_value > 0.05:
@@ -192,11 +179,7 @@ def run():
 
     st.text(model.summary())
 
-    # ======================================================
-    # 7. ERROR ESTIMATES
-    # ======================================================
-
-    st.subheader("Error Estimates")
+    # Error estimates
 
     sigma_unbiased = np.sqrt(model.mse_resid)
     sigma_mle = np.sqrt(model.ssr / model.nobs)
@@ -204,9 +187,7 @@ def run():
     st.write(f"√MSE (Unbiased σ̂): {sigma_unbiased:.6f}")
     st.write(f"√(SSR/n) (MLE σ): {sigma_mle:.6f}")
 
-    # ======================================================
-    # 8. LR DEVIANCE (MATCH R)
-    # ======================================================
+    # Likelihood ratio test (R-style)
 
     null_model = smf.ols(transformed_response + " ~ 1", data=df_fit).fit()
 
@@ -216,11 +197,10 @@ def run():
 
     st.subheader("Likelihood Ratio Test")
     st.write(f"LR Statistic: {lr_stat:.6f}")
-    st.write(f"Degrees of Freedom: {df_diff}")
     st.write(f"P-Value: {p_lr:.6f}")
 
     # ======================================================
-    # 9. PREDICTION
+    # 7. PREDICTION
     # ======================================================
 
     st.header("6️⃣ Prediction")
@@ -245,15 +225,15 @@ def run():
 
         prediction_tr = model.predict(new_df)[0]
 
-        if lam == -1.0:
+        if np.isclose(lam, -1.0):
             prediction = 1 / (1 - prediction_tr)
-        elif lam == 0.0:
+        elif np.isclose(lam, 0.0):
             prediction = np.exp(prediction_tr)
-        elif lam == 0.5:
+        elif np.isclose(lam, 0.5):
             prediction = (prediction_tr/2 + 1)**2
-        elif lam == 1.0:
+        elif np.isclose(lam, 1.0):
             prediction = prediction_tr + 1
-        elif lam == 2.0:
+        elif np.isclose(lam, 2.0):
             prediction = np.sqrt(2*prediction_tr + 1)
         else:
             prediction = (lam * prediction_tr + 1)**(1/lam)
