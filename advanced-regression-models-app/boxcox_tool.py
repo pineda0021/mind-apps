@@ -327,6 +327,8 @@ def run():
                     f"- p-value: {pval:.4f}  \n"
                     f"- {interpretation}  \n"
                     f"- {significance}")
+
+
     # ======================================================
     # 7️⃣ Prediction
     # ======================================================
@@ -352,15 +354,14 @@ def run():
                 categories=df[var].cat.categories
             )
 
-    # -----------------------------------------
-    # 1️⃣ Predict on transformed scale
-    # -----------------------------------------
-    y_trans_pred = float(model.predict(new_df)[0])
+        # -----------------------------------------
+        # 1️⃣ Predict on transformed scale
+        # -----------------------------------------
+        y_trans_pred = float(model.predict(new_df)[0])
 
-    # -----------------------------------------
-    # 2️⃣ Inverse Transformation
-    # -----------------------------------------
-    try:
+        # -----------------------------------------
+        # 2️⃣ Inverse Transformation (Table-Based)
+        # -----------------------------------------
 
         if lambda_value == -2:
             y_original_pred = 1 / np.sqrt(1 - 2 * y_trans_pred)
@@ -384,17 +385,13 @@ def run():
             y_original_pred = np.sqrt(2 * y_trans_pred + 1)
 
         else:
-            # General fallback
-            y_original_pred = (lambda_value * y_trans_pred + 1) ** (1 / lambda_value)
+            st.error("λ must be one of: -2, -1, -0.5, 0, 0.5, 1, 2")
+            return
 
         st.subheader("Prediction Results")
         st.write(f"Predicted transformed value: {y_trans_pred:.4f}")
         st.success(f"Predicted original {response}: {y_original_pred:.4f}")
-
-    except Exception:
-        st.error("Inverse transformation produced an invalid value. "
-                 "Check λ or model output.")
-  
+    
     # ======================================================
     # 8️⃣ Predicted vs Actual
     # ======================================================
