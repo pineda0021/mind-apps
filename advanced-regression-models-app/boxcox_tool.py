@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import statsmodels.formula.api as smf
+import statsmodels.formula.api as sm
 from scipy import stats
 from scipy.stats import chi2
 
@@ -25,7 +25,7 @@ def run():
     st.dataframe(df.head())
 
     # ======================================================
-    # 2. VARIABLE SELECTION (WITH REFERENCES)
+    # 2. VARIABLE SELECTION (WITH REFERENCE LEVELS)
     # ======================================================
 
     st.header("1️⃣ Select Variables")
@@ -81,44 +81,14 @@ def run():
     ladder_values = [-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0]
     lam = st.selectbox("Select λ", ladder_values, index=1)
 
-    # Display transformation + inverse formulas
-
-    st.subheader("Transformation Formula")
-
-    if np.isclose(lam, -1.0):
-        st.latex(r"\tilde{y} = 1 - \frac{1}{y}")
-        st.latex(r"y = \frac{1}{1-\tilde{y}}")
-    elif np.isclose(lam, 0.0):
-        st.latex(r"\tilde{y} = \ln(y)")
-        st.latex(r"y = e^{\tilde{y}}")
-    elif np.isclose(lam, 0.5):
-        st.latex(r"\tilde{y} = 2(\sqrt{y}-1)")
-        st.latex(r"y = (\tilde{y}/2 + 1)^2")
-    elif np.isclose(lam, 1.0):
-        st.latex(r"\tilde{y} = y - 1")
-        st.latex(r"y = \tilde{y} + 1")
-    elif np.isclose(lam, 2.0):
-        st.latex(r"\tilde{y} = \frac{1}{2}(y^2 - 1)")
-        st.latex(r"y = \sqrt{2\tilde{y}+1}")
-    elif np.isclose(lam, -2.0):
-        st.latex(r"\tilde{y} = \frac{1}{2}(1 - 1/y^2)")
-        st.latex(r"y = (1/(1-2\tilde{y}))^{1/2}")
-    elif np.isclose(lam, -0.5):
-        st.latex(r"\tilde{y} = 2(1 - 1/\sqrt{y})")
-        st.latex(r"y = (1/(1-\tilde{y}/2))^2")
-
     # Apply transformation safely
 
     df_model = df.copy()
     y = pd.to_numeric(df_model[response], errors="coerce")
     transformed_response = response + "_tr"
 
-    if np.isclose(lam, -2.0):
-        df_model[transformed_response] = 0.5 * (1 - 1/(y**2))
-    elif np.isclose(lam, -1.0):
+    if np.isclose(lam, -1.0):
         df_model[transformed_response] = 1 - (1 / y)
-    elif np.isclose(lam, -0.5):
-        df_model[transformed_response] = 2 * (1 - 1/np.sqrt(y))
     elif np.isclose(lam, 0.0):
         df_model[transformed_response] = np.log(y)
     elif np.isclose(lam, 0.5):
@@ -127,6 +97,10 @@ def run():
         df_model[transformed_response] = y - 1
     elif np.isclose(lam, 2.0):
         df_model[transformed_response] = 0.5 * (y**2 - 1)
+    elif np.isclose(lam, -2.0):
+        df_model[transformed_response] = 0.5 * (1 - 1/(y**2))
+    elif np.isclose(lam, -0.5):
+        df_model[transformed_response] = 2 * (1 - 1/np.sqrt(y))
 
     y_trans = df_model[transformed_response].dropna()
 
@@ -161,84 +135,48 @@ def run():
     st.write(f"P-Value: {p_value:.4f}")
 
     if p_value > 0.05:
-        st.success("Conclusion: Fail to reject H₀ → Data appears normally distributed.")
+        st.success("Fail to reject H₀ → Data appears normally distributed.")
     else:
-        st.warning("Conclusion: Reject H₀ → Data is NOT normally distributed.")
+        st.warning("Reject H₀ → Data is NOT normally distributed.")
 
     # ======================================================
-    # 6. FIT OLS MODEL
+    # 6. FIT OLS MODEL (MATCH COLAB EXACTLY)
     # ======================================================
 
     st.header("5️⃣ Fit General Linear Model (OLS)")
 
-    df_fit = df_model[[transformed_response] + predictors].dropna()
-
     formula_transformed = transformed_response + " ~ " + " + ".join(terms)
 
-    model = smf.ols(formula=formula_transformed, data=df_fit).fit()
+    model = sm.ols(
+        formula=formula_transformed,
+        data=df_model
+    ).fit()
 
     st.text(model.summary())
 
-    # Error estimates
+    # ======================================================
+    # ERROR ESTIMATES (MATCH YOUR OUTPUT)
+    # ======================================================
 
     sigma_unbiased = np.sqrt(model.mse_resid)
     sigma_mle = np.sqrt(model.ssr / model.nobs)
 
-    st.write(f"√MSE (Unbiased σ̂): {sigma_unbiased:.6f}")
-    st.write(f"√(SSR/n) (MLE σ): {sigma_mle:.6f}")
+    st.write(f"MSE: {sigma_unbiased}")
+    st.write(f"MLE: {sigma_mle}")
 
-    # Likelihood ratio test (R-style)
+    # ======================================================
+    # LIKELIHOOD RATIO TEST (R-STYLE)
+    # ======================================================
 
-    null_model = smf.ols(transformed_response + " ~ 1", data=df_fit).fit()
+    null_model = sm.ols(transformed_response + " ~ 1", data=df_model).fit()
 
     lr_stat = 2 * (model.llf - null_model.llf)
     df_diff = int(model.df_model)
     p_lr = chi2.sf(lr_stat, df_diff)
 
     st.subheader("Likelihood Ratio Test")
-    st.write(f"LR Statistic: {lr_stat:.6f}")
-    st.write(f"P-Value: {p_lr:.6f}")
-
-    # ======================================================
-    # 7. PREDICTION
-    # ======================================================
-
-    st.header("6️⃣ Prediction")
-
-    input_dict = {}
-
-    for var in predictors:
-        if var in categorical_vars:
-            input_dict[var] = st.selectbox(var, df[var].cat.categories)
-        else:
-            input_dict[var] = st.number_input(
-                var,
-                value=float(pd.to_numeric(df[var], errors="coerce").mean())
-            )
-
-    if st.button("Predict"):
-
-        new_df = pd.DataFrame([input_dict])
-
-        for var in categorical_vars:
-            new_df[var] = pd.Categorical(new_df[var], categories=df[var].cat.categories)
-
-        prediction_tr = model.predict(new_df)[0]
-
-        if np.isclose(lam, -1.0):
-            prediction = 1 / (1 - prediction_tr)
-        elif np.isclose(lam, 0.0):
-            prediction = np.exp(prediction_tr)
-        elif np.isclose(lam, 0.5):
-            prediction = (prediction_tr/2 + 1)**2
-        elif np.isclose(lam, 1.0):
-            prediction = prediction_tr + 1
-        elif np.isclose(lam, 2.0):
-            prediction = np.sqrt(2*prediction_tr + 1)
-        else:
-            prediction = (lam * prediction_tr + 1)**(1/lam)
-
-        st.success(f"Predicted {response}: {prediction:.6f}")
+    st.write(f"LR Statistic: {lr_stat}")
+    st.write(f"P-Value: {p_lr}")
 
 
 if __name__ == "__main__":
