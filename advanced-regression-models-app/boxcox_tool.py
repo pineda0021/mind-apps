@@ -9,7 +9,7 @@ from scipy.stats import shapiro, chi2
 
 def run():
 
-    st.title("📘 Gaussian GLM with User-Specified Box-Cox Transformation")
+    st.title("📘 Gaussian GLM with Ladder-of-Powers Transformation")
 
     # ======================================================
     # DATA UPLOAD
@@ -26,7 +26,7 @@ def run():
     st.dataframe(df.head())
 
     # ======================================================
-    # VARIABLE SELECTION (WITH REFERENCE LEVELS)
+    # VARIABLE SELECTION WITH REFERENCE LEVELS
     # ======================================================
 
     st.header("1️⃣ Select Variables")
@@ -69,33 +69,52 @@ def run():
     st.code(formula_original)
 
     # ======================================================
-    # BOX-COX TRANSFORMATION (USER λ)
+    # LADDER-OF-POWERS TRANSFORMATION (MATCH R)
     # ======================================================
 
-    st.header("2️⃣ Box-Cox Transformation")
+    st.header("2️⃣ Enter λ for Transformation")
 
     if not pd.api.types.is_numeric_dtype(df[response]):
         st.error("Response must be numeric.")
         return
 
     if (df[response] <= 0).any():
-        st.error("Box-Cox requires strictly positive response.")
+        st.error("Transformation requires strictly positive response.")
         return
 
-    lam = st.number_input("Enter λ", value=0.0, step=0.1)
+    lam = st.number_input("Enter λ", value=-1.0, step=0.1)
 
     df_model = df.copy()
     y = pd.to_numeric(df_model[response], errors="coerce")
-
     transformed_response = response + "_tr"
 
-    if abs(lam) < 1e-8:
+    # Exact ladder transformations (match your R code)
+    if lam == -2.0:
+        df_model[transformed_response] = 0.5 * (1 - 1/(y**2))
+
+    elif lam == -1.0:
+        df_model[transformed_response] = 1 - (1 / y)
+
+    elif lam == -0.5:
+        df_model[transformed_response] = 2 * (1 - 1/np.sqrt(y))
+
+    elif lam == 0.0:
         df_model[transformed_response] = np.log(y)
+
+    elif lam == 0.5:
+        df_model[transformed_response] = 2 * (np.sqrt(y) - 1)
+
+    elif lam == 1.0:
+        df_model[transformed_response] = y - 1
+
+    elif lam == 2.0:
+        df_model[transformed_response] = 0.5 * (y**2 - 1)
+
     else:
         df_model[transformed_response] = (y**lam - 1) / lam
 
     # ======================================================
-    # NORMALITY TEST ON TRANSFORMED RESPONSE
+    # NORMALITY TEST (TRANSFORMED RESPONSE)
     # ======================================================
 
     st.header("3️⃣ Normality Check (Transformed Response)")
@@ -112,77 +131,37 @@ def run():
     st.write(f"p-value: {p:.4f}")
 
     # ======================================================
-    # FIT GAUSSIAN GLM (TRANSFORMED RESPONSE)
+    # FIT GAUSSIAN GLM (IDENTITY LINK)
     # ======================================================
 
-    st.header("4️⃣ Fit Gaussian GLM (Transformed Scale)")
+    st.header("4️⃣ Fit Gaussian GLM")
 
     formula_transformed = transformed_response + " ~ " + " + ".join(terms)
 
     model = smf.glm(
         formula=formula_transformed,
         data=df_fit,
-        family=sm.families.Gaussian()
+        family=sm.families.Gaussian(link=sm.families.links.identity())
     ).fit()
 
     st.subheader("Model Summary")
     st.text(model.summary())
 
     # ======================================================
-    # CORRECT GAUSSIAN DEVIANCE (R-COMPATIBLE)
+    # DEVIANCE (MATCH R EXACTLY)
     # ======================================================
 
-    st.header("5️⃣ Model Fit Evaluation")
-
-    fitted_vals = model.fittedvalues
-    residuals = y_trans - fitted_vals
-
-    # For Gaussian with identity link:
-    # Deviance = SSE
-
-    residual_deviance = np.sum(residuals**2)
-
-    y_bar = np.mean(y_trans)
-    null_deviance = np.sum((y_trans - y_bar)**2)
-
-    n = len(y_trans)
-    k = model.df_model + 1
-
-    aic = model.aic
-
-    if (n - k - 1) > 0:
-        aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
-    else:
-        aicc = float("nan")
-
-    sigma_hat = np.sqrt(residual_deviance / (n - k))
-    rmse = np.sqrt(np.mean(residuals**2))
-
-    st.write(f"Null Deviance: {null_deviance:.4f}")
-    st.write(f"Residual Deviance: {residual_deviance:.4f}")
-    st.write(f"AIC: {aic:.4f}")
-    st.write(f"AICc: {aicc:.4f}")
-    st.write(f"Residual SD (σ̂): {sigma_hat:.4f}")
-    st.write(f"RMSE (Transformed Scale): {rmse:.4f}")
-
-    # ======================================================
-    # LIKELIHOOD RATIO TEST (R-STYLE)
-    # ======================================================
+    st.header("5️⃣ Deviance (Likelihood Ratio)")
 
     null_model = smf.glm(
         transformed_response + " ~ 1",
         data=df_fit,
-        family=sm.families.Gaussian()
+        family=sm.families.Gaussian(link=sm.families.links.identity())
     ).fit()
 
-    lr_stat = 2 * (model.llf - null_model.llf)
-    df_diff = int(model.df_model)
-    p_value_lr = chi2.sf(lr_stat, df_diff)
+    lr_deviance = -2 * (null_model.llf - model.llf)
 
-    st.subheader("Likelihood Ratio Test")
-    st.write(f"LR Statistic: {lr_stat:.4f}")
-    st.write(f"Degrees of Freedom: {df_diff}")
-    st.write(f"p-value: {p_value_lr:.6f}")
+    st.write(f"Deviance (LR): {lr_deviance:.6f}")
 
     # ======================================================
     # COEFFICIENT INTERPRETATION
@@ -197,8 +176,8 @@ def run():
 
         if name == "Intercept":
             st.markdown(
-                f"**Intercept ({coef})**: Mean of the transformed response "
-                f"when predictors are at reference levels or zero."
+                f"**Intercept ({coef})**: Mean of transformed response "
+                f"when predictors are at reference levels."
             )
 
         elif name.startswith("C(") and "T." in name:
@@ -217,6 +196,47 @@ def run():
                 f"One-unit increase changes transformed response by {coef}. "
                 f"{'Statistically significant.' if pval < 0.05 else 'Not statistically significant.'}"
             )
+
+    # ======================================================
+    # PREDICTION (MATCH R INVERSE)
+    # ======================================================
+
+    st.header("6️⃣ Prediction")
+
+    input_dict = {}
+
+    for var in predictors:
+        if var in categorical_vars:
+            input_dict[var] = st.selectbox(var, df[var].cat.categories)
+        else:
+            input_dict[var] = st.number_input(
+                var,
+                value=float(pd.to_numeric(df[var], errors="coerce").mean())
+            )
+
+    if st.button("Predict"):
+
+        new_df = pd.DataFrame([input_dict])
+
+        for var in categorical_vars:
+            new_df[var] = pd.Categorical(
+                new_df[var],
+                categories=df[var].cat.categories
+            )
+
+        prediction_tr = model.predict(new_df)[0]
+
+        # Exact inverse (λ = −1 case matches your R code)
+        if lam == -1.0:
+            prediction = 1 / (1 - prediction_tr)
+
+        elif lam == 0:
+            prediction = np.exp(prediction_tr)
+
+        else:
+            prediction = (lam * prediction_tr + 1) ** (1 / lam)
+
+        st.success(f"Predicted {response}: {prediction:.6f}")
 
 
 if __name__ == "__main__":
