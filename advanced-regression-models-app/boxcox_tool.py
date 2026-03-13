@@ -331,43 +331,49 @@ def run():
                 categories=df[var].cat.categories
             )
 
-        # Prediction on transformed scale
-        y_trans_pred = model.predict(new_df)[0]
+    # -----------------------------------------
+    # 1️⃣ Predict on transformed scale
+    # -----------------------------------------
+    y_trans_pred = float(model.predict(new_df)[0])
 
-    # ======================================================
-    # Exact Inverse Transformations (Matching Your Table)
-    # ======================================================
+    # -----------------------------------------
+    # 2️⃣ Inverse Transformation
+    # -----------------------------------------
+    try:
 
-    if lambda_value == -2:
-        y_original_pred = 1 / np.sqrt(1 - 2 * y_trans_pred)
+        if lambda_value == -2:
+            y_original_pred = 1 / np.sqrt(1 - 2 * y_trans_pred)
 
-    elif lambda_value == -1:
-        y_original_pred = 1 / (1 - y_trans_pred)
+        elif lambda_value == -1:
+            y_original_pred = 1 / (1 - y_trans_pred)
 
-    elif lambda_value == -0.5:
-        y_original_pred = 1 / (1 - y_trans_pred / 2) ** 2
+        elif lambda_value == -0.5:
+            y_original_pred = 1 / (1 - y_trans_pred / 2) ** 2
 
-    elif lambda_value == 0:
-        y_original_pred = np.exp(y_trans_pred)
+        elif lambda_value == 0:
+            y_original_pred = np.exp(y_trans_pred)
 
-    elif lambda_value == 0.5:
-        y_original_pred = (y_trans_pred / 2 + 1) ** 2
+        elif lambda_value == 0.5:
+            y_original_pred = (y_trans_pred / 2 + 1) ** 2
 
-    elif lambda_value == 1:
-        y_original_pred = y_trans_pred + 1
+        elif lambda_value == 1:
+            y_original_pred = y_trans_pred + 1
 
-    elif lambda_value == 2:
-        y_original_pred = np.sqrt(2 * y_trans_pred + 1)
+        elif lambda_value == 2:
+            y_original_pred = np.sqrt(2 * y_trans_pred + 1)
 
-    else:
-        # fallback to general Box–Cox inverse
-        y_original_pred = (lambda_value * y_trans_pred + 1) ** (1 / lambda_value)
+        else:
+            # General fallback
+            y_original_pred = (lambda_value * y_trans_pred + 1) ** (1 / lambda_value)
 
-    st.subheader("Prediction Results")
+        st.subheader("Prediction Results")
+        st.write(f"Predicted transformed value: {y_trans_pred:.4f}")
+        st.success(f"Predicted original {response}: {y_original_pred:.4f}")
 
-    st.write(f"Predicted transformed value: {y_trans_pred:.4f}")
-    st.success(f"Predicted original {response}: {y_original_pred:.4f}")
-    
+    except Exception:
+        st.error("Inverse transformation produced an invalid value. "
+                 "Check λ or model output.")
+  
     # ======================================================
     # 8️⃣ Predicted vs Actual
     # ======================================================
