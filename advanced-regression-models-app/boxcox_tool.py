@@ -218,10 +218,16 @@ def run():
     aic = model.aic
     bic = model.bic
 
-    residuals = model.resid_response
+    # ---- Robust Residual Computation (GLM-safe) ----
+    y_obs = df_model[transformed_response]
+    y_hat = model.predict(df_model)
+
+    residuals = y_obs - y_hat
+
     sigma_hat = np.sqrt(np.sum(residuals**2) / model.df_resid)
     rmse = np.sqrt(np.mean(residuals**2))
 
+    # ---- AICc ----
     if (n - k - 1) > 0:
         aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
     else:
