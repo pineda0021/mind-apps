@@ -342,6 +342,18 @@ Fit a **Gamma GLM** if the response is positive and skewed.
                 f"{response} changes by {coef} units, holding other predictors constant. "
                 f"{'Statistically significant.' if pval < 0.05 else 'Not statistically significant.'}"
             )
+           
+        significance = (
+            "Statistically significant."
+            if pval <= 0.05
+            else "Not statistically significant."
+        )
+
+        st.markdown(f"**{term}**  \n"
+                    f"- Coefficient: {coef:.4f}  \n"
+                    f"- p-value: {pval:.4f}  \n"
+                    f"- {interpretation}  \n"
+                    f"- {significance}")
 
     # ======================================================
     # 9. PREDICTION
