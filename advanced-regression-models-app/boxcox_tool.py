@@ -136,7 +136,7 @@ def run():
 
     st.header("4️⃣ Fit Gaussian GLM")
 
-    formula_transformed = y_trans + " ~ " + " + ".join(terms)
+    formula_transformed = df_fit  + " ~ " + " + ".join(terms)
 
     model = smf.glm(
         formula=formula_transformed,
