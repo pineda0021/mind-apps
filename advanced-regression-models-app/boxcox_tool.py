@@ -348,34 +348,52 @@ def run():
 
         new_df = pd.DataFrame([input_dict])
 
-        # Ensure categorical levels match training data
         for var in categorical_vars:
             new_df[var] = pd.Categorical(
                 new_df[var],
                 categories=df_model[var].cat.categories
             )
 
-         try:
-            prediction_tr = model.predict(new_df)[0]
-        except Exception:
-            st.error("Prediction failed for this input.")
-            return
+        # 1️⃣ Prediction on transformed scale
+        y_trans_pred = float(model.predict(new_df)[0])
 
-        if transformed:
+        # 2️⃣ Inverse transformation based on the table
+        if lambda_value == -2:
+            # ½(1 − 1/y²)
+            y_original_pred = 1 / np.sqrt(1 - 2 * y_trans_pred)
 
-            if chosen_lambda == 0:
-                prediction = np.exp(prediction_tr)
-            else:
-                prediction = (chosen_lambda * prediction_tr + 1)**(1 / chosen_lambda)
+        elif lambda_value == -1:
+            # 1 − 1/y
+            y_original_pred = 1 / (1 - y_trans_pred)
 
-            st.success(f"Predicted {response} (original scale): {prediction:.4f}")
+        elif lambda_value == -0.5:
+            # 2(1 − 1/√y)
+            y_original_pred = 1 / (1 - y_trans_pred / 2) ** 2
+
+        elif lambda_value == 0:
+            # ln(y)
+            y_original_pred = np.exp(y_trans_pred)
+
+        elif lambda_value == 0.5:
+            # 2(√y − 1)
+            y_original_pred = (y_trans_pred / 2 + 1) ** 2
+
+        elif lambda_value == 1:
+            # y − 1
+            y_original_pred = y_trans_pred + 1
+
+        elif lambda_value == 2:
+            # ½(y² − 1)
+            y_original_pred = np.sqrt(2 * y_trans_pred + 1)
 
         else:
-            st.success(f"Predicted {response}: {prediction_tr:.4f}")
+            st.error("λ must be one of: -2, -1, -0.5, 0, 0.5, 1, 2")
+            return
 
-    st.header("7️⃣ Predicted vs Actual")
+    st.subheader("Prediction Results")
+    st.write(f"Predicted transformed value: {y_trans_pred:.4f}")
+    st.success(f"Predicted original {response}: {y_original_pred:.4f}")
 
-    
     # ======================================================
     # 8️⃣ Predicted vs Actual
     # ======================================================
