@@ -328,7 +328,6 @@ def run():
                     f"- {interpretation}  \n"
                     f"- {significance}")
 
-
     # ======================================================
     # 7️⃣ Prediction
     # ======================================================
@@ -345,17 +344,14 @@ def run():
             numeric_series = pd.to_numeric(df[var], errors="coerce")
             input_dict[var] = st.number_input(var, value=float(numeric_series.mean()))
 
-    # Ask user if response was rescaled
-    rescaled = st.checkbox("Was the response variable rescaled (e.g., 0–1 instead of 0–100)?")
+    # Optional scaling factor input
+    st.markdown("### Response Rescaling (Optional)")
 
-    scale_factor = 1
-
-    if rescaled:
-        scale_factor = st.number_input(
-            "Enter the rescaling factor used for the response variable",
-            value=100.0,
-            min_value=1.0
-        )
+    scale_factor = st.number_input(
+        "If you rescaled the response (e.g., y/100 or y/1000), enter the divisor used. Otherwise leave as 1.",
+        value=1.0,
+        min_value=1.0
+    )
 
     if st.button("Predict"):
 
@@ -367,70 +363,71 @@ def run():
                 categories=df_model[var].cat.categories
             )
 
-    # 1️⃣ Prediction on transformed scale
-    y_trans_pred = float(model.predict(new_df)[0])
+        # 1️⃣ Prediction on transformed scale
+        y_trans_pred = float(model.predict(new_df)[0])
 
-    # 2️⃣ Inverse transformation based on the table
-    if lambda_value == -2:
-        y_original_pred = 1 / np.sqrt(1 - 2 * y_trans_pred)
+        # 2️⃣ Inverse transformation based on the table
+        if lambda_value == -2:
+            y_original_pred = 1 / np.sqrt(1 - 2 * y_trans_pred)
 
-    elif lambda_value == -1:
-        y_original_pred = 1 / (1 - y_trans_pred)
+        elif lambda_value == -1:
+            y_original_pred = 1 / (1 - y_trans_pred)
 
-    elif lambda_value == -0.5:
-        y_original_pred = 1 / (1 - y_trans_pred / 2) ** 2
+        elif lambda_value == -0.5:
+            y_original_pred = 1 / (1 - y_trans_pred / 2) ** 2
 
-    elif lambda_value == 0:
-        y_original_pred = np.exp(y_trans_pred)
+        elif lambda_value == 0:
+            y_original_pred = np.exp(y_trans_pred)
 
-    elif lambda_value == 0.5:
-        y_original_pred = (y_trans_pred / 2 + 1) ** 2
+        elif lambda_value == 0.5:
+            y_original_pred = (y_trans_pred / 2 + 1) ** 2
 
-    elif lambda_value == 1:
-        y_original_pred = y_trans_pred + 1
+        elif lambda_value == 1:
+            y_original_pred = y_trans_pred + 1
 
-    elif lambda_value == 2:
-        y_original_pred = np.sqrt(2 * y_trans_pred + 1)
+        elif lambda_value == 2:
+            y_original_pred = np.sqrt(2 * y_trans_pred + 1)
 
-    else:
-        st.error("λ must be one of: -2, -1, -0.5, 0, 0.5, 1, 2")
-        return
+        else:
+            st.error("λ must be one of: -2, -1, -0.5, 0, 0.5, 1, 2")
+            return
 
-    # 3️⃣ Adjust for rescaling if needed
-    y_original_pred = y_original_pred * scale_factor
+        # 3️⃣ Undo rescaling
+        y_original_pred = y_original_pred * scale_factor
 
-    st.subheader("Prediction Results")
-    st.write(f"Predicted transformed value: {y_trans_pred:.4f}")
-    st.success(f"Predicted original {response}: {y_original_pred:.4f}")
+        st.subheader("Prediction Results")
+        st.write(f"Predicted transformed value: {y_trans_pred:.4f}")
+        st.success(f"Predicted original {response}: {y_original_pred:.4f}")
 
-    # ======================================================
-    # 8️⃣ Predicted vs Actual
-    # ======================================================
 
-    st.header("7️⃣ Predicted vs Actual")
+        # ======================================================
+        # 8️⃣ Predicted vs Actual
+        # ======================================================
 
-    predicted_vals = model.predict(df_model)
+        st.header("7️⃣ Predicted vs Actual")
 
-    fig2 = px.scatter(
-        x=predicted_vals,
-        y=df_model[transformed_response],
-        labels={'x': 'Predicted', 'y': 'Actual'},
-        title="Predicted vs Actual Values"
-    )
+        predicted_vals = model.predict(df_model)
 
-    min_val = min(predicted_vals.min(), df_model[transformed_response].min())
-    max_val = max(predicted_vals.max(), df_model[transformed_response].max())
+        fig2 = px.scatter(
+            x=predicted_vals,
+            y=df_model[transformed_response],
+            labels={'x': 'Predicted', 'y': 'Actual'},
+            title="Predicted vs Actual Values"
+        )
 
-    fig2.add_shape(
-        type="line",
-        x0=min_val,
-        y0=min_val,
-        x1=max_val,
-        y1=max_val,
-        line=dict(color="red", dash="dash")
-    )
+        min_val = min(predicted_vals.min(), df_model[transformed_response].min())
+        max_val = max(predicted_vals.max(), df_model[transformed_response].max())
 
-    st.plotly_chart(fig2)
+        fig2.add_shape(
+            type="line",
+            x0=min_val,
+            y0=min_val,
+            x1=max_val,
+            y1=max_val,
+            line=dict(color="red", dash="dash")
+        )
+
+        st.plotly_chart(fig2)
 
 
 if __name__ == "__main__":
