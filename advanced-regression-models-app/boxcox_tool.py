@@ -328,7 +328,6 @@ def run():
                     f"- {interpretation}  \n"
                     f"- {significance}")
 
-
     # ======================================================
     # 7️⃣ Prediction
     # ======================================================
@@ -338,6 +337,7 @@ def run():
     input_dict = {}
 
     for var in predictors:
+
         if var in categorical_vars:
             input_dict[var] = st.selectbox(var, df[var].cat.categories)
         else:
@@ -348,17 +348,18 @@ def run():
 
         new_df = pd.DataFrame([input_dict])
 
-        # Ensure categorical types match training data
+        # Ensure categorical levels match training data
         for var in categorical_vars:
             new_df[var] = pd.Categorical(
                 new_df[var],
                 categories=df_model[var].cat.categories
             )
 
-        # ---- Predict using model ----
+        # 1️⃣ Prediction on transformed scale
         y_trans_pred = float(model.predict(new_df)[0])
 
-        # ---- Inverse transformation (exact table version) ----
+        # 2️⃣ Inverse transformation (exact table match)
+
         if lambda_value == -2:
             y_original_pred = 1 / np.sqrt(1 - 2 * y_trans_pred)
 
@@ -387,6 +388,7 @@ def run():
         st.subheader("Prediction Results")
         st.write(f"Predicted transformed value: {y_trans_pred:.4f}")
         st.success(f"Predicted original {response}: {y_original_pred:.4f}")
+
     
     # ======================================================
     # 8️⃣ Predicted vs Actual
