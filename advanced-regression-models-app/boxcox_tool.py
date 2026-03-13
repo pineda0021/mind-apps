@@ -348,21 +348,17 @@ def run():
 
         new_df = pd.DataFrame([input_dict])
 
+        # Ensure categorical types match training data
         for var in categorical_vars:
             new_df[var] = pd.Categorical(
                 new_df[var],
-                categories=df[var].cat.categories
+                categories=df_model[var].cat.categories
             )
 
-        # -----------------------------------------
-        # 1️⃣ Predict on transformed scale
-        # -----------------------------------------
+        # ---- Predict using model ----
         y_trans_pred = float(model.predict(new_df)[0])
 
-        # -----------------------------------------
-        # 2️⃣ Inverse Transformation (Table-Based)
-        # -----------------------------------------
-
+        # ---- Inverse transformation (exact table version) ----
         if lambda_value == -2:
             y_original_pred = 1 / np.sqrt(1 - 2 * y_trans_pred)
 
