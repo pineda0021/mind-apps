@@ -306,34 +306,33 @@ def run():
                     f"- p-value: {pval:.4f}  \n"
                     f"- {interpretation}  \n"
                     f"- {significance}")
+    # ======================================================
+    # 7️⃣ Prediction
+    # ======================================================
 
-# ======================================================
-# 7️⃣ Prediction
-# ======================================================
+    st.header("6️⃣ Prediction")
 
-st.header("6️⃣ Prediction")
+    input_dict = {}
 
-input_dict = {}
+    for var in predictors:
+        if var in categorical_vars:
+            input_dict[var] = st.selectbox(var, df[var].cat.categories)
+        else:
+            numeric_series = pd.to_numeric(df[var], errors="coerce")
+            input_dict[var] = st.number_input(var, value=float(numeric_series.mean()))
 
-for var in predictors:
-    if var in categorical_vars:
-        input_dict[var] = st.selectbox(var, df[var].cat.categories)
-    else:
-        numeric_series = pd.to_numeric(df[var], errors="coerce")
-        input_dict[var] = st.number_input(var, value=float(numeric_series.mean()))
+    if st.button("Predict"):
 
-if st.button("Predict"):
+        new_df = pd.DataFrame([input_dict])
 
-    new_df = pd.DataFrame([input_dict])
+        for var in categorical_vars:
+            new_df[var] = pd.Categorical(
+                new_df[var],
+                categories=df[var].cat.categories
+            )
 
-    for var in categorical_vars:
-        new_df[var] = pd.Categorical(
-            new_df[var],
-            categories=df[var].cat.categories
-        )
-
-    # Prediction on transformed scale
-    y_trans_pred = model.predict(new_df)[0]
+        # Prediction on transformed scale
+        y_trans_pred = model.predict(new_df)[0]
 
     # ======================================================
     # Exact Inverse Transformations (Matching Your Table)
@@ -368,8 +367,6 @@ if st.button("Predict"):
 
     st.write(f"Predicted transformed value: {y_trans_pred:.4f}")
     st.success(f"Predicted original {response}: {y_original_pred:.4f}")
-
-
     
     # ======================================================
     # 8️⃣ Predicted vs Actual
