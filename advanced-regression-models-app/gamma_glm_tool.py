@@ -1,4 +1,3 @@
-```python
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -76,7 +75,7 @@ def run():
     st.code(formula)
 
     # ======================================================
-    # 3️⃣ RESPONSE CHECK
+    # 3️⃣ RESPONSE DIAGNOSTICS
     # ======================================================
 
     st.header("2️⃣ Response Diagnostics")
@@ -88,10 +87,9 @@ def run():
         st.error("Gamma GLM requires strictly positive response values.")
         return
 
-    transformed_response = response + "_log"
-    df_model[transformed_response] = np.log(df_model[response])
+    log_response = response + "_log"
+    df_model[log_response] = np.log(df_model[response])
 
-    # Side-by-side histograms
     col1, col2 = st.columns(2)
 
     with col1:
@@ -106,17 +104,16 @@ def run():
     with col2:
         fig_log = px.histogram(
             df_model,
-            x=transformed_response,
+            x=log_response,
             title="log(Response)",
             marginal="box"
         )
         st.plotly_chart(fig_log)
 
-    # Shapiro diagnostics
     if len(df_model[response]) >= 3:
 
         stat_orig, p_orig = shapiro(df_model[response])
-        stat_log, p_log = shapiro(df_model[transformed_response])
+        stat_log, p_log = shapiro(df_model[log_response])
 
         st.subheader("Normality Diagnostics")
 
@@ -334,4 +331,3 @@ def run():
 
 if __name__ == "__main__":
     run()
-```
