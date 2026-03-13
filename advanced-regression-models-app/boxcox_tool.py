@@ -65,6 +65,17 @@ def run():
     df["tr_score"] = 1 - (1 / df[response])
 
     # ======================================================
+    # DISPLAY ORIGINAL VS TRANSFORMED
+    # ======================================================
+
+    st.subheader("Original vs Transformed Response")
+
+    comparison_df = df[[response]].copy()
+    comparison_df["tr_score"] = df["tr_score"]
+
+    st.dataframe(comparison_df)
+
+    # ======================================================
     # 5. HISTOGRAM + NORMAL OVERLAY (MATCH COLAB)
     # ======================================================
 
