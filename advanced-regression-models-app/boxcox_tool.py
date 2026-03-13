@@ -8,30 +8,6 @@ from scipy.stats import shapiro, chi2
 
 
 # ======================================================
-# Transformation Helper
-# ======================================================
-
-def transformation_info(lam):
-
-    lam_rounded = round(lam, 1)
-
-    transformations = {
-        -2.0: {"name": "Inverse Square"},
-        -1.0: {"name": "Inverse (Reciprocal)"},
-        -0.5: {"name": "Inverse Square Root"},
-        0.0: {"name": "Natural Log"},
-        0.5: {"name": "Square Root"},
-        1.0: {"name": "Linear"},
-        2.0: {"name": "Square"}
-    }
-
-    return transformations.get(
-        lam_rounded,
-        {"name": "Custom λ Transformation"}
-    )
-
-
-# ======================================================
 # APP
 # ======================================================
 
@@ -90,59 +66,62 @@ def run():
     st.code(formula_original)
 
     # ======================================================
-    # 2️⃣ Box–Cox Transformation (FIXED)
+    # 2️⃣ Box–Cox Transformation (Corrected)
     # ======================================================
 
     st.header("2️⃣ Box–Cox Transformation")
 
     df_model = df.copy()
-    transformed = False
     transformed_response = response
 
+    # Force numeric conversion
     df_model[response] = pd.to_numeric(df_model[response], errors="coerce")
+
     y_clean = df_model[response].dropna()
 
     if (y_clean <= 0).any():
         st.warning("Box–Cox requires strictly positive response values.")
-    else:
-        chosen_lambda = st.number_input("Enter λ value", value=0.0, step=0.1)
+        return
 
-        info = transformation_info(chosen_lambda)
-        st.write(f"Selected transformation: **{info['name']}**")
+    # Default λ = -1 to match your expected transformation
+    chosen_lambda = st.number_input("Enter λ value", value=-1.0, step=0.1)
 
-        if st.checkbox("Apply Transformation"):
+    if st.checkbox("Apply Transformation"):
 
-            transformed = True
-            transformed_response = response + "_tr"
+        transformed_response = response + "_tr"
 
-            if np.isclose(chosen_lambda, 0):
-                df_model[transformed_response] = np.log(df_model[response])
+        if np.isclose(chosen_lambda, 0):
+            df_model[transformed_response] = np.log(df_model[response])
+        else:
+            df_model[transformed_response] = (
+                np.power(df_model[response], chosen_lambda) - 1
+            ) / chosen_lambda
+
+        # Drop rows with missing after transformation
+        df_model = df_model.dropna(subset=[transformed_response] + predictors)
+
+        # Display both columns
+        st.subheader("Original vs Transformed Response")
+        st.dataframe(df_model[[response, transformed_response]].head(20))
+
+        # Normality test on transformed response
+        if len(df_model[transformed_response]) >= 3:
+            stat_y, p_y = shapiro(df_model[transformed_response])
+
+            st.subheader("Normality Test (Transformed Response)")
+            st.write(f"Shapiro-Wilk Statistic: {stat_y:.4f}")
+            st.write(f"p-value: {p_y:.4f}")
+
+            if p_y <= 0.05:
+                st.warning("Transformed response is NOT normally distributed.")
             else:
-                df_model[transformed_response] = (
-                    np.power(df_model[response], chosen_lambda) - 1
-                ) / chosen_lambda
+                st.success("Transformed response appears normally distributed.")
 
-            # Drop missing after transformation
-            df_model = df_model.dropna(subset=[transformed_response] + predictors)
-
-            # Display both Y and Y_trans
-            st.subheader("Original vs Transformed Response")
-            st.dataframe(df_model[[response, transformed_response]].head(20))
-
-            # Normality of transformed response
-            if len(df_model[transformed_response]) >= 3:
-                stat_y, p_y = shapiro(df_model[transformed_response])
-                st.subheader("Normality Test (Transformed Response)")
-                st.write(f"Shapiro-Wilk Statistic: {stat_y:.4f}")
-                st.write(f"p-value: {p_y:.4f}")
-
-                if p_y <= 0.05:
-                    st.warning("Transformed response is NOT normally distributed.")
-                else:
-                    st.success("Transformed response appears normally distributed.")
+    else:
+        return
 
     # ======================================================
-    # 3️⃣ Model Fitting (Original GLM kept)
+    # 3️⃣ Model Fitting (Original GLM Preserved)
     # ======================================================
 
     st.header("3️⃣ Model Fitting")
@@ -171,13 +150,8 @@ def run():
         st.write(f"Shapiro-Wilk Statistic: {stat_resid:.4f}")
         st.write(f"p-value: {p_resid:.4f}")
 
-        if p_resid <= 0.05:
-            st.warning("Residuals are NOT normally distributed.")
-        else:
-            st.success("Residuals appear normally distributed.")
-
     # ======================================================
-    # 5️⃣ Likelihood Ratio (Deviance) Test (Original kept)
+    # 5️⃣ Deviance Test (Original Structure Preserved)
     # ======================================================
 
     null_model = smf.glm(
@@ -196,7 +170,7 @@ def run():
     st.write(f"p-value: {p_value:.4f}")
 
     # ======================================================
-    # 6️⃣ Interpretation of Coefficients
+    # 6️⃣ Coefficient Interpretation
     # ======================================================
 
     st.header("4️⃣ Interpretation of Coefficients")
