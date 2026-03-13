@@ -5,7 +5,7 @@ import numpy as np
 import plotly.express as px
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
-from scipy.stats import chi2
+from scipy.stats import shapiro, chi2
 
 
 def run():
@@ -17,6 +17,7 @@ def run():
     # ======================================================
 
     uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
+
     if uploaded_file is None:
         return
 
@@ -41,25 +42,32 @@ def run():
     if not predictors:
         return
 
-    categorical_vars = st.multiselect("Select Categorical Predictors", predictors)
+    categorical_vars = st.multiselect(
+        "Select Categorical Variables (Factors)",
+        predictors
+    )
 
     reference_dict = {}
 
     for col in categorical_vars:
         df[col] = df[col].astype("category")
+
         ref = st.selectbox(
-            f"Reference level for {col}",
+            f"Select reference level for {col}",
             df[col].cat.categories,
             key=f"ref_{col}"
         )
+
         reference_dict[col] = ref
 
     terms = []
 
     for var in predictors:
+
         if var in categorical_vars:
             ref = reference_dict[var]
             terms.append(f'C({var}, Treatment(reference="{ref}"))')
+
         else:
             terms.append(var)
 
@@ -71,22 +79,54 @@ def run():
     # 3️⃣ RESPONSE CHECK
     # ======================================================
 
-    st.header("2️⃣ Response Check (Gamma Requirement)")
+    st.header("2️⃣ Response Diagnostics")
 
-    df[response] = pd.to_numeric(df[response], errors="coerce")
+    df_model = df.copy()
+    df_model[response] = pd.to_numeric(df_model[response], errors="coerce")
 
-    if (df[response] <= 0).any():
+    if (df_model[response] <= 0).any():
         st.error("Gamma GLM requires strictly positive response values.")
         return
 
-    fig = px.histogram(
-        df,
-        x=response,
-        title=f"Histogram of {response}",
-        marginal="box"
-    )
+    transformed_response = response + "_log"
+    df_model[transformed_response] = np.log(df_model[response])
 
-    st.plotly_chart(fig)
+    # Side-by-side histograms
+    col1, col2 = st.columns(2)
+
+    with col1:
+        fig_orig = px.histogram(
+            df_model,
+            x=response,
+            title="Original Response",
+            marginal="box"
+        )
+        st.plotly_chart(fig_orig)
+
+    with col2:
+        fig_log = px.histogram(
+            df_model,
+            x=transformed_response,
+            title="log(Response)",
+            marginal="box"
+        )
+        st.plotly_chart(fig_log)
+
+    # Shapiro diagnostics
+    if len(df_model[response]) >= 3:
+
+        stat_orig, p_orig = shapiro(df_model[response])
+        stat_log, p_log = shapiro(df_model[transformed_response])
+
+        st.subheader("Normality Diagnostics")
+
+        st.write(f"Original Y — Shapiro p-value: {p_orig:.4f}")
+        st.write(f"log(Y) — Shapiro p-value: {p_log:.4f}")
+
+        if p_log > 0.05:
+            st.success("log(Y) appears approximately normally distributed.")
+        else:
+            st.warning("log(Y) does NOT appear normally distributed.")
 
     # ======================================================
     # 4️⃣ MODEL FITTING
@@ -96,7 +136,7 @@ def run():
 
     model = smf.glm(
         formula=formula,
-        data=df,
+        data=df_model,
         family=sm.families.Gamma(link=sm.families.links.Log())
     ).fit()
 
@@ -107,17 +147,17 @@ def run():
     # 5️⃣ LIKELIHOOD RATIO TEST
     # ======================================================
 
+    st.subheader("Likelihood Ratio (Deviance) Test")
+
     null_model = smf.glm(
-        formula=response + " ~ 1",
-        data=df,
+        response + " ~ 1",
+        data=df_model,
         family=sm.families.Gamma(link=sm.families.links.Log())
     ).fit()
 
     lr_stat = 2 * (model.llf - null_model.llf)
     df_diff = int(model.df_model)
     p_value = chi2.sf(lr_stat, df_diff)
-
-    st.subheader("Likelihood Ratio (Deviance) Test")
 
     st.write(f"LR Statistic: {lr_stat:.4f}")
     st.write(f"Degrees of Freedom: {df_diff}")
@@ -128,9 +168,6 @@ def run():
     # ======================================================
 
     st.header("4️⃣ Model Fit Evaluation")
-
-    n = int(model.nobs)
-    k = int(model.df_model) + 1
 
     loglik = model.llf
     aic = model.aic
@@ -179,12 +216,11 @@ def run():
 
         return equation
 
-    st.subheader("Fitted Regression Equation")
-
+    st.subheader("Fitted Regression Equation (Full Model)")
     st.latex(build_equation(model, response))
 
     # ======================================================
-    # 8️⃣ COEFFICIENT INTERPRETATION
+    # 8️⃣ INTERPRETATION
     # ======================================================
 
     st.header("5️⃣ Interpretation of Coefficients")
@@ -204,8 +240,8 @@ def run():
         else:
 
             interpretation = (
-                f"A one-unit increase in '{term}' multiplies "
-                f"the expected response by exp({coef:.4f})."
+                f"A one-unit increase in '{term}' multiplies the expected "
+                f"response by exp({coef:.4f})."
             )
 
         significance = (
@@ -233,24 +269,25 @@ def run():
     for var in predictors:
 
         if var in categorical_vars:
-
             input_dict[var] = st.selectbox(var, df[var].cat.categories)
 
         else:
-
             numeric_series = pd.to_numeric(df[var], errors="coerce")
+            input_dict[var] = st.number_input(var, value=float(numeric_series.mean()))
 
-            input_dict[var] = st.number_input(
-                var,
-                value=float(numeric_series.mean())
-            )
+    st.markdown("### Response Rescaling (Optional)")
+
+    scale_factor = st.number_input(
+        "If you rescaled the response (e.g., y/100 or y/1000), enter the divisor used. Otherwise leave as 1.",
+        value=1.0,
+        min_value=1.0
+    )
 
     if st.button("Predict"):
 
         new_df = pd.DataFrame([input_dict])
 
         for var in categorical_vars:
-
             new_df[var] = pd.Categorical(
                 new_df[var],
                 categories=df[var].cat.categories
@@ -258,7 +295,12 @@ def run():
 
         prediction = model.predict(new_df)[0]
 
-        st.success(f"Predicted {response}: {prediction:.4f}")
+        prediction_original = prediction * scale_factor
+
+        st.subheader("Prediction Results")
+
+        st.write(f"Predicted model value: {prediction:.4f}")
+        st.success(f"Predicted original {response}: {prediction_original:.4f}")
 
     # ======================================================
     # 🔟 PREDICTED VS ACTUAL
@@ -266,17 +308,17 @@ def run():
 
     st.header("7️⃣ Predicted vs Actual")
 
-    predicted_vals = model.predict(df)
+    predicted_vals = model.predict(df_model)
 
     fig2 = px.scatter(
         x=predicted_vals,
-        y=df[response],
+        y=df_model[response],
         labels={'x': 'Predicted', 'y': 'Actual'},
         title="Predicted vs Actual Values"
     )
 
-    min_val = min(predicted_vals.min(), df[response].min())
-    max_val = max(predicted_vals.max(), df[response].max())
+    min_val = min(predicted_vals.min(), df_model[response].min())
+    max_val = max(predicted_vals.max(), df_model[response].max())
 
     fig2.add_shape(
         type="line",
