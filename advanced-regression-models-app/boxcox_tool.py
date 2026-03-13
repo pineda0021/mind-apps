@@ -355,39 +355,25 @@ def run():
                 categories=df_model[var].cat.categories
             )
 
-        # 1️⃣ Prediction on transformed scale
-        y_trans_pred = float(model.predict(new_df)[0])
-
-        # 2️⃣ Inverse transformation (exact table match)
-
-        if lambda_value == -2:
-            y_original_pred = 1 / np.sqrt(1 - 2 * y_trans_pred)
-
-        elif lambda_value == -1:
-            y_original_pred = 1 / (1 - y_trans_pred)
-
-        elif lambda_value == -0.5:
-            y_original_pred = 1 / (1 - y_trans_pred / 2) ** 2
-
-        elif lambda_value == 0:
-            y_original_pred = np.exp(y_trans_pred)
-
-        elif lambda_value == 0.5:
-            y_original_pred = (y_trans_pred / 2 + 1) ** 2
-
-        elif lambda_value == 1:
-            y_original_pred = y_trans_pred + 1
-
-        elif lambda_value == 2:
-            y_original_pred = np.sqrt(2 * y_trans_pred + 1)
-
-        else:
-            st.error("λ must be one of: -2, -1, -0.5, 0, 0.5, 1, 2")
+         try:
+            prediction_tr = model.predict(new_df)[0]
+        except Exception:
+            st.error("Prediction failed for this input.")
             return
 
-        st.subheader("Prediction Results")
-        st.write(f"Predicted transformed value: {y_trans_pred:.4f}")
-        st.success(f"Predicted original {response}: {y_original_pred:.4f}")
+        if transformed:
+
+            if chosen_lambda == 0:
+                prediction = np.exp(prediction_tr)
+            else:
+                prediction = (chosen_lambda * prediction_tr + 1)**(1 / chosen_lambda)
+
+            st.success(f"Predicted {response} (original scale): {prediction:.4f}")
+
+        else:
+            st.success(f"Predicted {response}: {prediction_tr:.4f}")
+
+    st.header("7️⃣ Predicted vs Actual")
 
     
     # ======================================================
