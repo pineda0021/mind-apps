@@ -124,30 +124,30 @@ def run():
        # Apply Table-Based Transformation (Exact Match)
        # ======================================================
 
-    if lambda_value == -2:
-        df_model[transformed_response] = 0.5 * (1 - 1 / (df_model[response] ** 2))
+        if lambda_value == -2:
+            df_model[transformed_response] = 0.5 * (1 - 1 / (df_model[response] ** 2))
 
-    elif lambda_value == -1:
-        df_model[transformed_response] = 1 - 1 / df_model[response]
+        elif lambda_value == -1:
+            df_model[transformed_response] = 1 - 1 / df_model[response]
 
-    elif lambda_value == -0.5:
-        df_model[transformed_response] = 2 * (1 - 1 / np.sqrt(df_model[response]))
+        elif lambda_value == -0.5:
+            df_model[transformed_response] = 2 * (1 - 1 / np.sqrt(df_model[response]))
 
-    elif lambda_value == 0:
-        df_model[transformed_response] = np.log(df_model[response])
+        elif lambda_value == 0:
+            df_model[transformed_response] = np.log(df_model[response])
 
-    elif lambda_value == 0.5:
-        df_model[transformed_response] = 2 * (np.sqrt(df_model[response]) - 1)
+        elif lambda_value == 0.5:
+            df_model[transformed_response] = 2 * (np.sqrt(df_model[response]) - 1)
 
-    elif lambda_value == 1:
-        df_model[transformed_response] = df_model[response] - 1
+        elif lambda_value == 1:
+            df_model[transformed_response] = df_model[response] - 1
 
-    elif lambda_value == 2:
-        df_model[transformed_response] = 0.5 * (df_model[response] ** 2 - 1)
+        elif lambda_value == 2:
+            df_model[transformed_response] = 0.5 * (df_model[response] ** 2 - 1)
 
-    else:
-        st.error("λ must be one of: -2, -1, -0.5, 0, 0.5, 1, 2")
-        return
+        else:
+            st.error("λ must be one of: -2, -1, -0.5, 0, 0.5, 1, 2")
+            return
 
         df_model = df_model.dropna(subset=[transformed_response] + predictors)
 
