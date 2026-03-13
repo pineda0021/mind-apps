@@ -136,10 +136,10 @@ def run():
 
     st.header("4️⃣ Fit Gaussian GLM")
 
-    formula_transformed = transformed_response + " ~ " + " + ".join(terms)
+    formula_transformed = y_trans + " ~ " + " + ".join(terms)
 
     model = smf.glm(
-        formula=formula_transformed,
+        formula=y_trans,
         data=df_fit,
         family=sm.families.Gaussian(link=sm.families.links.identity())
     ).fit()
