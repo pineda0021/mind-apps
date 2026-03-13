@@ -270,15 +270,10 @@ def run():
 
         else:
             numeric_series = pd.to_numeric(df[var], errors="coerce")
-            input_dict[var] = st.number_input(var, value=float(numeric_series.mean()))
-
-    st.markdown("### Response Rescaling (Optional)")
-
-    scale_factor = st.number_input(
-        "If you rescaled the response (e.g., y/100 or y/1000), enter the divisor used. Otherwise leave as 1.",
-        value=1.0,
-        min_value=1.0
-    )
+            input_dict[var] = st.number_input(
+                var,
+                value=float(numeric_series.mean())
+            )
 
     if st.button("Predict"):
 
@@ -292,12 +287,8 @@ def run():
 
         prediction = model.predict(new_df)[0]
 
-        prediction_original = prediction * scale_factor
-
         st.subheader("Prediction Results")
-
-        st.write(f"Predicted model value: {prediction:.4f}")
-        st.success(f"Predicted original {response}: {prediction_original:.4f}")
+        st.success(f"Predicted {response}: {prediction:.4f}")
 
     # ======================================================
     # 🔟 PREDICTED VS ACTUAL
