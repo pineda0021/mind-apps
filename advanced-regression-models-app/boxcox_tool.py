@@ -218,8 +218,9 @@ def run():
     aic = model.aic
     bic = model.bic
 
-    sigma_hat = np.sqrt(model.mse_resid)
-    rmse = np.sqrt(np.mean(model.resid ** 2))
+    residuals = model.resid_response
+    sigma_hat = np.sqrt(np.sum(residuals**2) / model.df_resid)
+    rmse = np.sqrt(np.mean(residuals**2))
 
     if (n - k - 1) > 0:
         aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
