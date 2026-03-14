@@ -2,6 +2,9 @@ import streamlit as st
 import glm_tool
 import boxcox_tool
 import gamma_glm_tool
+import logistic_regression_tool
+import probit_regression_tool
+import cloglog_regression_tool
 
 st.set_page_config(layout="wide")
 
@@ -12,7 +15,10 @@ tool = st.sidebar.radio(
     [
         "General Linear Regression Model",
         "Box-Cox Transformation",
-        "Gamma GLM"
+        "Gamma GLM",
+        "Binary Logistic Regression Model",
+        "Probit Regression Model",
+        "Complementary Log-Log Model"
     ]
 )
 
@@ -26,7 +32,17 @@ elif tool == "Box-Cox Transformation":
 
 elif tool == "Gamma GLM":
     gamma_glm_tool.run()
-    
+
+elif tool == "Binary Logistic Regression Model":
+    logistic_regression_tool.run()
+
+elif tool == "Probit Regression Model":
+    probit_regression_tool.run()
+
+elif tool == "Complementary Log-Log Model":
+    cloglog_regression_tool.run()
+
+
 # ---------- Footer ----------
 st.markdown("""
 ---
