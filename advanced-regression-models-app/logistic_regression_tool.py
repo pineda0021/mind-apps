@@ -158,24 +158,26 @@ def run():
     # ======================================================
     # 7️⃣ EQUATION BUILDER
     # ======================================================
-
     def build_equation(model, response):
 
         params = model.params
 
-        equation = f"\\log\\left(\\frac{{p}}{{1-p}}\\right) = {round(params['Intercept'],4)}"
+        intercept = params.get("Intercept", params.get("const", 0))
+
+        equation = f"\\log\\left(\\frac{{p}}{{1-p}}\\right) = {round(intercept,4)}"
 
         for name in params.index:
 
-            if name == "Intercept":
+            if name in ["Intercept","const"]:
                 continue
 
-            coef = round(params[name],4)
-            sign = "+" if coef >= 0 else "-"
+        coef = round(params[name],4)
+        sign = "+" if coef >= 0 else "-"
 
-            equation += f" {sign} {abs(coef)} \\cdot {name}"
+        equation += f" {sign} {abs(coef)} \\cdot {name}"
 
-        return equation
+    return equation
+    
 
 
     st.subheader("Logistic Regression Equation")
