@@ -8,3 +8,4 @@ xlsxwriter
 openpyxl
 scipy
 statsmodels
+scikit-learn
