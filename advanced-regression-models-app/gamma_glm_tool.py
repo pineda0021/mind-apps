@@ -220,7 +220,7 @@ def run():
     # 8️⃣ INTERPRETATION
     # ======================================================
 
-    st.header("4️⃣ Interpretation of Coefficients")
+    st.header("5️⃣ Interpretation of Coefficients")
 
     for term in model.params.index:
 
@@ -228,63 +228,46 @@ def run():
         pval = model.pvalues[term]
         exp_beta = np.exp(coef)
 
-    # --------------------------------------------------
-    # INTERCEPT
-    # --------------------------------------------------
+        if term == "Intercept":
 
-    if term == "Intercept":
+            interpretation = (
+                f"When all predictors are at their reference levels, "
+                f"the expected mean of **{response}** equals exp({coef:.4f})."
+            )
 
-        interpretation = (
-            f"When all predictors are at their reference levels, "
-            f"the expected mean of **{response}** equals exp({coef:.4f})."
+        elif "[T." in term:
+
+            var_name = term.split("[")[0]
+            level = term.split("[T.")[-1].replace("]", "")
+            var_name = var_name.replace("C(", "").split(",")[0]
+
+            reference = reference_dict.get(var_name, "reference")
+
+            interpretation = (
+                f"For observations where **{var_name} = {level}**, "
+                f"the estimated mean of **{response}** is  \n"
+                f"**exp({coef:.4f}) × 100% = {exp_beta*100:.2f}%**  \n"
+                f"of that for **{var_name} = {reference}** (reference level)."
+            )
+
+        else:
+
+            percent_change = (exp_beta - 1) * 100
+
+            interpretation = (
+                f"If **{term}** increases by one unit, "
+                f"the expected mean of **{response}** changes by  \n"
+                f"**(exp({coef:.4f}) − 1) × 100% = {percent_change:.2f}%**."
+            )
+
+        significance = (
+            "Statistically significant."
+            if pval <= 0.05
+            else "Not statistically significant."
         )
 
-    # --------------------------------------------------
-    # CATEGORICAL VARIABLES
-    # --------------------------------------------------
-
-    elif "[T." in term:
-
-        var_name = term.split("[")[0]
-        level = term.split("[T.")[-1].replace("]", "")
-
-        var_name = var_name.replace("C(", "").split(",")[0]
-
-        reference = reference_dict.get(var_name, "reference")
-
-        interpretation = (
-            f"For observations where **{var_name} = {level}**, "
-            f"the estimated mean of **{response}** is  \n"
-            f"**exp({coef:.4f}) × 100% = {exp_beta*100:.2f}%**  \n"
-            f"of that for **{var_name} = {reference}** (reference level)."
-        )
-
-    # --------------------------------------------------
-    # NUMERICAL VARIABLES
-    # --------------------------------------------------
-
-    else:
-
-        percent_change = (exp_beta - 1) * 100
-
-        interpretation = (
-            f"If **{term}** increases by one unit, "
-            f"the expected mean of **{response}** changes by  \n"
-            f"**(exp({coef:.4f}) − 1) × 100% = {percent_change:.2f}%**."
-        )
-
-    # --------------------------------------------------
-    # SIGNIFICANCE
-    # --------------------------------------------------
-
-    significance = (
-        "Statistically significant."
-        if pval <= 0.05
-        else "Not statistically significant."
-    )
-
-    st.markdown(
-        f"""
+        st.markdown(
+            f"""
 ### {term}
 
 - **Coefficient:** {coef:.4f}  
@@ -296,9 +279,8 @@ def run():
 
 **Statistical significance:** {significance}
 """
-    )
-    
-  
+        )
+
     # ======================================================
     # 9️⃣ PREDICTION
     # ======================================================
