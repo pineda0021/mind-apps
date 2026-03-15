@@ -32,21 +32,24 @@ st.dataframe(df.head())
 
 st.header("1️⃣ Model Specification")
 
-response_original = st.selectbox("Select Binary Response Variable (Y)", df.columns)
+response_original = st.selectbox(
+    "Select Binary Response Variable (Y)",
+    df.columns
+)
 
-# Convert response to categorical
 df[response_original] = df[response_original].astype("category")
 
-# Select reference level
 ref_level = st.selectbox(
     "Select reference level for response (coded as 0)",
     df[response_original].cat.categories
 )
 
-# Create binary response variable
 df["response_binary"] = (df[response_original] != ref_level).astype(int)
 
-st.info(f"The model estimates the probability that **{response_original} ≠ '{ref_level}'**.")
+st.info(
+    f"The model estimates the probability that "
+    f"**{response_original} ≠ '{ref_level}'**."
+)
 
 response = "response_binary"
 
@@ -102,8 +105,8 @@ df_model = df.copy()
 fig = px.histogram(
     df_model,
     x=response,
-    title="Distribution of Binary Response",
-    color=response
+    color=response,
+    title="Distribution of Binary Response"
 )
 
 st.plotly_chart(fig)
@@ -149,42 +152,40 @@ st.write(f"p-value: {p_value:.6f}")
 
 st.header("4️⃣ Model Fit Evaluation")
 
-loglik = model.llf
-aic = model.aic
-bic = model.bic
-deviance = model.deviance
-pearson = model.pearson_chi2
-
 col1, col2, col3, col4, col5 = st.columns(5)
 
-col1.metric("Log-Likelihood", round(loglik,2))
-col2.metric("AIC", round(aic,2))
-col3.metric("BIC", round(bic,2))
-col4.metric("Deviance", round(deviance,2))
-col5.metric("Pearson χ²", round(pearson,2))
+col1.metric("Log-Likelihood", round(model.llf, 2))
+col2.metric("AIC", round(model.aic, 2))
+col3.metric("BIC", round(model.bic, 2))
+col4.metric("Deviance", round(model.deviance, 2))
+col5.metric("Pearson χ²", round(model.pearson_chi2, 2))
 
 # ======================================================
 # 7️⃣ EQUATION BUILDER
 # ======================================================
+
 def build_equation(model):
 
     params = model.params
-
     intercept = params.get("Intercept", params.get("const", 0))
 
-    equation = f"\\log\\left(\\frac{{p}}{{1-p}}\\right) = {round(intercept,4)}"
+    equation = (
+        "\\log\\left(\\frac{p}{1-p}\\right)"
+        f" = {round(intercept,4)}"
+    )
 
     for name in params.index:
 
         if name in ["Intercept", "const"]:
             continue
 
-        coef = round(params[name],4)
+        coef = round(params[name], 4)
         sign = "+" if coef >= 0 else "-"
 
         equation += f" {sign} {abs(coef)} \\cdot {name}"
 
     return equation
+
 
 st.subheader("Logistic Regression Equation")
 st.latex(build_equation(model))
@@ -200,13 +201,17 @@ for term in model.params.index:
     coef = model.params[term]
     pval = model.pvalues[term]
 
-    if term in ["Intercept","const"]:
-        interpretation = "Baseline log-odds when predictors are zero/reference."
+    if term in ["Intercept", "const"]:
+        interpretation = (
+            "Baseline log-odds when predictors "
+            "are zero/reference."
+        )
     else:
         odds_ratio = np.exp(coef)
         interpretation = (
             f"Odds ratio = exp({coef:.4f}) = {odds_ratio:.4f}. "
-            f"A one-unit increase multiplies the odds by {odds_ratio:.4f}."
+            f"A one-unit increase multiplies the odds "
+            f"by {odds_ratio:.4f}."
         )
 
     significance = (
@@ -234,10 +239,20 @@ input_dict = {}
 for var in predictors:
 
     if var in categorical_vars:
-        input_dict[var] = st.selectbox(var, df[var].cat.categories)
+        input_dict[var] = st.selectbox(
+            var,
+            df[var].cat.categories
+        )
     else:
-        numeric_series = pd.to_numeric(df[var], errors="coerce")
-        input_dict[var] = st.number_input(var, value=float(numeric_series.mean()))
+        numeric_series = pd.to_numeric(
+            df[var],
+            errors="coerce"
+        )
+
+        input_dict[var] = st.number_input(
+            var,
+            value=float(numeric_series.mean())
+        )
 
 if st.button("Predict Probability"):
 
@@ -252,7 +267,9 @@ if st.button("Predict Probability"):
     prob = model.predict(new_df)[0]
 
     st.subheader("Prediction Results")
-    st.success(f"Predicted Probability of Y=1: {prob:.4f}")
+    st.success(
+        f"Predicted Probability of Y=1: {prob:.4f}"
+    )
 
 # ======================================================
 # 🔟 ROC CURVE
@@ -264,7 +281,10 @@ y_true = df_model[response]
 y_pred = model.predict(df_model)
 
 if len(np.unique(y_true)) < 2:
-    st.warning("ROC curve cannot be computed because only one class is present.")
+    st.warning(
+        "ROC curve cannot be computed because "
+        "only one class is present."
+    )
     return
 
 fpr, tpr, _ = roc_curve(y_true, y_pred)
@@ -273,17 +293,20 @@ roc_auc = auc(fpr, tpr)
 fig = px.line(
     x=fpr,
     y=tpr,
-    labels=dict(x="False Positive Rate", y="True Positive Rate"),
+    labels={
+        "x": "False Positive Rate",
+        "y": "True Positive Rate"
+    },
     title=f"ROC Curve (AUC = {roc_auc:.3f})"
 )
 
 fig.add_shape(
     type="line",
-    line=dict(dash="dash"),
     x0=0,
     y0=0,
     x1=1,
-    y1=1
+    y1=1,
+    line=dict(dash="dash")
 )
 
 st.plotly_chart(fig)
@@ -291,4 +314,5 @@ st.plotly_chart(fig)
 
 if **name** == "**main**":
 run()
+
 
