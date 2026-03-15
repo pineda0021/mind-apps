@@ -9,7 +9,6 @@ from sklearn.metrics import roc_curve, auc
 
 def run():
 
-```
 st.title("📘 Binary Logistic Regression Model")
 
 # 1️⃣ DATA UPLOAD
@@ -247,10 +246,6 @@ fig.add_shape(
 )
 
 st.plotly_chart(fig)
-```
-
-if **name** == "**main**":
-run()
 
 
 if **name** == "**main**":
