@@ -12,12 +12,8 @@ def run():
 ```
 st.title("📘 Binary Logistic Regression Model")
 
-# ======================================================
 # 1️⃣ DATA UPLOAD
-# ======================================================
-
 uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
-
 if uploaded_file is None:
     return
 
@@ -26,15 +22,11 @@ df = pd.read_csv(uploaded_file)
 st.subheader("Data Preview")
 st.dataframe(df.head())
 
-# ======================================================
 # 2️⃣ MODEL SPECIFICATION
-# ======================================================
-
 st.header("1️⃣ Model Specification")
 
 response_original = st.selectbox(
-    "Select Binary Response Variable (Y)",
-    df.columns
+    "Select Binary Response Variable (Y)", df.columns
 )
 
 df[response_original] = df[response_original].astype("category")
@@ -48,14 +40,14 @@ df["response_binary"] = (df[response_original] != ref_level).astype(int)
 
 st.info(
     f"The model estimates the probability that "
-    f"**{response_original} ≠ '{ref_level}'**."
+    f"{response_original} ≠ '{ref_level}'."
 )
 
 response = "response_binary"
 
 predictors = st.multiselect(
     "Select Predictor Variables (X)",
-    [col for col in df.columns if col != response_original]
+    [c for c in df.columns if c != response_original]
 )
 
 if not predictors:
@@ -69,7 +61,6 @@ categorical_vars = st.multiselect(
 reference_dict = {}
 
 for col in categorical_vars:
-
     df[col] = df[col].astype("category")
 
     ref = st.selectbox(
@@ -83,10 +74,11 @@ for col in categorical_vars:
 terms = []
 
 for var in predictors:
-
     if var in categorical_vars:
         ref = reference_dict[var]
-        terms.append(f'C({var}, Treatment(reference="{ref}"))')
+        terms.append(
+            f'C({var}, Treatment(reference="{ref}"))'
+        )
     else:
         terms.append(var)
 
@@ -94,16 +86,11 @@ formula = response + " ~ " + " + ".join(terms)
 
 st.code(formula)
 
-# ======================================================
 # 3️⃣ RESPONSE DIAGNOSTICS
-# ======================================================
-
 st.header("2️⃣ Response Diagnostics")
 
-df_model = df.copy()
-
 fig = px.histogram(
-    df_model,
+    df,
     x=response,
     color=response,
     title="Distribution of Binary Response"
@@ -111,30 +98,24 @@ fig = px.histogram(
 
 st.plotly_chart(fig)
 
-# ======================================================
 # 4️⃣ MODEL FITTING
-# ======================================================
-
 st.header("3️⃣ Model Fitting")
 
 model = smf.glm(
     formula=formula,
-    data=df_model,
+    data=df,
     family=sm.families.Binomial()
 ).fit()
 
 st.subheader("Model Summary")
 st.text(model.summary())
 
-# ======================================================
 # 5️⃣ LIKELIHOOD RATIO TEST
-# ======================================================
-
 st.subheader("Likelihood Ratio Test")
 
 null_model = smf.glm(
     response + " ~ 1",
-    data=df_model,
+    data=df,
     family=sm.families.Binomial()
 ).fit()
 
@@ -146,10 +127,7 @@ st.write(f"LR Statistic: {lr_stat:.4f}")
 st.write(f"Degrees of Freedom: {df_diff}")
 st.write(f"p-value: {p_value:.6f}")
 
-# ======================================================
 # 6️⃣ MODEL FIT EVALUATION
-# ======================================================
-
 st.header("4️⃣ Model Fit Evaluation")
 
 col1, col2, col3, col4, col5 = st.columns(5)
@@ -160,64 +138,44 @@ col3.metric("BIC", round(model.bic, 2))
 col4.metric("Deviance", round(model.deviance, 2))
 col5.metric("Pearson χ²", round(model.pearson_chi2, 2))
 
-# ======================================================
-# 7️⃣ EQUATION BUILDER
-# ======================================================
-
-def build_equation(model):
-
-    params = model.params
-    intercept = params.get("Intercept", params.get("const", 0))
-
-    equation = (
-        "\\log\\left(\\frac{p}{1-p}\\right)"
-        f" = {round(intercept,4)}"
-    )
-
-    for name in params.index:
-
-        if name in ["Intercept", "const"]:
-            continue
-
-        coef = round(params[name], 4)
-        sign = "+" if coef >= 0 else "-"
-
-        equation += f" {sign} {abs(coef)} \\cdot {name}"
-
-    return equation
-
-
+# 7️⃣ EQUATION
 st.subheader("Logistic Regression Equation")
-st.latex(build_equation(model))
 
-# ======================================================
+params = model.params
+intercept = params.get("Intercept", params.get("const", 0))
+
+equation = f"log(p/(1-p)) = {round(intercept,4)}"
+
+for name in params.index:
+    if name in ["Intercept", "const"]:
+        continue
+
+    coef = round(params[name], 4)
+    sign = "+" if coef >= 0 else "-"
+    equation += f" {sign} {abs(coef)}·{name}"
+
+st.latex(equation)
+
 # 8️⃣ INTERPRETATION
-# ======================================================
-
 st.header("5️⃣ Interpretation of Coefficients")
 
-for term in model.params.index:
+for term in params.index:
 
-    coef = model.params[term]
+    coef = params[term]
     pval = model.pvalues[term]
 
     if term in ["Intercept", "const"]:
-        interpretation = (
-            "Baseline log-odds when predictors "
-            "are zero/reference."
-        )
+        interpretation = "Baseline log-odds."
     else:
-        odds_ratio = np.exp(coef)
+        odds = np.exp(coef)
         interpretation = (
-            f"Odds ratio = exp({coef:.4f}) = {odds_ratio:.4f}. "
-            f"A one-unit increase multiplies the odds "
-            f"by {odds_ratio:.4f}."
+            f"Odds ratio = exp({coef:.4f}) = {odds:.4f}"
         )
 
-    significance = (
-        "Statistically significant."
+    sig = (
+        "Statistically significant"
         if pval <= 0.05
-        else "Not statistically significant."
+        else "Not statistically significant"
     )
 
     st.markdown(
@@ -225,38 +183,28 @@ for term in model.params.index:
         f"- Coefficient: {coef:.4f}  \n"
         f"- p-value: {pval:.4f}  \n"
         f"- {interpretation}  \n"
-        f"- {significance}"
+        f"- {sig}"
     )
 
-# ======================================================
 # 9️⃣ PREDICTION
-# ======================================================
-
 st.header("6️⃣ Prediction")
 
-input_dict = {}
+inputs = {}
 
 for var in predictors:
 
     if var in categorical_vars:
-        input_dict[var] = st.selectbox(
-            var,
-            df[var].cat.categories
+        inputs[var] = st.selectbox(
+            var, df[var].cat.categories
         )
     else:
-        numeric_series = pd.to_numeric(
-            df[var],
-            errors="coerce"
-        )
-
-        input_dict[var] = st.number_input(
-            var,
-            value=float(numeric_series.mean())
+        inputs[var] = st.number_input(
+            var, value=float(df[var].mean())
         )
 
 if st.button("Predict Probability"):
 
-    new_df = pd.DataFrame([input_dict])
+    new_df = pd.DataFrame([inputs])
 
     for var in categorical_vars:
         new_df[var] = pd.Categorical(
@@ -266,25 +214,18 @@ if st.button("Predict Probability"):
 
     prob = model.predict(new_df)[0]
 
-    st.subheader("Prediction Results")
     st.success(
         f"Predicted Probability of Y=1: {prob:.4f}"
     )
 
-# ======================================================
 # 🔟 ROC CURVE
-# ======================================================
-
 st.header("7️⃣ ROC Curve")
 
-y_true = df_model[response]
-y_pred = model.predict(df_model)
+y_true = df[response]
+y_pred = model.predict(df)
 
 if len(np.unique(y_true)) < 2:
-    st.warning(
-        "ROC curve cannot be computed because "
-        "only one class is present."
-    )
+    st.warning("ROC cannot be computed.")
     return
 
 fpr, tpr, _ = roc_curve(y_true, y_pred)
@@ -293,19 +234,15 @@ roc_auc = auc(fpr, tpr)
 fig = px.line(
     x=fpr,
     y=tpr,
-    labels={
-        "x": "False Positive Rate",
-        "y": "True Positive Rate"
-    },
-    title=f"ROC Curve (AUC = {roc_auc:.3f})"
+    labels={"x": "False Positive Rate",
+            "y": "True Positive Rate"},
+    title=f"ROC Curve (AUC={roc_auc:.3f})"
 )
 
 fig.add_shape(
     type="line",
-    x0=0,
-    y0=0,
-    x1=1,
-    y1=1,
+    x0=0, y0=0,
+    x1=1, y1=1,
     line=dict(dash="dash")
 )
 
