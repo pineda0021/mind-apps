@@ -227,33 +227,69 @@ def run():
         coef = model.params[term]
         pval = model.pvalues[term]
 
-        if term == "Intercept":
+        exp_beta = np.exp(coef)
 
-            interpretation = (
-                f"When predictors are zero/reference levels, "
-                f"log-mean of {response} is {coef:.4f}."
-            )
+    # --------------------------------------------------
+    # INTERCEPT
+    # --------------------------------------------------
+    if term == "Intercept":
 
-        else:
-
-            interpretation = (
-                f"A one-unit increase in '{term}' multiplies the expected "
-                f"response by exp({coef:.4f})."
-            )
-
-        significance = (
-            "Statistically significant."
-            if pval <= 0.05
-            else "Not statistically significant."
+        interpretation = (
+            f"When all predictors are at their reference levels, "
+            f"the log-mean of **{response}** is **{coef:.4f}**."
         )
 
-        st.markdown(
-            f"**{term}**  \n"
-            f"- Coefficient: {coef:.4f}  \n"
-            f"- p-value: {pval:.4f}  \n"
-            f"- {interpretation}  \n"
-            f"- {significance}"
+    # --------------------------------------------------
+    # CATEGORICAL VARIABLES
+    # --------------------------------------------------
+    elif "[T." in term or "C(" in term:
+
+        interpretation = (
+            f"For observations in category **{term}**, the estimated mean of "
+            f"**{response}** is  \n"
+            f"**exp({coef:.4f}) × 100% = {exp_beta*100:.2f}%**  \n"
+            f"of that for the reference category."
         )
+
+    # --------------------------------------------------
+    # NUMERICAL VARIABLES
+    # --------------------------------------------------
+    else:
+
+        percent_change = (exp_beta - 1) * 100
+
+        interpretation = (
+            f"If **{term}** increases by one unit, the estimated mean of "
+            f"**{response}** changes by  \n"
+            f"**(exp({coef:.4f}) − 1) × 100% = {percent_change:.2f}%**."
+        )
+
+    # --------------------------------------------------
+    # SIGNIFICANCE
+    # --------------------------------------------------
+    significance = (
+        "Statistically significant."
+        if pval <= 0.05
+        else "Not statistically significant."
+    )
+
+    # --------------------------------------------------
+    # DISPLAY
+    # --------------------------------------------------
+    st.markdown(
+        f"""
+### {term}
+
+- **Coefficient:** {coef:.4f}  
+- **p-value:** {pval:.4f}  
+
+**Interpretation**
+
+{interpretation}
+
+**Statistical significance:** {significance}
+"""
+    )
 
     # ======================================================
     # 9️⃣ PREDICTION
