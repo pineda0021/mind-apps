@@ -255,5 +255,5 @@ def run():
 
     st.plotly_chart(fig)
 
-    if __name__ == "__main__":
+if __name__ == "__main__":
     run()
