@@ -218,36 +218,42 @@ def run():
             f"Predicted Probability of Y=1: {prob:.4f}"
         )
 
-    # 🔟 ROC CURVE
-    st.header("7️⃣ ROC Curve")
+   # 🔟 SIGMOID FUNCTION
+    st.header("7️⃣ Sigmoid Function")
 
-    y_true = df[response]
-    y_pred = model.predict(df)
+    # linear predictor from the fitted model
+    linear_pred = model.predict(df, linear=True)
 
-    if len(np.unique(y_true)) < 2:
-        st.warning("ROC cannot be computed.")
-        return
+    # predicted probabilities
+    prob = model.predict(df)
 
-    fpr, tpr, _ = roc_curve(y_true, y_pred)
-    roc_auc = auc(fpr, tpr)
+    # create smooth sigmoid curve
+    x_vals = np.linspace(min(linear_pred), max(linear_pred), 200)
+    sigmoid = 1 / (1 + np.exp(-x_vals))
 
     fig = px.line(
-        x=fpr,
-        y=tpr,
-        labels={"x": "False Positive Rate",
-                "y": "True Positive Rate"},
-        title=f"ROC Curve (AUC={roc_auc:.3f})"
+        x=x_vals,
+        y=sigmoid,
+        labels={
+            "x": "Linear Predictor (Xβ)",
+            "y": "Predicted Probability"
+        },
+        title="Logistic Sigmoid Function"
     )
 
-    fig.add_shape(
-        type="line",
-        x0=0, y0=0,
-        x1=1, y1=1,
-        line=dict(dash="dash")
+    # sigmoid model fit (RED)
+    fig.update_traces(line=dict(color="red", width=3), name="Sigmoid Model")
+
+    # actual data probabilities (BLUE)
+    fig.add_scatter(
+        x=linear_pred,
+        y=prob,
+        mode="markers",
+        marker=dict(color="blue", size=6),
+        name="Observed Data"
     )
 
     st.plotly_chart(fig)
 
-
-if __name__ == "__main__":
+    if __name__ == "__main__":
     run()
