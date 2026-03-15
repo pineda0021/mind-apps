@@ -249,5 +249,5 @@ fig.add_shape(
 st.plotly_chart(fig)
 ```
 
-if **name** == "**main**":
-run()
+if __name__ == "__main__":
+    run()
