@@ -243,11 +243,13 @@ def run():
     # CATEGORICAL VARIABLES
     # --------------------------------------------------
 
-    elif any(var in term for var in categorical_vars):
+    elif "[T." in term:
 
-        var_name = term.split("[")[0].replace("C(", "").split(",")[0]
-
+        var_name = term.split("[")[0]
         level = term.split("[T.")[-1].replace("]", "")
+
+        # clean variable name
+        var_name = var_name.replace("C(", "").split(",")[0]
 
         reference = reference_dict.get(var_name, "reference")
 
@@ -282,10 +284,6 @@ def run():
         else "Not statistically significant."
     )
 
-    # --------------------------------------------------
-    # DISPLAY
-    # --------------------------------------------------
-
     st.markdown(
         f"""
 ### {term}
@@ -300,6 +298,7 @@ def run():
 **Statistical significance:** {significance}
 """
     )
+   
    
     # ======================================================
     # 9️⃣ PREDICTION
