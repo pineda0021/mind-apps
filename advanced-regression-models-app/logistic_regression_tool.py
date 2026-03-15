@@ -166,7 +166,6 @@ col5.metric("Pearson χ²", round(pearson,2))
 # ======================================================
 # 7️⃣ EQUATION BUILDER
 # ======================================================
-
 def build_equation(model):
 
     params = model.params
@@ -177,7 +176,7 @@ def build_equation(model):
 
     for name in params.index:
 
-        if name in ["Intercept","const"]:
+        if name in ["Intercept", "const"]:
             continue
 
         coef = round(params[name],4)
@@ -186,7 +185,6 @@ def build_equation(model):
         equation += f" {sign} {abs(coef)} \\cdot {name}"
 
     return equation
-
 
 st.subheader("Logistic Regression Equation")
 st.latex(build_equation(model))
