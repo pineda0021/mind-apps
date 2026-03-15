@@ -220,53 +220,62 @@ def run():
     # 8️⃣ INTERPRETATION
     # ======================================================
 
-    st.header("5️⃣ Interpretation of Coefficients")
+    st.header("4️⃣ Interpretation of Coefficients")
 
     for term in model.params.index:
 
         coef = model.params[term]
         pval = model.pvalues[term]
-
         exp_beta = np.exp(coef)
 
     # --------------------------------------------------
     # INTERCEPT
     # --------------------------------------------------
+
     if term == "Intercept":
 
         interpretation = (
             f"When all predictors are at their reference levels, "
-            f"the log-mean of **{response}** is **{coef:.4f}**."
+            f"the expected mean of **{response}** equals exp({coef:.4f})."
         )
 
     # --------------------------------------------------
     # CATEGORICAL VARIABLES
     # --------------------------------------------------
-    elif "[T." in term or "C(" in term:
+
+    elif any(var in term for var in categorical_vars):
+
+        var_name = term.split("[")[0].replace("C(", "").split(",")[0]
+
+        level = term.split("[T.")[-1].replace("]", "")
+
+        reference = reference_dict.get(var_name, "reference")
 
         interpretation = (
-            f"For observations in category **{term}**, the estimated mean of "
-            f"**{response}** is  \n"
+            f"For observations where **{var_name} = {level}**, "
+            f"the estimated mean of **{response}** is  \n"
             f"**exp({coef:.4f}) × 100% = {exp_beta*100:.2f}%**  \n"
-            f"of that for the reference category."
+            f"of that for **{var_name} = {reference}** (reference level)."
         )
 
     # --------------------------------------------------
     # NUMERICAL VARIABLES
     # --------------------------------------------------
+
     else:
 
         percent_change = (exp_beta - 1) * 100
 
         interpretation = (
-            f"If **{term}** increases by one unit, the estimated mean of "
-            f"**{response}** changes by  \n"
+            f"If **{term}** increases by one unit, "
+            f"the expected mean of **{response}** changes by  \n"
             f"**(exp({coef:.4f}) − 1) × 100% = {percent_change:.2f}%**."
         )
 
     # --------------------------------------------------
     # SIGNIFICANCE
     # --------------------------------------------------
+
     significance = (
         "Statistically significant."
         if pval <= 0.05
@@ -276,6 +285,7 @@ def run():
     # --------------------------------------------------
     # DISPLAY
     # --------------------------------------------------
+
     st.markdown(
         f"""
 ### {term}
@@ -290,7 +300,7 @@ def run():
 **Statistical significance:** {significance}
 """
     )
-
+   
     # ======================================================
     # 9️⃣ PREDICTION
     # ======================================================
