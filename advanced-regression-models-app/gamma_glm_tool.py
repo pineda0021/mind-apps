@@ -248,7 +248,6 @@ def run():
         var_name = term.split("[")[0]
         level = term.split("[T.")[-1].replace("]", "")
 
-        # clean variable name
         var_name = var_name.replace("C(", "").split(",")[0]
 
         reference = reference_dict.get(var_name, "reference")
@@ -298,8 +297,8 @@ def run():
 **Statistical significance:** {significance}
 """
     )
-   
-   
+    
+  
     # ======================================================
     # 9️⃣ PREDICTION
     # ======================================================
