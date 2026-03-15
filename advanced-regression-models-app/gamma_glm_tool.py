@@ -235,12 +235,12 @@ def run():
                 f"the expected mean of **{response}** equals exp({coef:.4f})."
             )
 
-        elif "[T." in term:
+        elif term.startswith("C("):
 
             var_name = term.split("[")[0]
-            level = term.split("[T.")[-1].replace("]", "")
             var_name = var_name.replace("C(", "").split(",")[0]
 
+            level = term.split("T.")[-1].replace("]", "")
             reference = reference_dict.get(var_name, "reference")
 
             interpretation = (
