@@ -219,7 +219,7 @@ def run():
             f"Predicted Probability of Y=1: {prob:.4f}"
         )
 
-     # 🔟 SIGMOID FUNCTION
+    # 🔟 SIGMOID FUNCTION
 
     st.header("7️⃣ Predicted vs Actual")
 
