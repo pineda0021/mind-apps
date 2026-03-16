@@ -219,41 +219,36 @@ def run():
         )
 
    # 🔟 SIGMOID FUNCTION
-    st.header("7️⃣ Sigmoid Function")
+    st.header("7️⃣ Predicted vs Actual")
 
-    # linear predictor from the fitted model
-    linear_pred = model.predict(df, linear=True)
+    predicted_vals = model.predict(df_model)
 
-    # predicted probabilities
-    prob = model.predict(df)
+    fig2 = px.scatter(
+        x=predicted_vals,
+        y=df_model[response],
+        labels={'x': 'Predicted Probability', 'y': 'Actual'},
+        title="Predicted Probability vs Actual"
+    )
 
-    # create smooth sigmoid curve
-    x_vals = np.linspace(min(linear_pred), max(linear_pred), 200)
-    sigmoid = 1 / (1 + np.exp(-x_vals))
+    # reference line
+    fig2.add_hline(y=0.5, line_dash="dash")
 
-    fig = px.line(
+    # ======================================
+    # Sigmoid curve
+    # ======================================
+
+    x_vals = np.linspace(0, 1, 200)
+    sigmoid = 1 / (1 + np.exp(-10*(x_vals - 0.5)))  # centered sigmoid
+
+    fig2.add_scatter(
         x=x_vals,
         y=sigmoid,
-        labels={
-            "x": "Linear Predictor (Xβ)",
-            "y": "Predicted Probability"
-        },
-        title="Logistic Sigmoid Function"
+        mode="lines",
+        line=dict(color="red", width=3),
+        name="Sigmoid Curve"
     )
 
-    # sigmoid model fit (RED)
-    fig.update_traces(line=dict(color="red", width=3), name="Sigmoid Model")
-
-    # actual data probabilities (BLUE)
-    fig.add_scatter(
-        x=linear_pred,
-        y=prob,
-        mode="markers",
-        marker=dict(color="blue", size=6),
-        name="Observed Data"
-    )
-
-    st.plotly_chart(fig)
+    st.plotly_chart(fig2)
 
 if __name__ == "__main__":
     run()
