@@ -5,12 +5,11 @@ import plotly.express as px
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
 from scipy.stats import chi2
-from sklearn.metrics import roc_curve, auc
 
 
 def run():
 
-    st.title("📘 Probit Regression Model")
+    st.title("📘 Probit Regression Model (Binary Response)")
 
     # ======================================================
     # 1️⃣ DATA UPLOAD
@@ -32,7 +31,7 @@ def run():
 
     st.header("1️⃣ Model Specification")
 
-    response = st.selectbox("Select Binary Response Variable (Y)", df.columns)
+    response = st.selectbox("Select Response Variable (Y)", df.columns)
 
     predictors = st.multiselect(
         "Select Predictor Variables (X)",
@@ -40,6 +39,11 @@ def run():
     )
 
     if not predictors:
+        return
+
+    # Ensure binary response
+    if not set(df[response].dropna().unique()).issubset({0, 1}):
+        st.error("Probit regression requires a binary response variable coded as 0 and 1.")
         return
 
     categorical_vars = st.multiselect(
@@ -68,6 +72,7 @@ def run():
         if var in categorical_vars:
             ref = reference_dict[var]
             terms.append(f'C({var}, Treatment(reference="{ref}"))')
+
         else:
             terms.append(var)
 
@@ -76,47 +81,24 @@ def run():
     st.code(formula)
 
     # ======================================================
-    # 3️⃣ RESPONSE DIAGNOSTICS
+    # 3️⃣ MODEL FITTING
     # ======================================================
 
-    st.header("2️⃣ Response Diagnostics")
+    st.header("2️⃣ Model Fitting")
 
     df_model = df.copy()
-
-    df_model[response] = pd.to_numeric(df_model[response], errors="coerce")
-
-    unique_vals = df_model[response].dropna().unique()
-
-    if not set(unique_vals).issubset({0,1}):
-        st.error("Probit regression requires response values coded as 0 and 1.")
-        return
-
-    fig = px.histogram(
-        df_model,
-        x=response,
-        title="Distribution of Binary Response",
-        color=response
-    )
-
-    st.plotly_chart(fig)
-
-    # ======================================================
-    # 4️⃣ MODEL FITTING
-    # ======================================================
-
-    st.header("3️⃣ Model Fitting")
 
     model = smf.glm(
         formula=formula,
         data=df_model,
-        family=sm.families.Binomial(link=sm.families.links.probit())
+        family=sm.families.Binomial(link=sm.families.links.Probit())
     ).fit()
 
     st.subheader("Model Summary")
     st.text(model.summary())
 
     # ======================================================
-    # 5️⃣ LIKELIHOOD RATIO TEST
+    # 4️⃣ LIKELIHOOD RATIO TEST
     # ======================================================
 
     st.subheader("Likelihood Ratio Test")
@@ -124,7 +106,7 @@ def run():
     null_model = smf.glm(
         response + " ~ 1",
         data=df_model,
-        family=sm.families.Binomial(link=sm.families.links.probit())
+        family=sm.families.Binomial(link=sm.families.links.Probit())
     ).fit()
 
     lr_stat = 2 * (model.llf - null_model.llf)
@@ -136,115 +118,182 @@ def run():
     st.write(f"p-value: {p_value:.6f}")
 
     # ======================================================
-    # 6️⃣ MODEL FIT EVALUATION
+    # 5️⃣ MODEL FIT EVALUATION
     # ======================================================
 
-    st.header("4️⃣ Model Fit Evaluation")
+    st.header("3️⃣ Model Fit Evaluation")
+
+    loglik = model.llf
+    aic = model.aic
+    bic = model.bic
+    deviance = model.deviance
+    pearson = model.pearson_chi2
 
     col1, col2, col3, col4, col5 = st.columns(5)
 
-    col1.metric("Log-Likelihood", round(model.llf,2))
-    col2.metric("AIC", round(model.aic,2))
-    col3.metric("BIC", round(model.bic,2))
-    col4.metric("Deviance", round(model.deviance,2))
-    col5.metric("Pearson χ²", round(model.pearson_chi2,2))
+    col1.metric("Log-Likelihood", round(loglik, 2))
+    col2.metric("AIC", round(aic, 2))
+    col3.metric("BIC", round(bic, 2))
+    col4.metric("Deviance", round(deviance, 2))
+    col5.metric("Pearson χ²", round(pearson, 2))
 
     # ======================================================
-    # 7️⃣ EQUATION BUILDER
+    # 6️⃣ EQUATION BUILDER
     # ======================================================
 
-    def build_equation(model,response):
+    def build_equation(model, response):
 
         params = model.params
 
-        equation = f"\\Phi^{{-1}}(p) = {round(params['Intercept'],4)}"
+        equation = f"\\Phi^{{-1}}(P({response}=1)) = {round(params['Intercept'],4)}"
 
         for name in params.index:
 
             if name == "Intercept":
                 continue
 
-            coef = round(params[name],4)
+            coef = round(params[name], 4)
             sign = "+" if coef >= 0 else "-"
 
-            equation += f" {sign} {abs(coef)} \\cdot {name}"
+            if name.startswith("C(") and "T." in name:
+
+                var_name = name.split("[")[0]
+                var_name = var_name.replace("C(", "").split(",")[0]
+
+                level = name.split("T.")[1].rstrip("]")
+
+                equation += f" {sign} {abs(coef)} D_{{{var_name}={level}}}"
+
+            else:
+
+                equation += f" {sign} {abs(coef)} \\cdot {name}"
 
         return equation
 
-    st.subheader("Probit Regression Equation")
-    st.latex(build_equation(model,response))
+    st.subheader("Fitted Regression Equation (Full Model)")
+    st.latex(build_equation(model, response))
 
     # ======================================================
-    # 8️⃣ INTERPRETATION
+    # 7️⃣ INTERPRETATION
     # ======================================================
 
-    st.header("5️⃣ Interpretation of Coefficients")
+    st.header("4️⃣ Interpretation of Coefficients")
 
     for term in model.params.index:
 
         coef = model.params[term]
         pval = model.pvalues[term]
 
+        if term == "Intercept":
+
+            interpretation = (
+                f"When all predictors are at their reference levels, "
+                f"the **z-score of the estimated probability that {response}=1** "
+                f"is **{coef:.4f}**."
+            )
+
+        elif term.startswith("C("):
+
+            var_name = term.split("[")[0]
+            var_name = var_name.replace("C(", "").split(",")[0]
+
+            level = term.split("T.")[-1].replace("]", "")
+            reference = reference_dict.get(var_name, "reference")
+
+            interpretation = (
+                f"The z-score of the estimated probability that **{response}=1** "
+                f"for **{var_name} = {level}** is **{coef:.4f} larger** than "
+                f"for **{var_name} = {reference}**."
+            )
+
+        else:
+
+            interpretation = (
+                f"For every one-unit increase in **{term}**, "
+                f"the **z-score of the estimated probability that {response}=1** "
+                f"increases by **{coef:.4f}**."
+            )
+
         significance = (
-            "Statistically significant."
+            "Statistically significant at the 5% level."
             if pval <= 0.05
-            else "Not statistically significant."
+            else "Not statistically significant at the 5% level."
         )
 
         st.markdown(
-            f"**{term}**  \n"
-            f"- Coefficient: {coef:.4f}  \n"
-            f"- p-value: {pval:.4f}  \n"
-            f"- Change in latent z-score of probability.  \n"
-            f"- {significance}"
+            f"""
+### {term}
+
+- **Coefficient:** {coef:.4f}  
+- **p-value:** {pval:.4f}  
+
+**Interpretation**
+
+{interpretation}
+
+**Statistical significance:** {significance}
+"""
         )
 
     # ======================================================
-    # 9️⃣ PREDICTION
+    # 8️⃣ PREDICTION
     # ======================================================
 
-    st.header("6️⃣ Prediction")
+    st.header("5️⃣ Prediction")
 
     input_dict = {}
 
     for var in predictors:
 
         if var in categorical_vars:
-            input_dict[var] = st.selectbox(var, df[var].cat.categories)
-        else:
-            numeric_series = pd.to_numeric(df[var], errors="coerce")
-            input_dict[var] = st.number_input(var, value=float(numeric_series.mean()))
 
-    if st.button("Predict Probability"):
+            input_dict[var] = st.selectbox(var, df[var].cat.categories)
+
+        else:
+
+            numeric_series = pd.to_numeric(df[var], errors="coerce")
+
+            input_dict[var] = st.number_input(
+                var,
+                value=float(numeric_series.mean())
+            )
+
+    if st.button("Predict"):
 
         new_df = pd.DataFrame([input_dict])
 
         for var in categorical_vars:
-            new_df[var] = pd.Categorical(new_df[var], categories=df[var].cat.categories)
 
-        prob = model.predict(new_df)[0]
+            new_df[var] = pd.Categorical(
+                new_df[var],
+                categories=df[var].cat.categories
+            )
 
-        st.success(f"Predicted Probability of Y=1: {prob:.4f}")
+        prediction = model.predict(new_df)[0]
+
+        st.subheader("Prediction Results")
+
+        st.success(f"Predicted probability that {response}=1: {prediction:.4f}")
 
     # ======================================================
-    # 🔟 ROC CURVE
+    # 9️⃣ PREDICTED VS ACTUAL
     # ======================================================
 
-    st.header("7️⃣ ROC Curve")
+    st.header("6️⃣ Predicted vs Actual")
 
-    y_true = df_model[response]
-    y_pred = model.predict(df_model)
+    predicted_vals = model.predict(df_model)
 
-    fpr, tpr, _ = roc_curve(y_true, y_pred)
-    roc_auc = auc(fpr, tpr)
-
-    fig = px.line(
-        x=fpr,
-        y=tpr,
-        title=f"ROC Curve (AUC = {roc_auc:.3f})",
-        labels={"x":"False Positive Rate","y":"True Positive Rate"}
+    fig2 = px.scatter(
+        x=predicted_vals,
+        y=df_model[response],
+        labels={'x': 'Predicted Probability', 'y': 'Actual'},
+        title="Predicted Probability vs Actual"
     )
 
-    fig.add_shape(type="line", x0=0, y0=0, x1=1, y1=1, line=dict(dash="dash"))
+    fig2.add_hline(y=0.5, line_dash="dash")
 
-    st.plotly_chart(fig)
+    st.plotly_chart(fig2)
+
+
+if __name__ == "__main__":
+    run()
