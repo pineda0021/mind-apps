@@ -291,7 +291,7 @@ def run():
     # 9️⃣ PREDICTED VS ACTUAL
     # ======================================================
 
-   st.header("6️⃣ Predicted vs Actual")
+    st.header("6️⃣ Predicted vs Actual")
 
     predicted_vals = model.predict(df_model)
 
