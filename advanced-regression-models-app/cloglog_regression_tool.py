@@ -28,20 +28,34 @@ def run():
     # 2️⃣ MODEL SPECIFICATION
     # ======================================================
 
-    st.header("1️⃣ Model Specification")
+     st.header("1️⃣ Model Specification")
 
-    response = st.selectbox("Select Response Variable (Y)", df.columns)
+    response_original = st.selectbox(
+        "Select Binary Response Variable (Y)", df.columns
+    )
+
+    df[response_original] = df[response_original].astype("category")
+
+    ref_level = st.selectbox(
+        "Select reference level for response (coded as 0)",
+        df[response_original].cat.categories
+    )
+
+    df["response_binary"] = (df[response_original] != ref_level).astype(int)
+
+    st.info(
+        f"The model estimates the probability that "
+        f"{response_original} ≠ '{ref_level}'."
+    )
+
+    response = "response_binary"
 
     predictors = st.multiselect(
         "Select Predictor Variables (X)",
-        [col for col in df.columns if col != response]
+        [c for c in df.columns if c != response_original]
     )
 
     if not predictors:
-        return
-
-    if not set(df[response].dropna().unique()).issubset({0, 1}):
-        st.error("Response variable must be coded 0/1.")
         return
 
     categorical_vars = st.multiselect(
@@ -52,7 +66,6 @@ def run():
     reference_dict = {}
 
     for col in categorical_vars:
-
         df[col] = df[col].astype("category")
 
         ref = st.selectbox(
@@ -66,14 +79,12 @@ def run():
     terms = []
 
     for var in predictors:
-
         if var in categorical_vars:
-
             ref = reference_dict[var]
-            terms.append(f'C({var}, Treatment(reference="{ref}"))')
-
+            terms.append(
+                f'C({var}, Treatment(reference="{ref}"))'
+            )
         else:
-
             terms.append(var)
 
     formula = response + " ~ " + " + ".join(terms)
