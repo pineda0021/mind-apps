@@ -157,34 +157,69 @@ def run():
 
     st.latex(equation)
 
+    # ======================================================
     # 8️⃣ INTERPRETATION
+    # ======================================================
+
     st.header("5️⃣ Interpretation of Coefficients")
 
-    for term in params.index:
+    for term in model.params.index:
 
-        coef = params[term]
+        coef = model.params[term]
         pval = model.pvalues[term]
+        exp_beta = np.exp(coef)
 
-        if term in ["Intercept", "const"]:
-            interpretation = "Baseline log-odds."
-        else:
-            odds = np.exp(coef)
+        if term == "Intercept":
+
             interpretation = (
-                f"Odds ratio = exp({coef:.4f}) = {odds:.4f}"
+                f"When all predictors are at their reference levels, "
+                f"the expected mean of **{response}** equals exp({coef:.4f})."
             )
 
-        sig = (
-            "Statistically significant"
+        elif term.startswith("C("):
+
+            var_name = term.split("[")[0]
+            var_name = var_name.replace("C(", "").split(",")[0]
+
+            level = term.split("T.")[-1].replace("]", "")
+            reference = reference_dict.get(var_name, "reference")
+
+            interpretation = (
+                f"For observations where **{var_name} = {level}**, "
+                f"the estimated mean of **{response}** is  \n"
+                f"**exp({coef:.4f}) × 100% = {exp_beta*100:.2f}%**  \n"
+                f"of that for **{var_name} = {reference}** (reference level)."
+            )
+
+        else:
+
+            percent_change = (exp_beta - 1) * 100
+
+            interpretation = (
+                f"If **{term}** increases by one unit, "
+                f"the expected mean of **{response}** changes by  \n"
+                f"**(exp({coef:.4f}) − 1) × 100% = {percent_change:.2f}%**."
+            )
+
+        significance = (
+            "Statistically significant."
             if pval <= 0.05
-            else "Not statistically significant"
+            else "Not statistically significant."
         )
 
         st.markdown(
-            f"**{term}**  \n"
-            f"- Coefficient: {coef:.4f}  \n"
-            f"- p-value: {pval:.4f}  \n"
-            f"- {interpretation}  \n"
-            f"- {sig}"
+            f"""
+### {term}
+
+- **Coefficient:** {coef:.4f}  
+- **p-value:** {pval:.4f}  
+
+**Interpretation**
+
+{interpretation}
+
+**Statistical significance:** {significance}
+"""
         )
 
     # 9️⃣ PREDICTION
