@@ -6,6 +6,7 @@ import statsmodels.formula.api as smf
 import statsmodels.api as sm
 from scipy.stats import chi2
 from sklearn.metrics import roc_curve, auc
+import plotly.graph_objects as go
 
 
 def run():
@@ -218,7 +219,8 @@ def run():
             f"Predicted Probability of Y=1: {prob:.4f}"
         )
 
-   # 🔟 SIGMOID FUNCTION
+     # 🔟 SIGMOID FUNCTION
+
     st.header("7️⃣ Predicted vs Actual")
 
     predicted_vals = model.predict(df_model)
