@@ -222,7 +222,7 @@ def run():
 
     st.header("7️⃣ Predicted vs Actual")
 
-    predicted_vals = model.predict(new_df))
+    predicted_vals = model.predict(df))
 
     fig2 = px.scatter(
         x=predicted_vals,
