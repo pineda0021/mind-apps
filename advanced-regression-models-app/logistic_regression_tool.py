@@ -239,18 +239,22 @@ def run():
     # Sigmoid curve
     # ======================================
 
-    x_vals = np.linspace(0, 1, 200)
-    sigmoid = 1 / (1 + np.exp(-10*(x_vals - 0.5)))  # centered sigmoid
+    x_vals = np.linspace(predicted_vals.min(), predicted_vals.max(), 200)
 
-    fig2.add_scatter(
-        x=x_vals,
-        y=sigmoid,
-        mode="lines",
-        line=dict(color="red", width=3),
-        name="Sigmoid Curve"
+    sigmoid = 1 / (1 + np.exp(-10 * (x_vals - 0.5)))
+
+    fig2.add_trace(
+        go.Scatter(
+            x=x_vals,
+            y=sigmoid,
+            mode="lines",
+            line=dict(color="red", width=3),
+            name="Sigmoid Curve"
+        )
     )
 
     st.plotly_chart(fig2)
+
 
 if __name__ == "__main__":
     run()
