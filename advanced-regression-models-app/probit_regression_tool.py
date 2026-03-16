@@ -302,10 +302,25 @@ def run():
         title="Predicted Probability vs Actual"
     )
 
+    # reference line
     fig2.add_hline(y=0.5, line_dash="dash")
 
-    st.plotly_chart(fig2)
+    # ======================================
+    # Sigmoid curve
+    # ======================================
 
+    x_vals = np.linspace(0, 1, 200)
+    sigmoid = 1 / (1 + np.exp(-10*(x_vals - 0.5)))  # centered sigmoid
+
+    fig2.add_scatter(
+        x=x_vals,
+        y=sigmoid,
+        mode="lines",
+        line=dict(color="red", width=3),
+        name="Sigmoid Curve"
+    )
+
+    st.plotly_chart(fig2)
 
 if __name__ == "__main__":
     run()
