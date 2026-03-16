@@ -233,10 +233,47 @@ p-value: **{pval:.4f}**
 """)
 
     # ======================================================
-    # 6️⃣ PREDICTED VS ACTUAL
+    # 6️⃣ PREDICTION (Cloglog)
     # ======================================================
 
-    st.header("6️⃣ Predicted vs Actual")
+    st.header("6️⃣ Prediction")
+
+    input_dict = {}
+
+    for var in predictors:
+
+        if var in categorical_vars:
+            input_dict[var] = st.selectbox(var, df[var].cat.categories)
+        else:
+            numeric_series = pd.to_numeric(df[var], errors="coerce")
+            input_dict[var] = st.number_input(
+                var,
+                value=float(numeric_series.mean())
+            )
+
+    if st.button("Predict Probability (Cloglog)"):
+        new_df = pd.DataFrame([input_dict])
+
+        for var in categorical_vars:
+            new_df[var] = pd.Categorical(
+                new_df[var],
+                categories=df[var].cat.categories
+            )
+
+        # predicted linear predictor
+        eta = cloglog_model.predict(new_df, linear=True)[0]
+
+        # predicted probability
+        p_pred = 1 - np.exp(-np.exp(eta))
+
+        st.subheader("Prediction Results")
+        st.success(f"Predicted probability of competition: {p_pred:.4f}")
+        
+    # ======================================================
+    # 7️⃣ PREDICTED VS ACTUAL
+    # ======================================================
+
+    st.header("7️⃣ Predicted vs Actual")
 
     predicted_vals = cloglog_model.predict(df_model)
 
