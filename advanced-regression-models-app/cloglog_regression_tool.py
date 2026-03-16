@@ -28,7 +28,7 @@ def run():
     # 2️⃣ MODEL SPECIFICATION
     # ======================================================
 
-     st.header("1️⃣ Model Specification")
+    st.header("1️⃣ Model Specification")
 
     response_original = st.selectbox(
         "Select Binary Response Variable (Y)", df.columns
