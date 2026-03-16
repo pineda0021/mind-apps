@@ -1,7 +1,8 @@
-import streamlit as st
+import streamlit as st 
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import plotly.graph_objects as go
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
 from scipy.stats import chi2
@@ -222,11 +223,11 @@ def run():
 
     st.header("7️⃣ Predicted vs Actual")
 
-    predicted_vals = model.predict(df))
+    predicted_vals = model.predict(df)
 
     fig2 = px.scatter(
         x=predicted_vals,
-        y=df_model[response],
+        y=df[response],
         labels={'x': 'Predicted Probability', 'y': 'Actual'},
         title="Predicted Probability vs Actual"
     )
