@@ -110,93 +110,143 @@ def run():
             st.plotly_chart(fig, use_container_width=True)
 
     # ======================================================
-    # 2. BINOMIAL DISTRIBUTION
-    # ======================================================
-    elif dist_type == "Binomial":
+# 2. BINOMIAL DISTRIBUTION
+# ======================================================
+elif dist_type == "Binomial":
 
-        st.subheader("🎯 Binomial Distribution")
+    st.subheader("🎯 Binomial Distribution")
 
-        st.latex(r"P(X = x) = \binom{n}{x} p^x (1-p)^{n-x}")
+    st.latex(r"P(X = x) = \binom{n}{x} p^x (1-p)^{n-x}")
 
-        n = st.number_input("Number of trials (n):", min_value=1, step=1)
-        p_str = st.text_input("Probability of success (p):", "1/2")
+    n = st.number_input("Number of trials (n):", min_value=1, step=1)
+    p_str = st.text_input("Probability of success (p):", "1/2")
 
-        p = parse_fraction(p_str)
-        if p is None:
-            return
+    p = parse_fraction(p_str)
+    if p is None:
+        return
 
-        x_vals = np.arange(0, n + 1)
-        pmf_vals = binom.pmf(x_vals, n, p)
+    # ---- Validate p ----
+    if not (0 <= p <= 1):
+        st.error("⚠️ p must be between 0 and 1.")
+        return
 
-        μ = n * p
-        σ = np.sqrt(n * p * (1 - p))
+    x_vals = np.arange(0, n + 1)
+    pmf_vals = binom.pmf(x_vals, n, p)
 
-        st.markdown(f"""
-        **Mean (μ)** = {round(μ, decimals)}  
-        **Standard Deviation (σ)** = {round(σ, decimals)}
-        """)
+    μ = n * p
+    σ = np.sqrt(n * p * (1 - p))
 
-        calc = st.selectbox(
-            "Select Probability Type:",
-            [
-                "Exactly: P(X = x)",
-                "At most: P(X ≤ x)",
-                "Less than: P(X < x)",
-                "At least: P(X ≥ x)",
-                "Greater than: P(X > x)",
-                "Between: P(a ≤ X ≤ b)",
-                "Show Full Table & Graph"
-            ]
-        )
+    st.markdown(f"""
+    **Mean (μ)** = {round(μ, decimals)}  
+    **Standard Deviation (σ)** = {round(σ, decimals)}
+    """)
 
-        if "Between" in calc:
-            a = st.number_input("Lower bound (a):", min_value=0, max_value=int(n))
-            b = st.number_input("Upper bound (b):", min_value=0, max_value=int(n))
-        elif "Full Table" not in calc:
-            x = st.number_input("Enter x:", min_value=0, max_value=int(n))
+    calc = st.selectbox(
+        "Select Probability Type:",
+        [
+            "Exactly: P(X = x)",
+            "At most: P(X ≤ x)",
+            "Less than: P(X < x)",
+            "At least: P(X ≥ x)",
+            "Greater than: P(X > x)",
+            "Between: P(a ≤ X ≤ b)",
+            "Show Full Table & Graph"
+        ]
+    )
 
-        if st.button("📊 Calculate Binomial"):
+    if "Between" in calc:
+        a = st.number_input("Lower bound (a):", min_value=0, max_value=int(n))
+        b = st.number_input("Upper bound (b):", min_value=0, max_value=int(n))
+    elif "Full Table" not in calc:
+        x = st.number_input("Enter x:", min_value=0, max_value=int(n))
 
-            if calc == "Exactly: P(X = x)":
-                st.success(f"P(X = {x}) = {round(binom.pmf(x, n, p), decimals)}")
+    if st.button("📊 Calculate Binomial"):
 
-            elif calc == "At most: P(X ≤ x)":
-                st.success(f"P(X ≤ {x}) = {round(binom.cdf(x, n, p), decimals)}")
+        # -----------------------------
+        # EXACT
+        # -----------------------------
+        if calc == "Exactly: P(X = x)":
+            prob = binom.pmf(x, n, p)
+            st.success(f"P(X = {x}) = {round(prob, decimals)}")
 
-            elif calc == "Less than: P(X < x)":
-                prob = binom.cdf(x - 1, n, p) if x > 0 else 0
-                st.success(f"P(X < {x}) = {round(prob, decimals)}")
+        # -----------------------------
+        # AT MOST
+        # -----------------------------
+        elif calc == "At most: P(X ≤ x)":
+            prob = binom.cdf(x, n, p)
+            st.success(f"P(X ≤ {x}) = {round(prob, decimals)}")
 
-            elif calc == "At least: P(X ≥ x)":
-                st.success(f"P(X ≥ {x}) = {round(1 - binom.cdf(x - 1, n, p), decimals)}")
+        # -----------------------------
+        # LESS THAN
+        # -----------------------------
+        elif calc == "Less than: P(X < x)":
+            if x <= 0:
+                prob = 0.0
+            else:
+                prob = binom.cdf(x - 1, n, p)
 
-            elif calc == "Greater than: P(X > x)":
-                st.success(f"P(X > {x}) = {round(1 - binom.cdf(x, n, p), decimals)}")
+            st.success(f"P(X < {x}) = {round(prob, decimals)}")
+            st.caption(f"Using: P(X < {x}) = P(X ≤ {x-1})")
 
-            elif calc == "Between: P(a ≤ X ≤ b)":
-                prob = binom.cdf(b, n, p) - (binom.cdf(a - 1, n, p) if a > 0 else 0)
+        # -----------------------------
+        # AT LEAST
+        # -----------------------------
+        elif calc == "At least: P(X ≥ x)":
+            if x <= 0:
+                prob = 1.0
+            else:
+                prob = 1 - binom.cdf(x - 1, n, p)
+
+            st.success(f"P(X ≥ {x}) = {round(prob, decimals)}")
+
+        # -----------------------------
+        # GREATER THAN
+        # -----------------------------
+        elif calc == "Greater than: P(X > x)":
+            if x >= n:
+                prob = 0.0
+            else:
+                prob = 1 - binom.cdf(x, n, p)
+
+            st.success(f"P(X > {x}) = {round(prob, decimals)}")
+
+        # -----------------------------
+        # BETWEEN
+        # -----------------------------
+        elif calc == "Between: P(a ≤ X ≤ b)":
+
+            if a > b:
+                st.error("⚠️ Lower bound must be ≤ upper bound.")
+            else:
+                lower = binom.cdf(a - 1, n, p) if a > 0 else 0.0
+                upper = binom.cdf(b, n, p)
+                prob = upper - lower
+
                 st.success(f"P({a} ≤ X ≤ {b}) = {round(prob, decimals)}")
 
-            elif "Full Table" in calc:
+        # -----------------------------
+        # FULL TABLE
+        # -----------------------------
+        elif "Full Table" in calc:
 
-                df = pd.DataFrame({
-                    "x": x_vals,
-                    "P(X = x)": np.round(pmf_vals, decimals)
-                })
+            df = pd.DataFrame({
+                "x": x_vals,
+                "P(X = x)": np.round(pmf_vals, decimals)
+            })
 
-                st.dataframe(df, use_container_width=True)
+            st.dataframe(df, use_container_width=True)
 
-                fig = go.Figure()
-                fig.add_bar(x=x_vals, y=pmf_vals)
+            fig = go.Figure()
+            fig.add_bar(x=x_vals, y=pmf_vals)
 
-                fig.update_layout(
-                    title=f"Binomial Distribution (n={n}, p={p})",
-                    xaxis_title="x",
-                    yaxis_title="P(X = x)",
-                    template="plotly"
-                )
+            fig.update_layout(
+                title=f"Binomial Distribution (n={n}, p={p})",
+                xaxis_title="x",
+                yaxis_title="P(X = x)",
+                template="plotly"
+            )
 
-                st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True)
 
     # ======================================================
     # 3. POISSON DISTRIBUTION
