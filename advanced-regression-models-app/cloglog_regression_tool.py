@@ -299,7 +299,7 @@ def run():
         k = m.df_model + 1
 
         aic = m.aic
-        aicc = -2 * ll + (2 * k * n) / (n - k - 1)
+        aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
         bic = -2 * ll + k * np.log(n)
 
         rows.append({
@@ -323,8 +323,6 @@ def run():
 
     st.success(f"Best model by AIC: **{best_aic}**")
     st.success(f"Best model by BIC: **{best_bic}**")
-
-    # Visualization
 
     fig2 = px.bar(
         comparison_df,
