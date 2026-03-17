@@ -85,6 +85,9 @@ def run():
 
     df_model[response] = pd.to_numeric(df_model[response], errors="coerce")
 
+    # FIX: Remove rows with missing values used in model
+    df_model = df_model[[response] + predictors].dropna()
+
     unique_vals = df_model[response].dropna().unique()
 
     if not set(unique_vals).issubset({0,1}):
