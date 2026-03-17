@@ -134,6 +134,7 @@ def run():
     p_value = chi2.sf(lr_stat, int(model.df_model))
 
     st.write(f"LR Statistic: {lr_stat:.4f}")
+    st.write(f"Degrees of Freedom: {df_diff}")
     st.write(f"p-value: {p_value:.6f}")
 
     # ======================================================
