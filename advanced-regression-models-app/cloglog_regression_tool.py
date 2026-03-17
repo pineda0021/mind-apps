@@ -225,7 +225,7 @@ def run():
         # INTERCEPT
         if term == "Intercept":
 
-        s    t.markdown("### Intercept")
+            st.markdown("### Intercept")
 
             st.latex(r"\log(-\log(1-p)) = " + f"{coef:.4f}")
 
