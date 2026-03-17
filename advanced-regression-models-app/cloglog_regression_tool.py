@@ -196,52 +196,93 @@ def run():
 
     st.markdown(
     """
-For the complementary log–log model
+    For the complementary log–log model
 
-\\[
-\\log(-\\log(1-p)) = X\\beta
-\\]
+    $$
+    \log(-\log(1-p)) = X\\beta
+    $$
 
-If a predictor increases by one unit, the **new probability equals the old probability raised to the power exp(β)**.
-"""
+    coefficients are interpreted using $e^{\\beta}$.
+
+    If a predictor changes, the **new probability equals the old probability raised to the power $e^{\\beta}$**.
+    """
     )
 
     for term in model.params.index:
 
         coef = model.params[term]
         pval = model.pvalues[term]
+        power = np.exp(coef)
 
+        # significance label
+        if pval <= 0.05:
+            sig_text = "Statistically significant at the 5% level."
+            sig_display = st.success
+        else:
+            sig_text = "Not statistically significant at the 5% level."
+            sig_display = st.warning
+
+        # INTERCEPT
         if term == "Intercept":
 
-            st.markdown(
-                f"""
-**Intercept**
+        s    t.markdown("### Intercept")
 
+            st.latex(r"\log(-\log(1-p)) = " + f"{coef:.4f}")
+
+            st.markdown(
+            f"""
 Baseline complementary log–log value when predictors are at their reference levels.
 
 Coefficient = **{coef:.4f}**  
 p-value = **{pval:.4f}**
 """
-            )
+        )
 
-        else:
+        sig_display(sig_text)
 
-            power = np.exp(coef)
+    # CATEGORICAL VARIABLES
+    elif "C(" in term:
 
-            st.markdown(
-                f"""
-**{term}**
+        st.markdown(f"### {term}")
 
-If **{term} increases by one unit**, the new estimated probability equals the old probability raised to the power
+        st.latex(
+            rf"e^{{{coef:.4f}}} = {power:.4f}"
+        )
 
-\\[
-e^{{{coef:.4f}}} = {power:.4f}
-\\]
+        st.markdown(
+        f"""
+Compared with the **reference category**, the probability of the event
+is multiplied by a power of **{power:.4f}**.
 
 Coefficient = **{coef:.4f}**  
 p-value = **{pval:.4f}**
 """
-            )
+        )
+
+        sig_display(sig_text)
+
+    # NUMERIC VARIABLES
+    else:
+
+        st.markdown(f"### {term}")
+
+        st.latex(
+            rf"e^{{{coef:.4f}}} = {power:.4f}"
+        )
+
+        st.markdown(
+        f"""
+If **{term} increases by one unit**, the new estimated probability equals
+the old probability raised to the power **{power:.4f}**.
+
+Coefficient = **{coef:.4f}**  
+p-value = **{pval:.4f}**
+"""
+        )
+
+        sig_display(sig_text)
+
+  
 
     # ======================================================
     # 9️⃣ PREDICTION
