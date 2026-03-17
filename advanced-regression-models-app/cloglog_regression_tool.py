@@ -119,10 +119,10 @@ def run():
     st.text(model.summary())
 
     # ======================================================
-    # 5️⃣ LR TEST
+    # 5️⃣  LIKELIHOOD RATIO TEST
     # ======================================================
 
-    st.subheader("Likelihood Ratio Test")
+    st.subheader("Likelihood Ratio (Deviance) Test")
 
     null_model = smf.glm(
         response + " ~ 1",
@@ -143,7 +143,6 @@ def run():
     # ======================================================
 
     st.header("4️⃣ Model Fit Evaluation")
-
     st.write(f"AIC: {model.aic:.2f}")
     st.write(f"BIC: {model.bic:.2f}")
 
