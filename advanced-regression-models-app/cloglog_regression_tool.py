@@ -131,48 +131,24 @@ def run():
     # ======================================================
 
     st.header("3️⃣ Model Comparison")
+   
 
     n = len(df_model)
 
-    def AICc(model):
-        k = model.df_model + 1  # parameters including intercept
-        aic = model.aic
-        return aic + (2*k*(k+1))/(n-k-1)
+    comparison = compare_models(
+        models=[logit_model, probit_model, cloglog_model],
+        model_names=["Logit", "Probit", "Cloglog"],
+        n=n
+    )
 
-    def BIC(model):
-        k = model.df_model + 1
-        ll = model.llf
-        return -2*ll + k*np.log(n)
+    st.dataframe(comparison.round(4))
 
-    comparison = pd.DataFrame({
+    best_aic = comparison.loc[comparison["AIC"].idxmin(), "Model"]
+    best_bic = comparison.loc[comparison["BIC"].idxmin(), "Model"]
 
-        "Model": ["Logit","Probit","Cloglog"],
+    st.success(f"Best model by AIC: **{best_aic}**")
+    st.info(f"Best model by BIC: **{best_bic}**")
 
-        "AIC": [
-            logit_model.aic,
-            probit_model.aic,
-            cloglog_model.aic
-        ],
-
-        "AICc":[
-            AICC(logit_model),
-        AICC(probit_model),
-        AICC(cloglog_model)
-        ],
-
-        "BIC":[
-            BIC(logit_model),
-            BIC(probit_model),
-            BIC(cloglog_model)
-        ]
-
-})
-
-st.dataframe(comparison.round(4))
-
-best_model = comparison.loc[comparison["AIC"].idxmin(),"Model"]
-
-st.success(f"Best model according to AIC: **{best_model}**")
 
     # ======================================================
     # 5️⃣ CLOGLOG INTERPRETATION
