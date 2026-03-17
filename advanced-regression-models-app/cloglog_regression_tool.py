@@ -131,6 +131,7 @@ def run():
     ).fit()
 
     lr_stat = 2 * (model.llf - null_model.llf)
+    df_diff = int(model.df_model)
     p_value = chi2.sf(lr_stat, int(model.df_model))
 
     st.write(f"LR Statistic: {lr_stat:.4f}")
