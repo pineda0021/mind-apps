@@ -85,8 +85,12 @@ def run():
 
     df_model[response] = pd.to_numeric(df_model[response], errors="coerce")
 
-    # FIX: Remove rows with missing values used in model
+    # Keep only variables used in model and drop missing rows
     df_model = df_model[[response] + predictors].dropna()
+
+    # Restore categorical dtype for factors
+    for col in categorical_vars:
+        df_model[col] = df_model[col].astype("category")
 
     unique_vals = df_model[response].dropna().unique()
 
