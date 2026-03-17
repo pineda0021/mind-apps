@@ -135,11 +135,14 @@ def run():
     n = len(df_model)
 
     def AICc(model):
-
-        k = model.df_model + 1
+        k = model.df_model + 1  # parameters including intercept
         aic = model.aic
-
         return aic + (2*k*(k+1))/(n-k-1)
+
+    def BIC(model):
+        k = model.df_model + 1
+        ll = model.llf
+        return -2*ll + k*np.log(n)
 
     comparison = pd.DataFrame({
 
@@ -152,24 +155,24 @@ def run():
         ],
 
         "AICc":[
-            AICc(logit_model),
-            AICc(probit_model),
-            AICc(cloglog_model)
+            AICC(logit_model),
+        AICC(probit_model),
+        AICC(cloglog_model)
         ],
 
         "BIC":[
-            logit_model.bic,
-            probit_model.bic,
-            cloglog_model.bic
+            BIC(logit_model),
+            BIC(probit_model),
+            BIC(cloglog_model)
         ]
 
-    })
+})
 
-    st.dataframe(comparison.round(4))
+st.dataframe(comparison.round(4))
 
-    best_model = comparison.loc[comparison["AIC"].idxmin(),"Model"]
+best_model = comparison.loc[comparison["AIC"].idxmin(),"Model"]
 
-    st.success(f"Best model according to AIC: **{best_model}**")
+st.success(f"Best model according to AIC: **{best_model}**")
 
     # ======================================================
     # 5️⃣ CLOGLOG INTERPRETATION
