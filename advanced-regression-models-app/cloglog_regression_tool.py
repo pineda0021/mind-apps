@@ -32,9 +32,7 @@ def run():
 
     st.header("1️⃣ Model Specification")
 
-    response_original = st.selectbox(
-        "Select Binary Response Variable (Y)", df.columns
-    )
+    response_original = st.selectbox("Select Binary Response Variable (Y)", df.columns)
 
     df[response_original] = df[response_original].astype("category")
 
@@ -45,10 +43,7 @@ def run():
 
     df["response_binary"] = (df[response_original] != ref_level).astype(int)
 
-    st.info(
-        f"The model estimates the probability that "
-        f"{response_original} ≠ '{ref_level}'."
-    )
+    st.info(f"The model estimates P({response_original} ≠ '{ref_level}').")
 
     response = "response_binary"
 
@@ -68,11 +63,10 @@ def run():
     reference_dict = {}
 
     for col in categorical_vars:
-
         df[col] = df[col].astype("category")
 
         ref = st.selectbox(
-            f"Select reference level for {col}",
+            f"Reference level for {col}",
             df[col].cat.categories,
             key=f"ref_{col}"
         )
@@ -82,7 +76,6 @@ def run():
     terms = []
 
     for var in predictors:
-
         if var in categorical_vars:
             ref = reference_dict[var]
             terms.append(f'C({var}, Treatment(reference="{ref}"))')
@@ -94,7 +87,7 @@ def run():
     st.code(formula)
 
     # ======================================================
-    # 3️⃣ DATA PREPARATION
+    # 3️⃣ DATA PREP
     # ======================================================
 
     st.header("2️⃣ Response Diagnostics")
@@ -108,13 +101,7 @@ def run():
     for col in categorical_vars:
         df_model[col] = df_model[col].astype("category")
 
-    fig = px.histogram(
-        df_model,
-        x=response,
-        title="Distribution of Binary Response",
-        color=response
-    )
-
+    fig = px.histogram(df_model, x=response, color=response)
     st.plotly_chart(fig)
 
     # ======================================================
@@ -129,11 +116,10 @@ def run():
         family=sm.families.Binomial(link=sm.families.links.cloglog())
     ).fit()
 
-    st.subheader("Cloglog Regression Summary")
     st.text(model.summary())
 
     # ======================================================
-    # 5️⃣ LIKELIHOOD RATIO TEST
+    # 5️⃣ LR TEST
     # ======================================================
 
     st.subheader("Likelihood Ratio Test")
@@ -145,67 +131,55 @@ def run():
     ).fit()
 
     lr_stat = 2 * (model.llf - null_model.llf)
-    df_diff = int(model.df_model)
-    p_value = chi2.sf(lr_stat, df_diff)
+    p_value = chi2.sf(lr_stat, int(model.df_model))
 
     st.write(f"LR Statistic: {lr_stat:.4f}")
-    st.write(f"Degrees of Freedom: {df_diff}")
     st.write(f"p-value: {p_value:.6f}")
 
     # ======================================================
-    # 6️⃣ MODEL FIT EVALUATION
+    # 6️⃣ MODEL FIT
     # ======================================================
 
     st.header("4️⃣ Model Fit Evaluation")
 
-    col1, col2, col3, col4, col5 = st.columns(5)
-
-    col1.metric("Log-Likelihood", round(model.llf, 2))
-    col2.metric("AIC", round(model.aic, 2))
-    col3.metric("BIC", round(model.bic, 2))
-    col4.metric("Deviance", round(model.deviance, 2))
-    col5.metric("Pearson χ²", round(model.pearson_chi2, 2))
+    st.write(f"AIC: {model.aic:.2f}")
+    st.write(f"BIC: {model.bic:.2f}")
 
     # ======================================================
-    # 7️⃣ MODEL EQUATION
+    # 7️⃣ EQUATION
     # ======================================================
 
-    st.subheader("Cloglog Regression Equation")
+    st.subheader("Model Equation")
 
     params = model.params
 
-    equation = f"\\log(-\\log(1-p)) = {round(params['Intercept'],4)}"
+    eq = f"\\log(-\\log(1-p)) = {params['Intercept']:.4f}"
 
     for name in params.index:
-
         if name == "Intercept":
             continue
-
-        coef = round(params[name], 4)
+        coef = params[name]
         sign = "+" if coef >= 0 else "-"
+        eq += f" {sign} {abs(coef):.4f} {name}"
 
-        equation += f" {sign} {abs(coef)} \\cdot {name}"
-
-    st.latex(equation)
+    st.latex(eq)
 
     # ======================================================
     # 8️⃣ INTERPRETATION
     # ======================================================
 
-    st.header("5️⃣ Interpretation of Coefficients")
+    st.header("5️⃣ Interpretation")
 
     st.markdown(
     """
-    For the complementary log–log model
+$$
+\\log(-\\log(1-p)) = X\\beta
+$$
 
-    $$
-    \log(-\log(1-p)) = X\\beta
-    $$
+Interpretation uses $e^{\\beta}$:
 
-    coefficients are interpreted using $e^{\\beta}$.
-
-    If a predictor changes, the **new probability equals the old probability raised to the power $e^{\\beta}$**.
-    """
+New probability = old probability raised to $e^{\\beta}$.
+"""
     )
 
     for term in model.params.index:
@@ -214,75 +188,39 @@ def run():
         pval = model.pvalues[term]
         power = np.exp(coef)
 
-        # significance label
         if pval <= 0.05:
-            sig_text = "Statistically significant at the 5% level."
-            sig_display = st.success
+            sig = "✅ Significant"
+            color = st.success
         else:
-            sig_text = "Not statistically significant at the 5% level."
-            sig_display = st.warning
+            sig = "⚠ Not significant"
+            color = st.warning
 
-        # INTERCEPT
         if term == "Intercept":
 
-            st.markdown("### Intercept")
+            st.markdown(f"### Intercept")
+            st.latex(f"\\log(-\\log(1-p)) = {coef:.4f}")
 
-            st.latex(r"\log(-\log(1-p)) = " + f"{coef:.4f}")
+        elif "C(" in term:
 
-            st.markdown(
-            f"""
-Baseline complementary log–log value when predictors are at their reference levels.
+            st.markdown(f"### {term}")
+            st.latex(f"e^{{{coef:.4f}}} = {power:.4f}")
 
-Coefficient = **{coef:.4f}**  
-p-value = **{pval:.4f}**
-"""
-        )
+            st.write(
+                f"Compared to the reference group, probability is raised to power {power:.4f}"
+            )
 
-        sig_display(sig_text)
+        else:
 
-    # CATEGORICAL VARIABLES
-    elif "C(" in term:
+            st.markdown(f"### {term}")
+            st.latex(f"e^{{{coef:.4f}}} = {power:.4f}")
 
-        st.markdown(f"### {term}")
+            st.write(
+                f"If {term} increases by 1, probability is raised to power {power:.4f}"
+            )
 
-        st.latex(
-            rf"e^{{{coef:.4f}}} = {power:.4f}"
-        )
-
-        st.markdown(
-        f"""
-Compared with the **reference category**, the probability of the event
-is multiplied by a power of **{power:.4f}**.
-
-Coefficient = **{coef:.4f}**  
-p-value = **{pval:.4f}**
-"""
-        )
-
-        sig_display(sig_text)
-
-    # NUMERIC VARIABLES
-    else:
-
-        st.markdown(f"### {term}")
-
-        st.latex(
-            rf"e^{{{coef:.4f}}} = {power:.4f}"
-        )
-
-        st.markdown(
-        f"""
-If **{term} increases by one unit**, the new estimated probability equals
-the old probability raised to the power **{power:.4f}**.
-
-Coefficient = **{coef:.4f}**  
-p-value = **{pval:.4f}**
-"""
-        )
-
-        sig_display(sig_text)
-
-  
+        st.write(f"Coefficient = {coef:.4f}")
+        st.write(f"p-value = {pval:.4f}")
+        color(sig)
 
     # ======================================================
     # 9️⃣ PREDICTION
@@ -290,58 +228,27 @@ p-value = **{pval:.4f}**
 
     st.header("6️⃣ Prediction")
 
-    input_dict = {}
+    inputs = {}
 
     for var in predictors:
-
         if var in categorical_vars:
-
-            input_dict[var] = st.selectbox(
-                var,
-                df[var].cat.categories
-            )
-
+            inputs[var] = st.selectbox(var, df[var].cat.categories)
         else:
+            inputs[var] = st.number_input(var, value=float(df[var].mean()))
 
-            numeric_series = pd.to_numeric(df[var], errors="coerce")
+    if st.button("Predict"):
 
-            input_dict[var] = st.number_input(
-                var,
-                value=float(numeric_series.mean())
-            )
-
-    if st.button("Predict Probability"):
-
-        new_df = pd.DataFrame([input_dict])
+        new_df = pd.DataFrame([inputs])
 
         for var in categorical_vars:
-            new_df[var] = pd.Categorical(
-                new_df[var],
-                categories=df[var].cat.categories
-            )
+            new_df[var] = pd.Categorical(new_df[var], categories=df[var].cat.categories)
 
         prob = model.predict(new_df)[0]
 
-        st.subheader("Prediction Result")
-
-        st.success(
-            f"Estimated probability of the event = **{prob:.4f}**"
-        )
-
-        st.markdown(
-        f"""
-Using the complementary log–log model
-
-\\[
-p = 1 - e^{{-e^{{X\\beta}}}}
-\\]
-
-the predicted probability of the event is **{prob:.4f}**.
-"""
-        )
+        st.success(f"Predicted probability = {prob:.4f}")
 
     # ======================================================
-    # 🔟 ROC CURVE
+    # 🔟 ROC
     # ======================================================
 
     st.header("7️⃣ ROC Curve")
@@ -352,91 +259,42 @@ the predicted probability of the event is **{prob:.4f}**.
     fpr, tpr, _ = roc_curve(y_true, y_pred)
     roc_auc = auc(fpr, tpr)
 
-    fig = px.line(
-        x=fpr,
-        y=tpr,
-        labels=dict(x="False Positive Rate", y="True Positive Rate"),
-        title=f"ROC Curve (AUC = {roc_auc:.3f})"
-    )
-
-    fig.add_shape(type="line", x0=0, y0=0, x1=1, y1=1, line=dict(dash="dash"))
-
+    fig = px.line(x=fpr, y=tpr, title=f"AUC = {roc_auc:.3f}")
     st.plotly_chart(fig)
 
     # ======================================================
     # 1️⃣1️⃣ MODEL COMPARISON
     # ======================================================
 
-    st.header("8️⃣ Model Comparison (Logistic vs Probit vs Cloglog)")
+    st.header("8️⃣ Model Comparison")
 
-    logit_model = smf.glm(
-        formula=formula,
-        data=df_model,
-        family=sm.families.Binomial(link=sm.families.links.logit())
-    ).fit()
+    logit = smf.glm(formula, df_model,
+                    family=sm.families.Binomial(link=sm.families.links.logit())).fit()
 
-    probit_model = smf.glm(
-        formula=formula,
-        data=df_model,
-        family=sm.families.Binomial(link=sm.families.links.probit())
-    ).fit()
+    probit = smf.glm(formula, df_model,
+                     family=sm.families.Binomial(link=sm.families.links.probit())).fit()
 
-    cloglog_model = smf.glm(
-        formula=formula,
-        data=df_model,
-        family=sm.families.Binomial(link=sm.families.links.cloglog())
-    ).fit()
-
-    models = {
-        "Logistic": logit_model,
-        "Probit": probit_model,
-        "Cloglog": cloglog_model
-    }
+    cloglog = model
 
     n = len(df_model)
 
     rows = []
 
-    for name, m in models.items():
+    for name, m in [("Logit", logit), ("Probit", probit), ("Cloglog", cloglog)]:
 
-        ll = m.llf
         k = m.df_model + 1
-
         aic = m.aic
         aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
-        bic = -2 * ll + k * np.log(n)
+        bic = -2 * m.llf + k * np.log(n)
 
-        rows.append({
-            "Model": name,
-            "AIC": aic,
-            "AICc": aicc,
-            "BIC": bic
-        })
+        rows.append({"Model": name, "AIC": aic, "AICc": aicc, "BIC": bic})
 
-    comparison_df = pd.DataFrame(rows)
+    comp = pd.DataFrame(rows)
 
-    st.subheader("Information Criteria")
+    st.dataframe(comp.style.highlight_min(axis=0))
 
-    st.dataframe(
-        comparison_df.style.highlight_min(axis=0),
-        use_container_width=True
-    )
-
-    best_aic = comparison_df.loc[comparison_df["AIC"].idxmin(), "Model"]
-    best_bic = comparison_df.loc[comparison_df["BIC"].idxmin(), "Model"]
-
-    st.success(f"Best model by AIC: **{best_aic}**")
-    st.success(f"Best model by BIC: **{best_bic}**")
-
-    fig2 = px.bar(
-        comparison_df,
-        x="Model",
-        y=["AIC","AICc","BIC"],
-        barmode="group",
-        title="Information Criteria Comparison"
-    )
-
-    st.plotly_chart(fig2)
+    st.write("Best AIC:", comp.loc[comp.AIC.idxmin(), "Model"])
+    st.write("Best BIC:", comp.loc[comp.BIC.idxmin(), "Model"])
 
 
 if __name__ == "__main__":
