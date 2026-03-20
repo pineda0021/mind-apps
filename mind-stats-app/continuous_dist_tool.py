@@ -43,7 +43,7 @@ def normal_distribution(decimal):
 
     calc_type = st.selectbox(
         "Choose a calculation:",
-        ["P(X < x)", "P(X > x)", "P(a < X < b)", "Inverse: Find x for given probability"]
+        ["P(X < x) less than", "P(X > x) more than", "P(a < X < b) in between", "Inverse: Find x for given probability"]
     )
 
     x = np.linspace(mean - 4*sd, mean + 4*sd, 500)
@@ -68,7 +68,7 @@ def normal_distribution(decimal):
         st.pyplot(fig)
 
     # ---------- P(X > x)
-    elif calc_type == "P(X > x) more than":
+    elif calc_type == "P(X > x)":
         x_val = st.number_input("Enter x value:", value=0.0)
         prob = 1 - norm.cdf(x_val, mean, sd)
         z = (x_val - mean) / sd
@@ -86,7 +86,7 @@ def normal_distribution(decimal):
         st.pyplot(fig)
 
     # ---------- P(a < X < b)
-    elif calc_type == "P(a < X < b) in between":
+    elif calc_type == "P(a < X < b)":
         a = st.number_input("Lower bound (a):", value=mean - sd)
         b = st.number_input("Upper bound (b):", value=mean + sd)
 
