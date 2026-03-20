@@ -1,99 +1,101 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime
 import smtplib
 from email.message import EmailMessage
 
-# --- PAGE SETUP ---
-st.set_page_config(page_title="Stock Monitor Pro", layout="wide")
+# --- CONFIG ---
+st.set_page_config(page_title="WealthMonitor Pro", layout="wide")
 
-# --- UI: SIDEBAR SETTINGS ---
-with st.sidebar:
-    st.header("📈 Control Panel")
-    ticker = st.text_input("Stock Ticker", value="VBAIX").upper()
-    
-    st.subheader("Thresholds")
-    sell_target = st.number_input("Sell Target (Price High)", value=200.0)
-    drop_alert = st.number_input("Drop Alert (Price Low)", value=150.0)
-    
-    st.divider()
-    st.subheader("Email Alerts")
-    user_email = st.text_input("Your Email")
-    app_password = st.text_input("App Password", type="password", help="Use a Google App Password, not your login password.")
-    
-    run_monitor = st.button("Check Market Now")
+# Target weights from your main.py logic
+TARGET_WEIGHTS = {"FXAIX": 0.2, "FXNAX": 0.6, "VTIAX": 0.2}
 
 # --- FUNCTIONS ---
-def send_email(subject, content):
+def send_email(subject, content, user_email, app_password):
     if not user_email or not app_password:
-        st.error("Email settings missing!")
+        st.error("Email settings missing in sidebar!")
         return
-    
     msg = EmailMessage()
     msg.set_content(content)
     msg['Subject'] = subject
     msg['From'] = user_email
     msg['To'] = user_email
-
     try:
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(user_email, app_password)
             smtp.send_message(msg)
-        st.toast("Email alert sent!", icon="📧")
+        st.toast("Email sent!", icon="📧")
     except Exception as e:
-        st.error(f"Failed to send email: {e}")
+        st.error(f"Error: {e}")
 
-# --- MAIN DASHBOARD ---
-st.title(f"Real-Time Monitor: {ticker}")
+# --- SIDEBAR ---
+with st.sidebar:
+    st.header("⚙️ Global Settings")
+    user_email = st.text_input("Your Email")
+    app_password = st.text_input("App Password", type="password")
+    st.divider()
+    st.info("Switch between 'Single Stock' and 'Portfolio' tabs below.")
 
-# Fetch 1-day data with 1-minute intervals
-data = yf.download(ticker, period="1d", interval="1m")
+# --- TABS ---
+tab1, tab2 = st.tabs(["🎯 Real-Time Monitor", "⚖️ Portfolio Rebalance"])
 
-if not data.empty:
-    # Use the latest "Close" price
-    current_price = float(data['Close'].iloc[-1])
-    open_price = float(data['Open'].iloc[0])
-    price_change = current_price - open_price
-    percent_change = (price_change / open_price) * 100
-
-    # 1. Metrics Row
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Current Price", f"${current_price:.2f}", f"{price_change:.2f} ({percent_change:.2f}%)")
-    col2.metric("Target (Sell)", f"${sell_target:.2f}", f"{current_price - sell_target:.2f}", delta_color="inverse")
-    col3.metric("Floor (Drop)", f"${drop_alert:.2f}", f"{current_price - drop_alert:.2f}")
-
-    # 2. Interactive Plotly Chart
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=data.index, y=data['Close'], line=dict(color='#00FFCC', width=2), name="Price"))
-    fig.update_layout(
-        template="plotly_dark",
-        xaxis_title="Time",
-        yaxis_title="Price ($)",
-        margin=dict(l=20, r=20, t=20, b=20),
-        height=400
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-    # 3. Logic Engine
-    st.subheader("Alert Status")
+# --- TAB 1: REAL-TIME MONITOR ---
+with tab1:
+    st.title("Single Stock Alerter")
+    ticker = st.text_input("Enter Ticker", value="VBAIX").upper()
     
-    if current_price >= sell_target:
-        st.error(f"🚨 SELL SIGNAL: {ticker} has hit ${current_price:.2f}")
-        if run_monitor:
-            send_email(f"SELL ALERT: {ticker}", f"{ticker} is at ${current_price:.2f}. Target of ${sell_target} reached.")
-            
-    elif current_price <= drop_alert:
-        st.warning(f"⚠️ DROP ALERT: {ticker} fell to ${current_price:.2f}")
-        if run_monitor:
-            send_email(f"DROP ALERT: {ticker}", f"{ticker} fell to ${current_price:.2f}. Floor of ${drop_alert} breached.")
-            
-    else:
-        st.info("Price is within your defined boundaries. No action taken.")
+    col_a, col_b = st.columns(2)
+    sell_target = col_a.number_input("Sell Target ($)", value=200.0)
+    drop_alert = col_b.number_input("Drop Alert ($)", value=150.0)
+    
+    data = yf.download(ticker, period="1d", interval="1m")
+    
+    if not data.empty:
+        curr = float(data['Close'].iloc[-1])
+        st.metric(f"{ticker} Price", f"${curr:.2f}", f"{(curr - data['Open'].iloc[0]):.2f}")
+        
+        fig = go.Figure(go.Scatter(x=data.index, y=data['Close'], line=dict(color='#00FFCC')))
+        fig.update_layout(template="plotly_dark", height=300, margin=dict(l=0,r=0,b=0,t=0))
+        st.plotly_chart(fig, use_container_width=True)
 
-else:
-    st.error("Unable to fetch data. Check the ticker symbol or market hours.")
+        if st.button("Manual Alert Check"):
+            if curr >= sell_target:
+                send_email(f"SELL: {ticker}", f"{ticker} hit ${curr}", user_email, app_password)
+            elif curr <= drop_alert:
+                send_email(f"DROP: {ticker}", f"{ticker} dropped to ${curr}", user_email, app_password)
+            else:
+                st.write("Price is stable. No email sent.")
 
-# --- FOOTER ---
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+# --- TAB 2: PORTFOLIO REBALANCE ---
+with tab2:
+    st.title("Portfolio Health (Annual View)")
+    
+    # Fetch data for all portfolio tickers
+    port_data = yf.download(list(TARGET_WEIGHTS.keys()), period="1y")["Adj Close"]
+    
+    if not port_data.empty:
+        latest = port_data.iloc[-1]
+        returns = port_data.pct_change().dropna()
+        weights = np.array(list(TARGET_WEIGHTS.values()))
+        
+        # Calculations
+        vol = (returns.dot(weights).std() * np.sqrt(252)) * 100
+        
+        st.subheader("Current Allocations")
+        cols = st.columns(len(TARGET_WEIGHTS))
+        for i, (t, w) in enumerate(TARGET_WEIGHTS.items()):
+            cols[i].metric(t, f"${latest[t]:.2f}", f"Target: {w*100:.0f}%")
+        
+        st.divider()
+        st.write(f"**Annualized Volatility:** {vol:.2f}%")
+        
+        # Visualizing Drift (Simplified version of your main.py logic)
+        drift_fig = go.Figure(data=[
+            go.Bar(name='Target', x=list(TARGET_WEIGHTS.keys()), y=[w*100 for w in TARGET_WEIGHTS.values()]),
+            # In a real app, you'd calculate 'Current' based on share counts
+        ])
+        drift_fig.update_layout(title="Allocation Strategy", template="plotly_dark")
+        st.plotly_chart(drift_fig)
