@@ -354,7 +354,7 @@ def sampling_proportion(decimal):
 
     q = 1 - p
     se = math.sqrt(p * q / n)
-    st.write(f"**Standard Error (σₚ̂) = {round(se, decimal)}**")
+    st.write(f"**Standard Error (σp̂) = {round(se, decimal)}**")
 
     calc_type = st.selectbox(
         "Choose a calculation:",
