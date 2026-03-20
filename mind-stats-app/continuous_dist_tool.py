@@ -107,30 +107,27 @@ def normal_distribution(decimal):
         ax.axvline(b, color="red", linestyle="--")
         st.pyplot(fig)
 
-    # ---------- Inverse
-    else:
-        tail = st.selectbox("Select tail:", ["Left tail", "Right tail"])
-        p = st.number_input("Enter probability p:", 0.0, 1.0, 0.95)
+    # ---------- Inverse (Middle / Central Area)
+    elif calc_type == "Inverse (Middle)":
+        p = st.number_input("Enter central probability (e.g., 0.95):", 0.0, 1.0, 0.95)
 
-        if tail == "Left tail":
-            z = norm.ppf(p)
-        else:
-            z = norm.ppf(1 - p)
+        alpha = 1 - p
+        z = norm.ppf(1 - alpha / 2)
 
-        x_val = mean + z * sd
+        x_lower = mean - z * sd
+        x_upper = mean + z * sd
 
         st.latex(rf"""
-            Z_p = {z:.{decimal}f} \\[6pt]
-            x = \mu + Z_p\sigma = {x_val:.{decimal}f}
+            Z_{{\alpha/2}} = {z:.{decimal}f} \\[6pt]
+            x_1 = \mu - Z\sigma = {x_lower:.{decimal}f} \\[6pt]
+            x_2 = \mu + Z\sigma = {x_upper:.{decimal}f}
         """)
 
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.plot(x, y)
-        if tail == "Left tail":
-            ax.fill_between(x, 0, y, where=(x <= x_val), alpha=0.6)
-        else:
-            ax.fill_between(x, 0, y, where=(x >= x_val), alpha=0.6)
-        ax.axvline(x_val, color="red", linestyle="--")
+        ax.fill_between(x, 0, y, where=(x >= x_lower) & (x <= x_upper), alpha=0.6)
+        ax.axvline(x_lower, color="red", linestyle="--")
+        ax.axvline(x_upper, color="red", linestyle="--")
         st.pyplot(fig)
 
 # ==========================================================
