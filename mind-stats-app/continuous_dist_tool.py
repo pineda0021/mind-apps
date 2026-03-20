@@ -50,7 +50,7 @@ def normal_distribution(decimal):
     y = norm.pdf(x, mean, sd)
 
     # ---------- P(X < x)
-    if calc_type == "P(X < x)":
+    if calc_type == "P(X < x) less than":
         x_val = st.number_input("Enter x value:", value=0.0)
         prob = norm.cdf(x_val, mean, sd)
         z = (x_val - mean) / sd
@@ -68,7 +68,7 @@ def normal_distribution(decimal):
         st.pyplot(fig)
 
     # ---------- P(X > x)
-    elif calc_type == "P(X > x)":
+    elif calc_type == "P(X > x) more than":
         x_val = st.number_input("Enter x value:", value=0.0)
         prob = 1 - norm.cdf(x_val, mean, sd)
         z = (x_val - mean) / sd
@@ -86,7 +86,7 @@ def normal_distribution(decimal):
         st.pyplot(fig)
 
     # ---------- P(a < X < b)
-    elif calc_type == "P(a < X < b)":
+    elif calc_type == "P(a < X < b) in between":
         a = st.number_input("Lower bound (a):", value=mean - sd)
         b = st.number_input("Upper bound (b):", value=mean + sd)
 
