@@ -326,7 +326,7 @@ def run_summary(df_uploaded=None):
 # ==========================================================
 
 def run():
-    st.header("🧠 Descriptive Statistics Tool")
+    st.header("✏️ Descriptive Statistics Tool")
 
     categories = [
         "Qualitative (Categorical)",
