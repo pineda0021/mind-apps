@@ -267,22 +267,70 @@ def sampling_mean(decimal):
         ax.axvline(b, color="red", linestyle="--")
         st.pyplot(fig)
 
-    # ------- Inverse
-    else:
-        p = st.number_input("Enter probability p:", 0.0, 1.0, 0.95)
-        z = norm.ppf(p)
-        x_val = mu + z * se
+       # ------- Inverse
+    elif calc_type == "Inverse: Find x̄":
 
-        st.latex(rf"""
-            Z_p = {z:.{decimal}f} \\[6pt]
-            \bar X = {x_val:.{decimal}f}
-        """)
+        mode = st.selectbox(
+            "Select type:",
+            ["Left tail", "Right tail", "Middle (central)"]
+        )
 
-        fig, ax = plt.subplots(figsize=(8, 4))
-        ax.plot(x, y)
-        ax.fill_between(x, 0, y, where=(x <= x_val), alpha=0.6)
-        ax.axvline(x_val, color="red", linestyle="--")
-        st.pyplot(fig)
+        p = st.number_input("Enter probability p:", 0.0, 1.0, 0.075)
+
+        # ------- LEFT TAIL
+        if mode == "Left tail":
+            z = norm.ppf(p)
+            x_val = mu + z * se
+
+            st.latex(rf"""
+                P(\bar X \le x) = {p} \\[6pt]
+                Z = {z:.{decimal}f} \\[6pt]
+                \bar X = {x_val:.{decimal}f}
+            """)
+
+            fig, ax = plt.subplots(figsize=(8, 4))
+            ax.plot(x, y)
+            ax.fill_between(x, 0, y, where=(x <= x_val), alpha=0.6)
+            ax.axvline(x_val, linestyle="--")
+            st.pyplot(fig)
+
+        # ------- RIGHT TAIL
+        elif mode == "Right tail":
+            z = norm.ppf(1 - p)
+            x_val = mu + z * se
+
+            st.latex(rf"""
+                P(\bar X \ge x) = {p} \\[6pt]
+                Z = {z:.{decimal}f} \\[6pt]
+                \bar X = {x_val:.{decimal}f}
+            """)
+
+            fig, ax = plt.subplots(figsize=(8, 4))
+            ax.plot(x, y)
+            ax.fill_between(x, 0, y, where=(x >= x_val), alpha=0.6)
+            ax.axvline(x_val, linestyle="--")
+            st.pyplot(fig)
+
+        # ------- MIDDLE (CENTRAL)
+        else:
+            alpha = 1 - p
+            z = norm.ppf(1 - alpha / 2)
+
+            x_lower = mu - z * se
+            x_upper = mu + z * se
+
+            st.latex(rf"""
+                P(x_1 < \bar X < x_2) = {p} \\[6pt]
+                Z_{{\alpha/2}} = {z:.{decimal}f} \\[6pt]
+                x_1 = {x_lower:.{decimal}f},\quad x_2 = {x_upper:.{decimal}f}
+            """)
+
+            fig, ax = plt.subplots(figsize=(8, 4))
+            ax.plot(x, y)
+            ax.fill_between(x, 0, y, where=(x >= x_lower) & (x <= x_upper), alpha=0.6)
+            ax.axvline(x_lower, linestyle="--")
+            ax.axvline(x_upper, linestyle="--")
+            st.pyplot(fig)
 
 # ==========================================================
 # Sampling Distribution of the Proportion
