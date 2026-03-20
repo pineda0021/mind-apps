@@ -199,7 +199,7 @@ def sampling_mean(decimal):
         return
 
     se = sigma / math.sqrt(n)
-    st.write(f"**Standard Error (σₓ̄) = {round(se, decimal)}**")
+    st.write(f"**Standard Error (σx̄) = {round(se, decimal)}**")
 
     calc_type = st.selectbox(
         "Choose a calculation:",
