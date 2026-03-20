@@ -42,8 +42,13 @@ def normal_distribution(decimal):
     sd = st.number_input("Standard deviation (σ):", min_value=0.0001, value=1.0)
 
     calc_type = st.selectbox(
-        "Choose a calculation:",
-        ["P(X < x) less than", "P(X > x) more than", "P(a < X < b) in between", "Inverse: Find x for given probability"]
+    "Choose a calculation:",
+    [
+        "P(X < x) less than",
+        "P(X > x) more than",
+        "P(a < X < b) in between",
+        "Inverse: Find x (Left/Right/Middle)"
+    ]
     )
 
     x = np.linspace(mean - 4*sd, mean + 4*sd, 500)
@@ -68,7 +73,7 @@ def normal_distribution(decimal):
         st.pyplot(fig)
 
     # ---------- P(X > x)
-    elif calc_type == "P(X > x)":
+    elif calc_type == "P(X > x) more than":
         x_val = st.number_input("Enter x value:", value=0.0)
         prob = 1 - norm.cdf(x_val, mean, sd)
         z = (x_val - mean) / sd
@@ -86,7 +91,7 @@ def normal_distribution(decimal):
         st.pyplot(fig)
 
     # ---------- P(a < X < b)
-    elif calc_type == "P(a < X < b)":
+    elif calc_type == "P(a < X < b) in between":
         a = st.number_input("Lower bound (a):", value=mean - sd)
         b = st.number_input("Upper bound (b):", value=mean + sd)
 
@@ -107,28 +112,70 @@ def normal_distribution(decimal):
         ax.axvline(b, color="red", linestyle="--")
         st.pyplot(fig)
 
-    # ---------- Inverse (Middle / Central Area)
-    elif calc_type == "Inverse (Middle)":
-        p = st.number_input("Enter central probability (e.g., 0.95):", 0.0, 1.0, 0.95)
+        # ---------- Inverse
+    elif calc_type == "Inverse: Find x (Left/Right/Middle)":
 
-        alpha = 1 - p
-        z = norm.ppf(1 - alpha / 2)
+        mode = st.selectbox(
+            "Select type:",
+            ["Left tail", "Right tail", "Middle (central)"]
+        )
 
-        x_lower = mean - z * sd
-        x_upper = mean + z * sd
+        p = st.number_input("Enter probability p:", 0.0, 1.0, 0.075)
 
-        st.latex(rf"""
-            Z_{{\alpha/2}} = {z:.{decimal}f} \\[6pt]
-            x_1 = \mu - Z\sigma = {x_lower:.{decimal}f} \\[6pt]
-            x_2 = \mu + Z\sigma = {x_upper:.{decimal}f}
-        """)
+        # ---------- LEFT TAIL
+        if mode == "Left tail":
+            z = norm.ppf(p)
+            x_val = mean + z * sd
 
-        fig, ax = plt.subplots(figsize=(8, 4))
-        ax.plot(x, y)
-        ax.fill_between(x, 0, y, where=(x >= x_lower) & (x <= x_upper), alpha=0.6)
-        ax.axvline(x_lower, color="red", linestyle="--")
-        ax.axvline(x_upper, color="red", linestyle="--")
-        st.pyplot(fig)
+            st.latex(rf"""
+                P(X \le x) = {p} \\[6pt]
+                Z = {z:.{decimal}f} \\[6pt]
+                x = \mu + Z\sigma = {x_val:.{decimal}f}
+            """)
+
+            fig, ax = plt.subplots(figsize=(8, 4))
+            ax.plot(x, y)
+            ax.fill_between(x, 0, y, where=(x <= x_val), alpha=0.6)
+            ax.axvline(x_val, linestyle="--")
+            st.pyplot(fig)
+
+        # ---------- RIGHT TAIL
+        elif mode == "Right tail":
+            z = norm.ppf(1 - p)
+            x_val = mean + z * sd
+
+            st.latex(rf"""
+                P(X \ge x) = {p} \\[6pt]
+                Z = {z:.{decimal}f} \\[6pt]
+                x = \mu + Z\sigma = {x_val:.{decimal}f}
+            """)
+
+            fig, ax = plt.subplots(figsize=(8, 4))
+            ax.plot(x, y)
+            ax.fill_between(x, 0, y, where=(x >= x_val), alpha=0.6)
+            ax.axvline(x_val, linestyle="--")
+            st.pyplot(fig)
+
+        # ---------- MIDDLE (CENTRAL)
+        else:
+            alpha = 1 - p
+            z = norm.ppf(1 - alpha / 2)
+
+            x_lower = mean - z * sd
+            x_upper = mean + z * sd
+
+            st.latex(rf"""
+                P(x_1 < X < x_2) = {p} \\[6pt]
+                Z_{{\alpha/2}} = {z:.{decimal}f} \\[6pt]
+                x_1 = {x_lower:.{decimal}f},\quad x_2 = {x_upper:.{decimal}f}
+            """)
+
+            fig, ax = plt.subplots(figsize=(8, 4))
+            ax.plot(x, y)
+            ax.fill_between(x, 0, y, where=(x >= x_lower) & (x <= x_upper), alpha=0.6)
+            ax.axvline(x_lower, linestyle="--")
+            ax.axvline(x_upper, linestyle="--")
+            st.pyplot(fig)
 
 # ==========================================================
 # Sampling Distribution of the Mean
