@@ -8,8 +8,10 @@ import smtplib
 from email.message import EmailMessage
 
 # --- CONFIG ---
+# The portfolio tickers you mentioned in your logic
 TARGET_WEIGHTS = {"FXAIX": 0.2, "FXNAX": 0.6, "VTIAX": 0.2}
-st.set_page_config(page_title="WealthMonitor Pro", layout="wide")
+
+st.set_page_config(page_title="Stock Monitor Pro", layout="wide")
 
 # --- EMAIL FUNCTION ---
 def send_email(subject, content, user_email, app_password):
@@ -22,85 +24,71 @@ def send_email(subject, content, user_email, app_password):
     msg['From'] = user_email
     msg['To'] = user_email
     try:
-        # Standard Gmail SMTP settings
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(user_email, app_password)
             smtp.send_message(msg)
-        st.toast("Email sent successfully!", icon="📧")
+        st.toast("Email sent!", icon="📧")
     except Exception as e:
-        st.error(f"Login/SMTP Failed: {e}")
+        st.error(f"Email Error: {e}")
 
 # --- SIDEBAR ---
 with st.sidebar:
-    st.header("👤 Account Settings")
-    user_email = st.text_input("Gmail Address", placeholder="yourname@gmail.com")
-    app_password = st.text_input("Gmail App Password", type="password", help="16-character code from Google Security settings.")
+    st.header("⚙️ Settings")
+    user_email = st.text_input("Gmail Address")
+    app_password = st.text_input("App Password", type="password")
     st.divider()
-    st.caption("Instructions: Use Google 'App Passwords' (not your login password) for this to work.")
+    st.info("Check your Gmail 'App Passwords' settings if email fails.")
 
-# --- APP TABS ---
+# --- TABS ---
 tab1, tab2 = st.tabs(["🎯 Real-Time Monitor", "⚖️ Portfolio Health"])
 
 # --- TAB 1: SINGLE TICKER ---
 with tab1:
-    st.title("Ticker Alert System")
-    ticker_input = st.text_input("Stock Ticker", value="VBAIX").upper()
+    st.title("Stock Watch & Alerts")
+    ticker_input = st.text_input("Enter Ticker", value="VBAIX").upper()
     
-    col_a, col_b = st.columns(2)
-    sell_target = col_a.number_input("Sell Target ($)", value=200.0)
-    drop_alert = col_b.number_input("Drop Alert ($)", value=150.0)
+    col1, col2 = st.columns(2)
+    sell_target = col1.number_input("Sell Target ($)", value=200.0)
+    drop_alert = col2.number_input("Drop Alert ($)", value=150.0)
     
-    # Fetch Data: Try 1m (Real-Time), fallback to 1h if market is closed
+    # Fetch Data (Try 1-minute real-time, then hourly fallback)
     df = yf.download(ticker_input, period="5d", interval="1m", progress=False)
     if df.empty:
         df = yf.download(ticker_input, period="5d", interval="60m", progress=False)
     
     if not df.empty:
-        # Clean MultiIndex columns if present (common in new yfinance versions)
+        # Standardize columns (removes MultiIndex if present)
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
             
-        current_price = float(df['Close'].iloc[-1])
-        open_price = float(df['Open'].iloc[0])
-        change = current_price - open_price
+        current_p = float(df['Close'].iloc[-1])
+        st.metric(f"Current {ticker_input} Price", f"${current_p:.2f}")
         
-        st.metric(f"{ticker_input} Current", f"${current_price:.2f}", f"{change:.2f}")
-        
-        # Interactive Plotly Chart
-        fig = go.Figure(go.Scatter(x=df.index, y=df['Close'], name="Price", line=dict(color='#00FFCC')))
-        fig.update_layout(template="plotly_dark", height=400, margin=dict(l=10, r=10, t=10, b=10))
+        # Chart
+        fig = go.Figure(go.Scatter(x=df.index, y=df['Close'], line=dict(color='#00FFCC')))
+        fig.update_layout(template="plotly_dark", height=350, margin=dict(l=0,r=0,b=0,t=0))
         st.plotly_chart(fig, use_container_width=True)
 
         if st.button("Manual Alert Scan"):
-            if current_price >= sell_target:
-                send_email("📈 SELL ALERT", f"{ticker_input} hit target of ${sell_target}. Current: ${current_price:.2f}", user_email, app_password)
-            elif current_price <= drop_alert:
-                send_email("📉 DROP ALERT", f"{ticker_input} fell below ${drop_alert}. Current: ${current_price:.2f}", user_email, app_password)
+            if current_p >= sell_target:
+                send_email("SELL ALERT", f"{ticker_input} hit ${current_p:.2f}", user_email, app_password)
+            elif current_p <= drop_alert:
+                send_email("DROP ALERT", f"{ticker_input} hit ${current_p:.2f}", user_email, app_password)
             else:
-                st.success("Price is currently between your targets. No alert sent.")
+                st.success("Price is currently safe. No email sent.")
     else:
-        st.warning(f"Could not find data for {ticker_input}. Please check the symbol.")
+        st.warning("No data found. Check ticker or market status.")
 
 # --- TAB 2: PORTFOLIO ---
 with tab2:
-    st.title("Portfolio Allocation Status")
-    
-    # Fetch Data for all portfolio tickers
+    st.title("Diversified Portfolio Status")
     port_tickers = list(TARGET_WEIGHTS.keys())
     port_data = yf.download(port_tickers, period="1y", progress=False)["Adj Close"]
     
     if not port_data.empty:
         latest = port_data.iloc[-1]
-        
-        st.subheader("Current Allocations")
+        st.subheader("Asset Prices")
         cols = st.columns(len(TARGET_WEIGHTS))
         for i, (t, w) in enumerate(TARGET_WEIGHTS.items()):
             price = latest[t] if t in latest else 0.0
             cols[i].metric(t, f"${price:.2f}", f"Target: {w*100:.0f}%")
-        
-        # Pie Chart of Targets
-        fig_pie = go.Figure(data=[go.Pie(labels=list(TARGET_WEIGHTS.keys()), 
-                                        values=list(TARGET_WEIGHTS.values()), 
-                                        hole=.3)])
-        fig_pie.update_layout(template="plotly_dark", title="Target Strategy")
-        st.plotly_chart(fig_pie)
