@@ -3,10 +3,9 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import patsy
-import statsmodels.api as sm
-from statsmodels.discrete.count_model import ZeroInflatedPoisson
 from scipy.stats import chi2
 from scipy.special import expit
+from statsmodels.discrete.count_model import ZeroInflatedPoisson
 import matplotlib.pyplot as plt
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor, plot_tree
 
@@ -105,18 +104,16 @@ def run():
     infl_formula_rhs = " + ".join(infl_terms) if infl_terms else "1"
 
     count_formula = response_original + " ~ " + count_formula_rhs
-    infl_formula = infl_formula_rhs
 
     st.subheader("Count Model Formula")
     st.code(count_formula)
 
     st.subheader("Zero-Inflation Model Formula")
-    st.code(f"logit(π) ~ {infl_formula}")
+    st.code(f"logit(π) ~ {infl_formula_rhs}")
 
     st.info(
-        "This model has two components:\n"
-        "- a **Poisson count model** for the expected count among non-structural-zero cases\n"
-        "- a **logistic zero-inflation model** for the probability of being a structural zero"
+        "This model has two components: a Poisson count model for expected counts and "
+        "a logistic model for the probability of structural zeros."
     )
 
     # ======================================================
@@ -145,7 +142,7 @@ def run():
         )
 
         X_infl = patsy.dmatrix(
-            infl_formula,
+            infl_formula_rhs,
             df_model,
             return_type="dataframe"
         )
@@ -235,11 +232,6 @@ def run():
         aicc = np.nan
 
     observed_zero_rate = (df_model[response_original] == 0).mean()
-
-    try:
-        fitted_mean = res.predict(exog=X_count, exog_infl=X_infl, which="mean")
-    except Exception:
-        fitted_mean = res.predict(exog=X_count, exog_infl=X_infl)
 
     col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -495,15 +487,8 @@ def run():
             gamma = inflate_params.values
             pi_hat = expit(np.dot(X_infl_new.iloc[0].values, gamma))
 
-            try:
-                prob_zero = res.predict(
-                    exog=X_count_new,
-                    exog_infl=X_infl_new,
-                    which="prob-zero"
-                )[0]
-            except Exception:
-                mu_hat = np.exp(np.dot(X_count_new.iloc[0].values, count_params.values))
-                prob_zero = pi_hat + (1 - pi_hat) * np.exp(-mu_hat)
+            mu_hat = np.exp(np.dot(X_count_new.iloc[0].values, count_params.values))
+            prob_zero = pi_hat + (1 - pi_hat) * np.exp(-mu_hat)
 
             st.subheader("Prediction Results")
             st.write(f"Predicted structural-zero probability: **{pi_hat:.4f}**")
@@ -603,38 +588,38 @@ def run():
         tree_df = df_model.copy()
         tree_df["structural_zero"] = (tree_df[response_original] == 0).astype(int)
 
-        dummy_predictors = sorted(set(selected_predictors))
-        tree_dummy_df = pd.get_dummies(
-            tree_df[[response_original, "structural_zero"] + dummy_predictors],
-            columns=[v for v in dummy_predictors if v in categorical_vars],
+        dummy_df = pd.get_dummies(
+            tree_df[[response_original, "structural_zero"] + selected_predictors],
+            columns=[v for v in selected_predictors if v in categorical_vars],
             drop_first=True
         )
 
         zero_tree_features = [
-            c for c in tree_dummy_df.columns
+            c for c in dummy_df.columns
             if c not in [response_original, "structural_zero"]
-            and any(base in c or c == base for base in inflation_predictors)
+            and any(c == v or c.startswith(f"{v}_") for v in inflation_predictors)
         ]
 
         count_tree_features = [
-            c for c in tree_dummy_df.columns
+            c for c in dummy_df.columns
             if c not in [response_original, "structural_zero"]
-            and any(base in c or c == base for base in count_predictors)
+            and any(c == v or c.startswith(f"{v}_") for v in count_predictors)
         ]
 
+        tree_zero = None
+        tree_count = None
+
         if zero_tree_features:
-            X_zero = tree_dummy_df[zero_tree_features]
-            y_zero = tree_dummy_df["structural_zero"]
+            X_zero = dummy_df[zero_tree_features]
+            y_zero = dummy_df["structural_zero"]
 
             tree_zero = DecisionTreeClassifier(
                 ccp_alpha=0.01,
                 random_state=123
             )
             tree_zero.fit(X_zero, y_zero)
-        else:
-            tree_zero = None
 
-        smokers_df = tree_dummy_df[tree_dummy_df[response_original] > 0].copy()
+        smokers_df = dummy_df[dummy_df[response_original] > 0].copy()
 
         if count_tree_features and not smokers_df.empty:
             X_count_tree = smokers_df[count_tree_features]
@@ -647,14 +632,11 @@ def run():
                 random_state=123
             )
             tree_count.fit(X_count_tree, y_count_tree)
-        else:
-            tree_count = None
 
         if tree_zero is None and tree_count is None:
             st.info("Not enough valid predictors were available to build the optional trees.")
         else:
-            ncols = 2
-            fig, ax = plt.subplots(1, ncols, figsize=(16, 6))
+            fig, ax = plt.subplots(1, 2, figsize=(16, 6))
 
             if tree_zero is not None:
                 plot_tree(
@@ -685,6 +667,7 @@ def run():
                 ax[1].set_title("Count Model Tree Not Available")
 
             st.pyplot(fig)
+            plt.close(fig)
 
     except Exception as e:
         st.warning(f"Could not create the optional tree views: {e}")
