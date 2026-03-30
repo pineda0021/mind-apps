@@ -225,14 +225,29 @@ def run():
     # 6️⃣ EQUATION BUILDER
     # ======================================================
 
-    def build_equations(result, baseline_label, choice_map):
+    def get_nonbaseline_labels(pred_col_count, ordered_levels):
+        if pred_col_count == len(ordered_levels):
+            return ordered_levels
+        if pred_col_count == len(ordered_levels) - 1:
+            return ordered_levels[1:]
+        return [f"Category {i}" for i in range(pred_col_count)]
 
-        params = result.params
+    def build_equations(result, baseline_label, ordered_levels):
+
+        params = result.params.copy()
         equations = []
 
-        for col in params.columns:
+        category_labels = get_nonbaseline_labels(params.shape[1], ordered_levels)
 
-            category_label = choice_map.get(col, f"Category {col}")
+        for j, col in enumerate(params.columns):
+
+            if j < len(category_labels):
+                category_label = category_labels[j]
+            else:
+                category_label = f"Category {col}"
+
+            if category_label == baseline_label:
+                continue
 
             equation = (
                 f"\\log\\left(\\frac{{P(Y={category_label})}}{{P(Y={baseline_label})}}\\right)"
@@ -262,7 +277,7 @@ def run():
 
     st.subheader("Fitted Regression Equations (Generalized Logits)")
 
-    equations = build_equations(res, reference_level, choice_mapping)
+    equations = build_equations(res, reference_level, ordered_response_levels)
 
     for category_label, eq in equations:
         st.markdown(f"**Baseline comparison: {category_label} vs {reference_level}**")
@@ -277,9 +292,17 @@ def run():
     params = res.params
     pvalues = res.pvalues
 
-    for col in params.columns:
+    category_labels = get_nonbaseline_labels(params.shape[1], ordered_response_levels)
 
-        category_label = choice_mapping.get(col, f"Category {col}")
+    for j, col in enumerate(params.columns):
+
+        if j < len(category_labels):
+            category_label = category_labels[j]
+        else:
+            category_label = f"Category {col}"
+
+        if category_label == reference_level:
+            continue
 
         st.subheader(f"Logit for {category_label} vs {reference_level}")
 
@@ -422,11 +445,23 @@ def run():
             X_new = X_new.astype(float)
 
             prediction = res.predict(X_new)
+            prediction = pd.DataFrame(prediction)
 
-            nonbaseline_levels = ordered_response_levels[1:]
-            prediction.columns = nonbaseline_levels
-            prediction.insert(0, reference_level, 1 - prediction.sum(axis=1))
-            prediction = prediction[ordered_response_levels]
+            if prediction.shape[1] == len(ordered_response_levels):
+                prediction.columns = ordered_response_levels
+
+            elif prediction.shape[1] == len(ordered_response_levels) - 1:
+                nonbaseline_levels = ordered_response_levels[1:]
+                prediction.columns = nonbaseline_levels
+                prediction.insert(0, reference_level, 1 - prediction.sum(axis=1))
+                prediction = prediction[ordered_response_levels]
+
+            else:
+                st.error(
+                    f"Unexpected number of prediction columns: {prediction.shape[1]}. "
+                    f"Expected either {len(ordered_response_levels)} or {len(ordered_response_levels) - 1}."
+                )
+                return
 
             st.subheader("Prediction Results")
             st.dataframe(prediction, use_container_width=True)
@@ -450,11 +485,23 @@ def run():
 
     try:
         predicted_probs = res.predict(X)
+        predicted_probs = pd.DataFrame(predicted_probs)
 
-        nonbaseline_levels = ordered_response_levels[1:]
-        predicted_probs.columns = nonbaseline_levels
-        predicted_probs.insert(0, reference_level, 1 - predicted_probs.sum(axis=1))
-        predicted_probs = predicted_probs[ordered_response_levels]
+        if predicted_probs.shape[1] == len(ordered_response_levels):
+            predicted_probs.columns = ordered_response_levels
+
+        elif predicted_probs.shape[1] == len(ordered_response_levels) - 1:
+            nonbaseline_levels = ordered_response_levels[1:]
+            predicted_probs.columns = nonbaseline_levels
+            predicted_probs.insert(0, reference_level, 1 - predicted_probs.sum(axis=1))
+            predicted_probs = predicted_probs[ordered_response_levels]
+
+        else:
+            st.warning(
+                f"Could not create predicted vs actual plot: unexpected number of prediction columns "
+                f"({predicted_probs.shape[1]})."
+            )
+            return
 
         predicted_class = predicted_probs.idxmax(axis=1)
 
