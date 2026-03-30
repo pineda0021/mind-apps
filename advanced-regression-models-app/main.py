@@ -9,6 +9,10 @@ import cumulative_logit_tool
 import cumulative_probit_tool
 import cumulative_cloglog_tool
 import generalized_logit_tool
+import poisson_regression_tool
+import zero_truncated_poisson_tool
+import zero_inflated_poisson_tool
+import hurdle_poisson_tool
 
 st.set_page_config(layout="wide")
 
@@ -26,7 +30,11 @@ tool = st.sidebar.radio(
         "Cumulative Logit Model",
         "Cumulative Probit Model",
         "Cumulative Complementary Log-Log Model",
-        "Generalized Logit Model for Nominal Response"
+        "Generalized Logit Model for Nominal Response",
+        "Poisson Regression Model",
+        "Zero-truncated Poisson Regression Model",
+        "Zero-inflated Poisson Regression Model",
+        "Hurdle Poisson Regression Model"
     ]
 )
 
@@ -61,6 +69,18 @@ elif tool == "Cumulative Complementary Log-Log Model":
 
 elif tool == "Generalized Logit Model for Nominal Response":
     generalized_logit_tool.run()
+
+elif tool == "Poisson Regression Model":
+    poisson_regression_tool.run()
+
+elif tool == "Zero-truncated Poisson Regression Model":
+    zero_truncated_poisson_tool.run()
+
+elif tool == "Zero-inflated Poisson Regression Model":
+    zero_inflated_poisson_tool.run()
+
+elif tool == "Hurdle Poisson Regression Model":
+    hurdle_poisson_tool.run()
 
 
 # ---------- Footer ----------
