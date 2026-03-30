@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import statsmodels.api as sm
 from statsmodels.discrete.truncated_model import TruncatedLFPoisson
 from scipy.stats import chi2
 
@@ -40,10 +39,6 @@ def run():
 
     if df[response_original].isna().all():
         st.error("The response variable must contain numeric values.")
-        return
-
-    if (df[response_original].dropna() <= 0).any():
-        st.error("The zero-truncated Poisson response variable must be strictly positive.")
         return
 
     predictors = st.multiselect(
@@ -87,8 +82,7 @@ def run():
 
     st.info(
         "This model is appropriate when the count response cannot take the value 0. "
-        "It uses a **log link**, so coefficients describe multiplicative effects "
-        "on the expected count among positive observations."
+        "Rows with response value **0** are automatically excluded before fitting."
     )
 
     # ======================================================
@@ -105,13 +99,24 @@ def run():
 
     df_model = df_model.dropna()
 
+    original_n = len(df_model)
+    zero_count = int((df_model[response_original] == 0).sum())
+
+    df_model = df_model[df_model[response_original] > 0].copy()
+
     if df_model.empty:
-        st.error("No valid rows remain after removing missing values.")
+        st.error("No positive-count rows remain after filtering the data.")
         return
 
-    if (df_model[response_original] <= 0).any():
-        st.error("All observed response values used in the model must be strictly positive.")
-        return
+    if zero_count > 0:
+        st.warning(
+            f"{zero_count} row(s) with response value 0 were excluded. "
+            f"The model was fit on {len(df_model)} positive-count observation(s)."
+        )
+    else:
+        st.success(
+            f"All {len(df_model)} observation(s) have positive counts and were used in the model."
+        )
 
     try:
         model = TruncatedLFPoisson.from_formula(
