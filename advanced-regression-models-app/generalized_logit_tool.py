@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 from scipy.stats import chi2
-import statsmodels.formula.api as smf
+import statsmodels.api as sm
 
 
 def run():
@@ -39,6 +39,10 @@ def run():
 
     response_levels = list(df[response_original].cat.categories)
 
+    if len(response_levels) < 3:
+        st.error("The nominal response variable must have at least 3 categories.")
+        return
+
     reference_level = st.selectbox(
         "Select reference level for response",
         response_levels
@@ -53,6 +57,8 @@ def run():
         categories=ordered_response_levels
     )
 
+    df["response_code"] = df[response_original].cat.codes
+
     choice_mapping = {i: cat for i, cat in enumerate(ordered_response_levels)}
 
     st.info(
@@ -61,7 +67,7 @@ def run():
 
     predictors = st.multiselect(
         "Select Predictor Variables (X)",
-        [c for c in df.columns if c != response_original]
+        [c for c in df.columns if c not in [response_original, "response_code"]]
     )
 
     if not predictors:
@@ -94,9 +100,8 @@ def run():
         else:
             terms.append(var)
 
-    formula = response_original + " ~ " + " + ".join(terms)
-
-    st.code(formula)
+    displayed_formula = response_original + " ~ " + " + ".join(terms)
+    st.code(displayed_formula)
 
     # ======================================================
     # 3️⃣ MODEL FITTING
@@ -104,7 +109,7 @@ def run():
 
     st.header("2️⃣ Model Fitting")
 
-    df_model = df[[response_original] + predictors].copy()
+    df_model = df[[response_original, "response_code"] + predictors].copy()
 
     for var in predictors:
         if var not in categorical_vars:
@@ -117,7 +122,28 @@ def run():
         return
 
     try:
-        model = smf.mnlogit(formula, data=df_model)
+        y = df_model["response_code"]
+
+        X = pd.DataFrame(index=df_model.index)
+
+        for var in predictors:
+            if var in categorical_vars:
+                dummies = pd.get_dummies(df_model[var], prefix=var, drop_first=False)
+
+                ref = reference_dict[var]
+                ref_col = f"{var}_{ref}"
+
+                if ref_col in dummies.columns:
+                    dummies = dummies.drop(columns=[ref_col])
+
+                X = pd.concat([X, dummies], axis=1)
+            else:
+                X[var] = df_model[var]
+
+        X = sm.add_constant(X, has_constant="add")
+        X = X.astype(float)
+
+        model = sm.MNLogit(y, X)
         res = model.fit(disp=False)
 
     except Exception as e:
@@ -141,7 +167,12 @@ def run():
     st.subheader("Likelihood Ratio Test")
 
     try:
-        null_model = smf.mnlogit(response_original + " ~ 1", data=df_model)
+        X_null = pd.DataFrame(
+            {"const": np.ones(len(df_model))},
+            index=df_model.index
+        )
+
+        null_model = sm.MNLogit(y, X_null)
         res_null = null_model.fit(disp=False)
 
         ll_null = res_null.llf
@@ -194,34 +225,33 @@ def run():
     # 6️⃣ EQUATION BUILDER
     # ======================================================
 
-    def build_equations(result, baseline_label):
+    def build_equations(result, baseline_label, choice_map):
 
         params = result.params
         equations = []
 
         for col in params.columns:
 
-            category_label = choice_mapping.get(col, f"Category {col}")
+            category_label = choice_map.get(col, f"Category {col}")
 
             equation = (
                 f"\\log\\left(\\frac{{P(Y={category_label})}}{{P(Y={baseline_label})}}\\right)"
             )
 
-            intercept_val = params.loc["Intercept", col] if "Intercept" in params.index else 0
+            intercept_val = params.loc["const", col] if "const" in params.index else 0
             equation += f" = {round(intercept_val, 4)}"
 
             for name in params.index:
 
-                if name == "Intercept":
+                if name == "const":
                     continue
 
                 coef = round(params.loc[name, col], 4)
                 sign = "+" if coef >= 0 else "-"
 
-                if name.startswith("C(") and "T." in name:
-                    var_name = name.split("[")[0]
-                    var_name = var_name.replace("C(", "").split(",")[0]
-                    level = name.split("T.")[-1].replace("]", "")
+                if "_" in name and any(name.startswith(f"{v}_") for v in categorical_vars):
+                    var_name = name.split("_", 1)[0]
+                    level = name.split("_", 1)[1]
                     equation += f" {sign} {abs(coef)} D_{{{var_name}={level}}}"
                 else:
                     equation += f" {sign} {abs(coef)} \\cdot {name}"
@@ -232,7 +262,7 @@ def run():
 
     st.subheader("Fitted Regression Equations (Generalized Logits)")
 
-    equations = build_equations(res, reference_level)
+    equations = build_equations(res, reference_level, choice_mapping)
 
     for category_label, eq in equations:
         st.markdown(f"**Baseline comparison: {category_label} vs {reference_level}**")
@@ -260,7 +290,7 @@ def run():
             odds_ratio = np.exp(coef)
             percent_change = (odds_ratio - 1) * 100
 
-            if term == "Intercept":
+            if term == "const":
 
                 interpretation = (
                     f"When all predictors are at their reference levels or zero values, "
@@ -268,12 +298,10 @@ def run():
                     f"is **{coef:.4f}**."
                 )
 
-            elif term.startswith("C("):
+            elif "_" in term and any(term.startswith(f"{v}_") for v in categorical_vars):
 
-                var_name = term.split("[")[0]
-                var_name = var_name.replace("C(", "").split(",")[0]
-
-                level = term.split("T.")[-1].replace("]", "")
+                var_name = term.split("_", 1)[0]
+                level = term.split("_", 1)[1]
                 reference = reference_dict.get(var_name, "reference")
 
                 direction = "increase" if percent_change >= 0 else "decrease"
@@ -359,8 +387,46 @@ def run():
                 new_df[var] = pd.to_numeric(new_df[var], errors="coerce")
 
         try:
-            prediction = res.predict(new_df)
-            prediction.columns = ordered_response_levels
+            X_new = pd.DataFrame(index=new_df.index)
+
+            for var in predictors:
+                if var in categorical_vars:
+                    dummies = pd.get_dummies(new_df[var], prefix=var, drop_first=False)
+
+                    ref = reference_dict[var]
+                    ref_col = f"{var}_{ref}"
+
+                    model_cols = [col for col in X.columns if col.startswith(f"{var}_")]
+
+                    for col in model_cols:
+                        if col not in dummies.columns:
+                            dummies[col] = 0
+
+                    if ref_col in dummies.columns:
+                        dummies = dummies.drop(columns=[ref_col])
+
+                    keep_cols = [col for col in model_cols if col in dummies.columns]
+                    dummies = dummies[keep_cols]
+
+                    X_new = pd.concat([X_new, dummies], axis=1)
+                else:
+                    X_new[var] = new_df[var]
+
+            X_new = sm.add_constant(X_new, has_constant="add")
+
+            for col in X.columns:
+                if col not in X_new.columns:
+                    X_new[col] = 0
+
+            X_new = X_new[X.columns]
+            X_new = X_new.astype(float)
+
+            prediction = res.predict(X_new)
+
+            nonbaseline_levels = ordered_response_levels[1:]
+            prediction.columns = nonbaseline_levels
+            prediction.insert(0, reference_level, 1 - prediction.sum(axis=1))
+            prediction = prediction[ordered_response_levels]
 
             st.subheader("Prediction Results")
             st.dataframe(prediction, use_container_width=True)
@@ -383,8 +449,12 @@ def run():
     st.header("6️⃣ Predicted vs Actual")
 
     try:
-        predicted_probs = res.predict(df_model)
-        predicted_probs.columns = ordered_response_levels
+        predicted_probs = res.predict(X)
+
+        nonbaseline_levels = ordered_response_levels[1:]
+        predicted_probs.columns = nonbaseline_levels
+        predicted_probs.insert(0, reference_level, 1 - predicted_probs.sum(axis=1))
+        predicted_probs = predicted_probs[ordered_response_levels]
 
         predicted_class = predicted_probs.idxmax(axis=1)
 
