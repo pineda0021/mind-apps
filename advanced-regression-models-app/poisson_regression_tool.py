@@ -189,11 +189,9 @@ def run():
 
     def build_rate_equation(model_result):
         params = model_result.params
-
         pieces = []
 
         for name in params.index:
-
             coef = round(params[name], 4)
 
             if name == "Intercept":
@@ -213,7 +211,6 @@ def run():
                 pieces.append(f"- {abs(coef)}\\cdot {term_label}")
 
         inside = " ".join(pieces)
-
         return f"\\widehat{{\\lambda}} = \\exp\\left({inside}\\right)"
 
     st.markdown("**In the fitted model, the estimated rate is:**")
@@ -227,7 +224,6 @@ def run():
 
     response_name = response_original
 
-    # Separate variables
     numeric_terms = []
     categorical_terms = []
 
@@ -235,14 +231,11 @@ def run():
         if term == "Intercept":
             continue
         if term.startswith("C("):
-        categorical_terms.append(term)
+            categorical_terms.append(term)
         else:
             numeric_terms.append(term)
 
-    # ======================================================
-    # 1️⃣ SIGNIFICANCE SUMMARY SENTENCE
-    # ======================================================
-
+    # --- significance summary ---
     significant_terms = [
         term for term in res.params.index
         if term != "Intercept" and res.pvalues[term] <= 0.05
@@ -253,7 +246,6 @@ def run():
         pretty_names = []
 
         for term in significant_terms:
-
             if term.startswith("C("):
                 var_name = term.split("[")[0].replace("C(", "").split(",")[0]
                 level = term.split("T.")[-1].replace("]", "")
@@ -279,50 +271,40 @@ def run():
 
     st.markdown("---")
 
-    # ======================================================
-    # 2️⃣ NUMERIC VARIABLE INTERPRETATIONS
-    # ======================================================
-
+    # --- numeric interpretation ---
     for term in numeric_terms:
-
         coef = res.params[term]
         percent_change = (np.exp(coef) - 1) * 100
-
         direction = "increases" if percent_change > 0 else "decreases"
 
         st.markdown(
             f"""
-    **For a one-unit increase in {term}, the estimated average value of {response_name} {direction} by**
-    \[
-    (\exp\{{{coef:.4f}\}} - 1)\cdot 100\% = {percent_change:.2f}\%.
-    \]
-    """
+**For a one-unit increase in {term}, the estimated average value of {response_name} {direction} by**
+\[
+(\exp\{{{coef:.4f}\}} - 1)\cdot 100\% = {percent_change:.2f}\%.
+\]
+"""
         )
 
-# ======================================================
-# 3️⃣ CATEGORICAL VARIABLE INTERPRETATIONS
-# ======================================================
+    # --- categorical interpretation ---
+    for term in categorical_terms:
+        coef = res.params[term]
+        rate_ratio = np.exp(coef)
 
-for term in categorical_terms:
+        var_name = term.split("[")[0].replace("C(", "").split(",")[0]
+        level = term.split("T.")[-1].replace("]", "")
+        reference = reference_dict.get(var_name, "reference")
 
-    coef = res.params[term]
-    rate_ratio = np.exp(coef)
-
-    var_name = term.split("[")[0].replace("C(", "").split(",")[0]
-    level = term.split("T.")[-1].replace("]", "")
-    reference = reference_dict.get(var_name, "reference")
-
-    st.markdown(
-        f"""
+        st.markdown(
+            f"""
 **Also, the estimated average value of {response_name} for {var_name} = {level} is**
 \[
 \exp\{{{coef:.4f}\}}\cdot 100\% = {rate_ratio*100:.2f}\%
 \]
 **of that for {var_name} = {reference}.**
 """
-    )
-    
-   
+        )
+
     # ======================================================
     # 8️⃣ PREDICTION
     # ======================================================
@@ -332,22 +314,11 @@ for term in categorical_terms:
     input_dict = {}
 
     for var in predictors:
-
         if var in categorical_vars:
-
-            input_dict[var] = st.selectbox(
-                var,
-                list(df[var].cat.categories)
-            )
-
+            input_dict[var] = st.selectbox(var, list(df[var].cat.categories))
         else:
-
             numeric_series = pd.to_numeric(df[var], errors="coerce")
-
-            input_dict[var] = st.number_input(
-                var,
-                value=float(numeric_series.mean())
-            )
+            input_dict[var] = st.number_input(var, value=float(numeric_series.mean()))
 
     if st.button("Predict"):
 
@@ -365,7 +336,6 @@ for term in categorical_terms:
 
         try:
             prediction = res.predict(new_df)[0]
-
             st.subheader("Prediction Results")
             st.success(f"Predicted expected count for {response_original}: {prediction:.4f}")
 
@@ -391,7 +361,6 @@ for term in categorical_terms:
             x="Predicted",
             y="Actual",
             title="Predicted Count vs Actual Count",
-            labels={"Predicted": "Predicted Count", "Actual": "Actual Count"},
             trendline="ols"
         )
 
