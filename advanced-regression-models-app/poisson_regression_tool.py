@@ -225,56 +225,104 @@ def run():
 
     st.header("5️⃣ Interpretation")
 
-    st.markdown("Interpretation uses $e^{\\beta}$:")
-    st.markdown("New expected count = old expected count multiplied by $e^{\\beta}$.")
+response_name = response_original
 
-    for term in res.params.index:
+# Separate variables
+numeric_terms = []
+categorical_terms = []
 
-        coef = res.params[term]
-        pval = res.pvalues[term]
-        exp_coef = np.exp(coef)
+for term in res.params.index:
+    if term == "Intercept":
+        continue
+    if term.startswith("C("):
+        categorical_terms.append(term)
+    else:
+        numeric_terms.append(term)
+
+# ======================================================
+# 1️⃣ SIGNIFICANCE SUMMARY SENTENCE
+# ======================================================
+
+significant_terms = [
+    term for term in res.params.index
+    if term != "Intercept" and res.pvalues[term] <= 0.05
+]
+
+if significant_terms:
+
+    pretty_names = []
+
+    for term in significant_terms:
 
         if term.startswith("C("):
             var_name = term.split("[")[0].replace("C(", "").split(",")[0]
             level = term.split("T.")[-1].replace("]", "")
-            label = f"{var_name}[{level}]"
+            pretty_names.append(f"the indicator of {var_name} = {level}")
         else:
-            label = term
+            pretty_names.append(term)
 
-        st.subheader(label)
-        st.latex(f"e^{{{coef:.4f}}} = {exp_coef:.4f}")
+    if len(pretty_names) == 1:
+        sig_text = pretty_names[0]
+    elif len(pretty_names) == 2:
+        sig_text = f"{pretty_names[0]} and {pretty_names[1]}"
+    else:
+        sig_text = ", ".join(pretty_names[:-1]) + f", and {pretty_names[-1]}"
 
-        if term == "Intercept":
+    st.markdown(
+        f"**{sig_text.capitalize()} {'is' if len(pretty_names)==1 else 'are'} significant predictors of the average value of {response_name} at the 5% significance level.**"
+    )
 
-            st.write(
-                f"When all predictors are at zero and categorical predictors are at their reference levels, "
-                f"the expected count is {exp_coef:.4f}."
-            )
+else:
+    st.markdown(
+        f"**None of the predictors are significant predictors of the average value of {response_name} at the 5% significance level.**"
+    )
 
-        elif term.startswith("C("):
+st.markdown("---")
 
-            var_name = term.split("[")[0].replace("C(", "").split(",")[0]
-            level = term.split("T.")[-1].replace("]", "")
-            ref = reference_dict.get(var_name, "reference")
+# ======================================================
+# 2️⃣ NUMERIC VARIABLE INTERPRETATIONS
+# ======================================================
 
-            st.write(
-                f"For {var_name} = {level} relative to {ref}, the expected count is multiplied by {exp_coef:.4f}."
-            )
+for term in numeric_terms:
 
-        else:
+    coef = res.params[term]
+    percent_change = (np.exp(coef) - 1) * 100
 
-            st.write(
-                f"If {label} increases by 1, the expected count is multiplied by {exp_coef:.4f}."
-            )
+    direction = "increases" if percent_change > 0 else "decreases"
 
-        st.write(f"Coefficient = {coef:.4f}")
-        st.write(f"p-value = {pval:.4f}")
+    st.markdown(
+        f"""
+**For a one-unit increase in {term}, the estimated average value of {response_name} {direction} by**
+\[
+(\exp\{{{coef:.4f}\}} - 1)\cdot 100\% = {percent_change:.2f}\%.
+\]
+"""
+    )
 
-        if pval <= 0.05:
-            st.success("Significant")
-        else:
-            st.warning("Not significant")
+# ======================================================
+# 3️⃣ CATEGORICAL VARIABLE INTERPRETATIONS
+# ======================================================
 
+for term in categorical_terms:
+
+    coef = res.params[term]
+    rate_ratio = np.exp(coef)
+
+    var_name = term.split("[")[0].replace("C(", "").split(",")[0]
+    level = term.split("T.")[-1].replace("]", "")
+    reference = reference_dict.get(var_name, "reference")
+
+    st.markdown(
+        f"""
+**Also, the estimated average value of {response_name} for {var_name} = {level} is**
+\[
+\exp\{{{coef:.4f}\}}\cdot 100\% = {rate_ratio*100:.2f}\%
+\]
+**of that for {var_name} = {reference}.**
+"""
+    )
+    
+   
     # ======================================================
     # 8️⃣ PREDICTION
     # ======================================================
