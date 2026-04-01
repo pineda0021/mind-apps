@@ -244,198 +244,198 @@ def run():
     col5.metric("Observed Zero Rate", round(observed_zero_rate, 3))
 
     # ======================================================
-    # 6️⃣ EQUATION BUILDER
+    # 6️⃣ FITTED REGRESSION MODEL
     # ======================================================
+
+    st.header("4️⃣ Fitted Regression Model")
 
     def split_params(result_obj):
         inflate_params = result_obj.params[result_obj.params.index.str.startswith("inflate_")]
         count_params = result_obj.params[~result_obj.params.index.str.startswith("inflate_")]
         return inflate_params, count_params
 
-    def build_component_equation(params, prefix, lhs_text):
+    def clean_name(name, prefix=""):
+        return name.replace(prefix, "", 1) if name.startswith(prefix) else name
 
+    def build_linear_part(params, prefix=""):
         intercept_name = None
+
         for name in params.index:
             if name in [f"{prefix}Intercept", f"{prefix}const", "Intercept", "const"]:
                 intercept_name = name
                 break
 
-        intercept_val = round(params[intercept_name], 4) if intercept_name is not None else 0
-        equation = f"{lhs_text} = {intercept_val}"
+        intercept_val = round(params[intercept_name], 4) if intercept_name else 0
+        pieces = [f"{intercept_val}"]
 
         for name in params.index:
-
             if name == intercept_name:
                 continue
 
-            display_name = name.replace(prefix, "", 1) if name.startswith(prefix) else name
             coef = round(params[name], 4)
-            sign = "+" if coef >= 0 else "-"
+            display = clean_name(name, prefix)
 
-            if display_name.startswith("C(") and "T." in display_name:
-
-                var_name = display_name.split("[")[0]
-                var_name = var_name.replace("C(", "").split(",")[0]
-                level = display_name.split("T.")[-1].replace("]", "")
-
-                equation += f" {sign} {abs(coef)} D_{{{var_name}={level}}}"
-
+            if display.startswith("C(") and "T." in display:
+                var = display.split("[")[0].replace("C(", "").split(",")[0]
+                level = display.split("T.")[-1].replace("]", "")
+                term = f"D_{{{var}={level}}}"
             else:
-                equation += f" {sign} {abs(coef)} \\cdot {display_name}"
+                term = display
 
-        return equation
+            sign = "+" if coef >= 0 else "-"
+            pieces.append(f" {sign} {abs(coef)}\\cdot {term}")
+
+        return "".join(pieces)
 
     inflate_params, count_params = split_params(res)
 
-    st.subheader("Fitted Regression Equations")
+    pi_eq = build_linear_part(inflate_params, prefix="inflate_")
+    lambda_eq = build_linear_part(count_params)
 
-    count_eq = build_component_equation(
-        count_params,
-        prefix="",
-        lhs_text=f"\\log(E[{response_original} \\mid \\text{{not structural zero}}])"
-    )
-    st.markdown("**Count Component**")
-    st.latex(count_eq)
+    st.markdown("**From this output, the fitted regression model has estimated parameters:**")
 
-    infl_eq = build_component_equation(
-        inflate_params,
-        prefix="inflate_",
-        lhs_text="\\log\\left(\\frac{\\pi}{1-\\pi}\\right)"
+    st.latex(
+        f"\\widehat{{\\pi}}=\\frac{{\\exp\\left\\{{{pi_eq}\\right\\}}}}{{1+\\exp\\left\\{{{pi_eq}\\right\\}}}},"
     )
-    st.markdown("**Zero-Inflation Component**")
-    st.latex(infl_eq)
+
+    st.markdown("and")
+
+    st.latex(
+        f"\\widehat{{\\lambda}}=\\exp\\left\\{{{lambda_eq}\\right\\}}."
+    )
 
     # ======================================================
     # 7️⃣ INTERPRETATION
     # ======================================================
 
-    st.header("4️⃣ Interpretation of Coefficients")
+    st.header("5️⃣ Interpretation")
 
-    st.subheader("Count Component (Poisson Model)")
+    # ---------------- COUNT COMPONENT ----------------
+    st.subheader("Count Component")
+
+    st.markdown("Interpretation uses $e^{\\beta}$.")
 
     for term in count_params.index:
 
         coef = count_params[term]
         pval = res.pvalues[term]
-        rate_ratio = np.exp(coef)
-        percent_change = (rate_ratio - 1) * 100
+        exp_coef = np.exp(coef)
+
+        label = term
+
+        st.subheader(label)
+        st.latex(f"e^{{{coef:.4f}}} = {exp_coef:.4f}")
 
         if term in ["Intercept", "const"]:
-
-            interpretation = (
-                f"When predictors are at their reference levels or zero values, "
-                f"the expected count among non-structural-zero cases has log-mean **{coef:.4f}**."
+            st.write(
+                f"When all predictors are held at zero and all indicator variables are at their reference levels, "
+                f"the estimated count rate is {exp_coef:.4f}."
             )
 
         elif term.startswith("C("):
 
-            var_name = term.split("[")[0]
-            var_name = var_name.replace("C(", "").split(",")[0]
+            var = term.split("[")[0].replace("C(", "").split(",")[0]
             level = term.split("T.")[-1].replace("]", "")
-            reference = reference_dict.get(var_name, "reference")
+            ref = reference_dict.get(var, "reference")
 
-            interpretation = (
-                f"For **{var_name} = {level}** relative to **{reference}**, "
-                f"the expected count is multiplied by **{rate_ratio:.4f}**, "
-                f"which corresponds to a **{percent_change:.2f}%** change."
+            st.write(
+                f"If {var} is an indicator variable, then $e^{{\\hat{{\\beta}}}} = {exp_coef:.4f}$ "
+                f"represents the ratio of the estimated rates for {var} = {level} and {var} = {ref}."
+            )
+
+            st.write(
+                f"Equivalently, $e^{{\\hat{{\\beta}}}}\\cdot 100\\% = {exp_coef*100:.2f}\\%$ "
+                f"represents the estimated percent ratio of rates."
             )
 
         else:
 
-            interpretation = (
-                f"For every one-unit increase in **{term}**, "
-                f"the expected count is multiplied by **{rate_ratio:.4f}**, "
-                f"which corresponds to a **{percent_change:.2f}%** change."
+            pct = (exp_coef - 1) * 100
+
+            st.write(
+                f"If {label} is numeric, then $e^{{\\hat{{\\beta}}}} = {exp_coef:.4f}$ represents "
+                f"the estimated rate ratio for a one-unit increase in {label}."
             )
 
-        significance = (
-            "Statistically significant at the 5% level."
-            if pval <= 0.05
-            else "Not statistically significant at the 5% level."
-        )
+            st.write(
+                f"Equivalently, $(e^{{\\hat{{\\beta}}}} - 1)\\cdot 100\\% = {pct:.2f}\\% "
+                f"is the estimated percent change in rate."
+            )
 
-        st.markdown(
-            f"""
-### {term}
+        st.write(f"Coefficient = {coef:.4f}")
+        st.write(f"p-value = {pval:.4f}")
 
-- **Coefficient:** {coef:.4f}  
-- **p-value:** {pval:.4f}  
-- **Rate Ratio:** {rate_ratio:.4f}  
+        if pval <= 0.05:
+            st.success("Significant")
+        else:
+            st.warning("Not significant")
 
-**Interpretation**
+    # ---------------- ZERO-INFLATION COMPONENT ----------------
+    st.subheader("Zero-Inflation Component")
 
-{interpretation}
-
-**Statistical significance:** {significance}
-"""
-        )
-
-    st.subheader("Zero-Inflation Component (Structural Zero Model)")
+    st.markdown("Interpretation uses $e^{\\beta}$.")
 
     for term in inflate_params.index:
 
         coef = inflate_params[term]
         pval = res.pvalues[term]
-        odds_ratio = np.exp(coef)
-        percent_change = (odds_ratio - 1) * 100
+        exp_coef = np.exp(coef)
 
-        display_term = term.replace("inflate_", "", 1)
+        label = term.replace("inflate_", "")
 
-        if display_term in ["Intercept", "const"]:
+        st.subheader(label)
+        st.latex(f"e^{{{coef:.4f}}} = {exp_coef:.4f}")
 
-            interpretation = (
-                f"When predictors are at their reference levels or zero values, "
-                f"the log-odds of being a **structural zero** is **{coef:.4f}**."
+        if label in ["Intercept", "const"]:
+            st.write(
+                f"When predictors are held at zero and reference levels, "
+                f"the baseline odds multiplier for structural zeros is {exp_coef:.4f}."
             )
 
-        elif display_term.startswith("C("):
+        elif label.startswith("C("):
 
-            var_name = display_term.split("[")[0]
-            var_name = var_name.replace("C(", "").split(",")[0]
-            level = display_term.split("T.")[-1].replace("]", "")
-            reference = reference_dict.get(var_name, "reference")
+            var = label.split("[")[0].replace("C(", "").split(",")[0]
+            level = label.split("T.")[-1].replace("]", "")
+            ref = reference_dict.get(var, "reference")
 
-            interpretation = (
-                f"For **{var_name} = {level}** relative to **{reference}**, "
-                f"the odds of being a **structural zero** are multiplied by **{odds_ratio:.4f}**, "
-                f"which corresponds to a **{percent_change:.2f}%** change."
+            st.write(
+                f"If {var} is an indicator variable, then $e^{{\\hat{{\\beta}}}} = {exp_coef:.4f}$ "
+                f"represents the ratio of the odds of being a structural zero for "
+                f"{var} = {level} and {var} = {ref}."
+            )
+
+            st.write(
+                f"Equivalently, $e^{{\\hat{{\\beta}}}}\\cdot 100\\% = {exp_coef*100:.2f}\\% "
+                f"represents the estimated percent ratio of odds."
             )
 
         else:
 
-            interpretation = (
-                f"For every one-unit increase in **{display_term}**, "
-                f"the odds of being a **structural zero** are multiplied by **{odds_ratio:.4f}**, "
-                f"which corresponds to a **{percent_change:.2f}%** change."
+            pct = (exp_coef - 1) * 100
+
+            st.write(
+                f"If {label} is numeric, then $e^{{\\hat{{\\beta}}}} = {exp_coef:.4f}$ represents "
+                f"the odds ratio for a one-unit increase in {label}."
             )
 
-        significance = (
-            "Statistically significant at the 5% level."
-            if pval <= 0.05
-            else "Not statistically significant at the 5% level."
-        )
+            st.write(
+                f"Equivalently, $(e^{{\\hat{{\\beta}}}} - 1)\\cdot 100\\% = {pct:.2f}\\% "
+                f"is the estimated percent change in odds."
+            )
 
-        st.markdown(
-            f"""
-### {display_term}
+        st.write(f"Coefficient = {coef:.4f}")
+        st.write(f"p-value = {pval:.4f}")
 
-- **Coefficient:** {coef:.4f}  
-- **p-value:** {pval:.4f}  
-- **Odds Ratio:** {odds_ratio:.4f}  
-
-**Interpretation**
-
-{interpretation}
-
-**Statistical significance:** {significance}
-"""
-        )
+        if pval <= 0.05:
+            st.success("Significant")
+        else:
+            st.warning("Not significant")
 
     # ======================================================
     # 8️⃣ PREDICTION
     # ======================================================
 
-    st.header("5️⃣ Prediction")
+    st.header("6️⃣ Prediction")
 
     input_dict = {}
 
