@@ -346,7 +346,7 @@ def run():
         st.latex(f"e^{{{coef:.4f}}} = {exp_coef:.4f}")
 
         # ---------------- INTERCEPT ----------------
-            if term in ["Intercept", "const"]:
+        if term in ["Intercept", "const"]:
 
             st.write(
                 f"When predictors are held at zero and reference levels, "
@@ -407,6 +407,7 @@ def run():
             st.success("Significant")
         else:
             st.warning("Not significant")
+
     # ======================================================
     # 7️⃣ PREDICTION
     # ======================================================
