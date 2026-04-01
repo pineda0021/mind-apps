@@ -197,108 +197,117 @@ def run():
     # 6️⃣ EQUATION BUILDER
     # ======================================================
 
-    def build_equation(model_result, response_name):
+    st.header("4️⃣ Fitted Model")
 
+    def build_rate_equation(model_result):
         params = model_result.params
+        pieces = []
 
         intercept_name = "Intercept" if "Intercept" in params.index else "const"
-        equation = f"\\log(E[{response_name} \\mid {response_name} > 0]) = {round(params[intercept_name], 4)}"
 
         for name in params.index:
+            coef = round(params[name], 4)
 
-            if name in ["Intercept", "const"]:
+            if name == intercept_name:
+                pieces.append(f"{coef}")
                 continue
 
-            coef = round(params[name], 4)
-            sign = "+" if coef >= 0 else "-"
-
             if name.startswith("C(") and "T." in name:
-
-                var_name = name.split("[")[0]
-                var_name = var_name.replace("C(", "").split(",")[0]
-
+                var_name = name.split("[")[0].replace("C(", "").split(",")[0]
                 level = name.split("T.")[-1].replace("]", "")
-
-                equation += f" {sign} {abs(coef)} D_{{{var_name}={level}}}"
-
+                term_label = f"D_{{{var_name}={level}}}"
             else:
+                term_label = name
 
-                equation += f" {sign} {abs(coef)} \\cdot {name}"
+            if coef >= 0:
+                pieces.append(f"+ {abs(coef)}\\cdot {term_label}")
+            else:
+                pieces.append(f"- {abs(coef)}\\cdot {term_label}")
 
-        return equation
+        inside = " ".join(pieces)
+        return (
+            f"\\widehat{{\\lambda}} = "
+            f"\\exp\\left({inside}\\right)"
+        )
 
-    st.subheader("Fitted Regression Equation (Full Model)")
-    st.latex(build_equation(res, response_original))
+    st.markdown("**In the fitted model, the estimated rate is:**")
+    st.latex(build_rate_equation(res))
 
     # ======================================================
     # 7️⃣ INTERPRETATION
     # ======================================================
 
-    st.header("4️⃣ Interpretation of Coefficients")
+    st.header("5️⃣ Interpretation")
+
+    st.markdown("Interpretation uses $e^{\\beta}$.")
 
     for term in res.params.index:
 
         coef = res.params[term]
         pval = res.pvalues[term]
-        rate_ratio = np.exp(coef)
-        percent_change = (rate_ratio - 1) * 100
+        exp_coef = np.exp(coef)
+
+        if term.startswith("C("):
+            var_name = term.split("[")[0].replace("C(", "").split(",")[0]
+            level = term.split("T.")[-1].replace("]", "")
+            label = f"{var_name}[{level}]"
+        else:
+            label = term
+
+        st.subheader(label)
+        st.latex(f"e^{{{coef:.4f}}} = {exp_coef:.4f}")
 
         if term in ["Intercept", "const"]:
 
-            interpretation = (
-                f"When all predictors are at their reference levels or zero values, "
-                f"the expected positive count for **{response_original}** has log-mean **{coef:.4f}**."
+            st.write(
+                f"When all predictors are held at zero and all indicator variables are at their reference levels, "
+                f"the estimated positive-count rate is {exp_coef:.4f}."
             )
 
         elif term.startswith("C("):
 
-            var_name = term.split("[")[0]
-            var_name = var_name.replace("C(", "").split(",")[0]
-
+            var_name = term.split("[")[0].replace("C(", "").split(",")[0]
             level = term.split("T.")[-1].replace("]", "")
-            reference = reference_dict.get(var_name, "reference")
+            ref = reference_dict.get(var_name, "reference")
 
-            interpretation = (
-                f"For **{var_name} = {level}** relative to **{reference}**, "
-                f"the expected positive count is multiplied by **{rate_ratio:.4f}**, "
-                f"which corresponds to a **{percent_change:.2f}%** change."
+            st.write(
+                f"If {var_name} is an indicator variable, then $e^{{\\hat{{\\beta}}}} = {exp_coef:.4f}$ "
+                f"represents the ratio of the estimated positive-count rates for "
+                f"{var_name} = {level} and {var_name} = {ref}."
+            )
+
+            st.write(
+                f"Equivalently, $e^{{\\hat{{\\beta}}}}\\cdot 100\\% = {exp_coef * 100:.2f}\\%$ "
+                f"represents the estimated percent ratio of positive-count rates."
             )
 
         else:
 
-            interpretation = (
-                f"For every one-unit increase in **{term}**, "
-                f"the expected positive count is multiplied by **{rate_ratio:.4f}**, "
-                f"which corresponds to a **{percent_change:.2f}%** change."
+            percent_change = (exp_coef - 1) * 100
+
+            st.write(
+                f"If {label} is numeric, then $e^{{\\hat{{\\beta}}}} = {exp_coef:.4f}$ represents "
+                f"the estimated rate ratio for a one-unit increase in {label}."
             )
 
-        significance = (
-            "Statistically significant at the 5% level."
-            if pval <= 0.05
-            else "Not statistically significant at the 5% level."
-        )
+            st.write(
+                f"Equivalently, $(e^{{\\hat{{\\beta}}}} - 1)\\cdot 100\\% = {percent_change:.2f}\\%$ "
+                f"is the estimated percent change in positive-count rate."
+            )
 
-        st.markdown(
-            f"""
-### {term}
+        st.write(f"Coefficient = {coef:.4f}")
+        st.write(f"p-value = {pval:.4f}")
 
-- **Coefficient:** {coef:.4f}  
-- **p-value:** {pval:.4f}  
-- **Rate Ratio:** {rate_ratio:.4f}  
-
-**Interpretation**
-
-{interpretation}
-
-**Statistical significance:** {significance}
-"""
-        )
+        if pval <= 0.05:
+            st.success("Significant")
+        else:
+            st.warning("Not significant")
 
     # ======================================================
     # 8️⃣ PREDICTION
     # ======================================================
 
-    st.header("5️⃣ Prediction")
+    st.header("6️⃣ Prediction")
 
     input_dict = {}
 
@@ -349,7 +358,7 @@ def run():
     # 9️⃣ PREDICTED VS ACTUAL
     # ======================================================
 
-    st.header("6️⃣ Predicted vs Actual")
+    st.header("7️⃣ Predicted vs Actual")
 
     try:
         predicted_vals = res.predict(df_model)
