@@ -187,50 +187,21 @@ def run():
 
     st.header("4️⃣ Fitted Model")
 
-    def build_log_mean_equation(model_result, response_name):
-        params = model_result.params
-
-        if "Intercept" in params.index:
-            equation = f"\\log\\left(\\widehat{{E[{response_name}]}}\\right) = {round(params['Intercept'], 4)}"
-        else:
-            equation = f"\\log\\left(\\widehat{{E[{response_name}]}}\\right) = 0"
-
-        for name in params.index:
-
-            if name == "Intercept":
-                continue
-
-            coef = round(params[name], 4)
-            sign = "+" if coef >= 0 else "-"
-
-            if name.startswith("C(") and "T." in name:
-                var_name = name.split("[")[0]
-                var_name = var_name.replace("C(", "").split(",")[0]
-                level = name.split("T.")[-1].replace("]", "")
-                equation += f" {sign} {abs(coef)}\\cdot D_{{{var_name}={level}}}"
-            else:
-                equation += f" {sign} {abs(coef)}\\cdot {name}"
-
-        return equation
-
     def build_rate_equation(model_result):
         params = model_result.params
 
         pieces = []
 
-        if "Intercept" in params.index:
-            intercept = round(params["Intercept"], 4)
-            pieces.append(f"{intercept}")
-
         for name in params.index:
-            if name == "Intercept":
-                continue
 
             coef = round(params[name], 4)
 
+            if name == "Intercept":
+                pieces.append(f"{coef}")
+                continue
+
             if name.startswith("C(") and "T." in name:
-                var_name = name.split("[")[0]
-                var_name = var_name.replace("C(", "").split(",")[0]
+                var_name = name.split("[")[0].replace("C(", "").split(",")[0]
                 level = name.split("T.")[-1].replace("]", "")
                 term_label = f"D_{{{var_name}={level}}}"
             else:
@@ -242,10 +213,8 @@ def run():
                 pieces.append(f"- {abs(coef)}\\cdot {term_label}")
 
         inside = " ".join(pieces)
-        return f"\\widehat{{\\lambda}} = \\exp\\left\\{{{inside}\\right\\}}"
 
-    st.markdown("**In the fitted model, the estimated log-mean is:**")
-    st.latex(build_log_mean_equation(res, response_original))
+        return f"\\widehat{{\\lambda}} = \\exp\\left({inside}\\right)"
 
     st.markdown("**In the fitted model, the estimated rate is:**")
     st.latex(build_rate_equation(res))
@@ -254,142 +223,57 @@ def run():
     # 7️⃣ INTERPRETATION
     # ======================================================
 
-    st.header("5️⃣ Interpretation of Coefficients")
+    st.header("5️⃣ Interpretation")
 
-    slope_terms = [term for term in res.params.index if term != "Intercept"]
-    significant_terms = [term for term in slope_terms if res.pvalues[term] <= 0.05]
-
-    if significant_terms:
-
-        pretty_names = []
-
-        for term in significant_terms:
-            if term.startswith("C("):
-                var_name = term.split("[")[0]
-                var_name = var_name.replace("C(", "").split(",")[0]
-                level = term.split("T.")[-1].replace("]", "")
-                reference = reference_dict.get(var_name, "reference")
-                pretty_names.append(f"**{var_name} = {level}** relative to **{reference}**")
-            else:
-                pretty_names.append(f"**{term}**")
-
-        if len(pretty_names) == 1:
-            sig_text = pretty_names[0]
-        elif len(pretty_names) == 2:
-            sig_text = f"{pretty_names[0]} and {pretty_names[1]}"
-        else:
-            sig_text = ", ".join(pretty_names[:-1]) + f", and {pretty_names[-1]}"
-
-        st.markdown(
-            f"**{sig_text} {'is' if len(significant_terms) == 1 else 'are'} significant predictor{'s' if len(significant_terms) > 1 else ''} of the average value of {response_original} at the 5% significance level.**"
-        )
-    else:
-        st.markdown(
-            f"**None of the predictors are significant predictors of the average value of {response_original} at the 5% significance level.**"
-        )
-
-    st.markdown("---")
+    st.markdown("Interpretation uses $e^{\\beta}$:")
+    st.markdown("New expected count = old expected count multiplied by $e^{\\beta}$.")
 
     for term in res.params.index:
 
         coef = res.params[term]
         pval = res.pvalues[term]
-        rate_ratio = np.exp(coef)
-        percent_change = (rate_ratio - 1) * 100
+        exp_coef = np.exp(coef)
 
-        if term == "Intercept":
-
-            interpretation = (
-                f"When all predictors are equal to zero and all categorical predictors are at their reference levels, "
-                f"the estimated average value of **{response_original}** is "
-                f"**exp({coef:.4f}) = {rate_ratio:.4f}**."
-            )
-
-        elif term.startswith("C("):
-
-            var_name = term.split("[")[0]
-            var_name = var_name.replace("C(", "").split(",")[0]
-
+        if term.startswith("C("):
+            var_name = term.split("[")[0].replace("C(", "").split(",")[0]
             level = term.split("T.")[-1].replace("]", "")
-            reference = reference_dict.get(var_name, "reference")
-
-            interpretation = (
-                f"The estimated average value of **{response_original}** for observations with "
-                f"**{var_name} = {level}** is **exp({coef:.4f}) = {rate_ratio:.4f}** times that for "
-                f"observations in the reference group **{reference}**."
-            )
-
-            interpretation_percent = (
-                f"Equivalently, the estimated average value of **{response_original}** for "
-                f"**{var_name} = {level}** is **{rate_ratio * 100:.2f}%** of that for the reference group."
-            )
-
+            label = f"{var_name}[{level}]"
         else:
+            label = term
 
-            interpretation = (
-                f"For a one-unit increase in **{term}**, the estimated average value of "
-                f"**{response_original}** changes by "
-                f"**(exp({coef:.4f}) - 1) × 100% = {percent_change:.2f}%**."
-            )
-
-        significance = (
-            "Statistically significant at the 5% level."
-            if pval <= 0.05
-            else "Not statistically significant at the 5% level."
-        )
+        st.subheader(label)
+        st.latex(f"e^{{{coef:.4f}}} = {exp_coef:.4f}")
 
         if term == "Intercept":
-            st.markdown(
-                f"""
-### {term}
 
-- **Coefficient:** {coef:.4f}  
-- **p-value:** {pval:.4f}  
-- **Rate Ratio:** {rate_ratio:.4f}  
-
-**Interpretation**
-
-{interpretation}
-
-**Statistical significance:** {significance}
-"""
+            st.write(
+                f"When all predictors are at zero and categorical predictors are at their reference levels, "
+                f"the expected count is {exp_coef:.4f}."
             )
 
         elif term.startswith("C("):
-            st.markdown(
-                f"""
-### {term}
 
-- **Coefficient:** {coef:.4f}  
-- **p-value:** {pval:.4f}  
-- **Rate Ratio:** {rate_ratio:.4f}  
+            var_name = term.split("[")[0].replace("C(", "").split(",")[0]
+            level = term.split("T.")[-1].replace("]", "")
+            ref = reference_dict.get(var_name, "reference")
 
-**Interpretation**
-
-{interpretation}
-
-**Also,** {interpretation_percent}
-
-**Statistical significance:** {significance}
-"""
+            st.write(
+                f"For {var_name} = {level} relative to {ref}, the expected count is multiplied by {exp_coef:.4f}."
             )
 
         else:
-            st.markdown(
-                f"""
-### {term}
 
-- **Coefficient:** {coef:.4f}  
-- **p-value:** {pval:.4f}  
-- **Rate Ratio:** {rate_ratio:.4f}  
-
-**Interpretation**
-
-{interpretation}
-
-**Statistical significance:** {significance}
-"""
+            st.write(
+                f"If {label} increases by 1, the expected count is multiplied by {exp_coef:.4f}."
             )
+
+        st.write(f"Coefficient = {coef:.4f}")
+        st.write(f"p-value = {pval:.4f}")
+
+        if pval <= 0.05:
+            st.success("Significant")
+        else:
+            st.warning("Not significant")
 
     # ======================================================
     # 8️⃣ PREDICTION
