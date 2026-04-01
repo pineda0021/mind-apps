@@ -252,7 +252,10 @@ def run():
         count_params = result_obj.params[~result_obj.params.index.str.startswith("inflate_")]
         return inflate_params, count_params
 
-    def format_term(display_name, coef):
+    def clean_term_name(name, prefix=""):
+        return name.replace(prefix, "", 1) if name.startswith(prefix) else name
+
+    def format_equation_piece(display_name, coef):
         coef_abs = abs(round(coef, 4))
         sign = "+" if coef >= 0 else "-"
 
@@ -267,51 +270,53 @@ def run():
 
     def build_pi_equation(params):
         intercept_name = None
+
         for name in params.index:
             if name in ["inflate_Intercept", "inflate_const", "Intercept", "const"]:
                 intercept_name = name
                 break
 
-        pieces = []
-
         intercept_val = round(params[intercept_name], 4) if intercept_name is not None else 0
-        pieces.append(f"{intercept_val}")
+        equation_body = f"{intercept_val}"
 
         for name in params.index:
             if name == intercept_name:
                 continue
 
-            display_name = name.replace("inflate_", "", 1) if name.startswith("inflate_") else name
-            pieces.append(format_term(display_name, params[name]))
+            display_name = clean_term_name(name, prefix="inflate_")
+            equation_body += format_equation_piece(display_name, params[name])
 
-        inside = "".join(pieces)
         return (
             f"\\widehat{{\\pi}}="
-            f"\\frac{{\\exp\\left\\{{{inside}\\right\\}}}}"
-            f"{{1+\\exp\\left\\{{{inside}\\right\\}}}}"
+            f"\\frac{{\\exp\\left\\{{{equation_body}\\right\\}}}}"
+            f"{{1+\\exp\\left\\{{{equation_body}\\right\\}}}}"
         )
 
     def build_lambda_equation(params):
-        intercept_name = "Intercept" if "Intercept" in params.index else "const"
+        intercept_name = None
 
-        pieces = []
-        intercept_val = round(params[intercept_name], 4) if intercept_name in params.index else 0
-        pieces.append(f"{intercept_val}")
+        for name in params.index:
+            if name in ["Intercept", "const"]:
+                intercept_name = name
+                break
+
+        intercept_val = round(params[intercept_name], 4) if intercept_name is not None else 0
+        equation_body = f"{intercept_val}"
 
         for name in params.index:
             if name == intercept_name:
                 continue
-            pieces.append(format_term(name, params[name]))
 
-        inside = "".join(pieces)
-        return f"\\widehat{{\\lambda}}=\\exp\\left\\{{{inside}\\right\\}}"
+            equation_body += format_equation_piece(name, params[name])
+
+        return f"\\widehat{{\\lambda}}=\\exp\\left\\{{{equation_body}\\right\\}}"
 
     inflate_params, count_params = split_params(res)
 
     st.markdown("**From this output, the fitted regression model has estimated parameters:**")
-    st.latex(build_pi_equation(inflate_params))
+    st.latex(build_pi_equation(inflate_params) + ",")
     st.markdown("and")
-    st.latex(build_lambda_equation(count_params))
+    st.latex(build_lambda_equation(count_params) + ".")
 
     # ======================================================
     # 7️⃣ INTERPRETATION
@@ -410,7 +415,7 @@ def run():
 
             st.write(
                 f"When all predictors are held at zero and all indicator variables are at their reference levels, "
-                f"the odds ratio baseline for structural zero membership is {exp_coef:.4f}."
+                f"the baseline odds multiplier for structural-zero membership is {exp_coef:.4f}."
             )
 
         elif display_term.startswith("C("):
@@ -436,7 +441,7 @@ def run():
 
             st.write(
                 f"If {label} is numeric, then $e^{{\\hat{{\\beta}}}} = {exp_coef:.4f}$ represents "
-                f"the odds ratio for a one-unit increase in {label} for structural zero membership."
+                f"the odds ratio for a one-unit increase in {label} for structural-zero membership."
             )
 
             st.write(
@@ -525,7 +530,7 @@ def run():
     # 9️⃣ PREDICTED VS ACTUAL
     # ======================================================
 
-    st.header("7️⃣ Predicted vs Actual")
+    st.header("6️⃣ Predicted vs Actual")
 
     try:
         predicted_mean = res.predict(
@@ -569,7 +574,7 @@ def run():
     # 🔟 STRUCTURAL ZERO PROBABILITIES
     # ======================================================
 
-    st.header("8️⃣ Structural Zero Probabilities")
+    st.header("7️⃣ Structural Zero Probabilities")
 
     try:
         df_probs = df_model.copy()
@@ -605,7 +610,7 @@ def run():
     # 1️⃣1️⃣ OPTIONAL DECISION TREES
     # ======================================================
 
-    st.header("9️⃣ Optional Tree Views")
+    st.header("8️⃣ Optional Tree Views")
 
     try:
         tree_df = df_model.copy()
