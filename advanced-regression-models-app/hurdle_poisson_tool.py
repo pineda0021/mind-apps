@@ -246,13 +246,16 @@ def run():
 
         return "".join(pieces)
 
-    pi_eq = build_linear_part(hurdle_res.params)
     lambda_eq = build_linear_part(count_res.params)
+
+    # Reverse the logistic linear predictor for pi_hat = P(Y = 0)
+    reversed_hurdle_params = -hurdle_res.params
+    pi_eq = build_linear_part(reversed_hurdle_params)
 
     st.markdown("**From this output, the fitted regression model has estimated parameters:**")
 
     st.latex(
-        f"\\widehat{{\\pi}}=\\frac{{\\exp\\left\\{{{pi_eq}\\right\\}}}}{{1-\\exp\\left\\{{{pi_eq}\\right\\}}}},"
+        f"\\widehat{{\\pi}}=\\frac{{\\exp\\left\\{{{pi_eq}\\right\\}}}}{{1+\\exp\\left\\{{{pi_eq}\\right\\}}}},"
     )
 
     st.markdown("and")
@@ -313,7 +316,7 @@ def run():
 
             st.write(
                 f"Equivalently, $(e^{{\\hat{{\\beta}}}} - 1)\\cdot 100\\% = {pct:.2f}\\%$"
-                f"is the estimated percent change in positive-count rate."
+                f" is the estimated percent change in positive-count rate."
             )
 
         st.write(f"Coefficient = {coef:.4f}")
@@ -419,6 +422,7 @@ def run():
 
         try:
             prob_buy = hurdle_res.predict(new_df).iloc[0]
+            prob_not_buy = 1 - prob_buy
 
             new_X_count = patsy.build_design_matrices(
                 [X_count.design_info],
@@ -430,6 +434,7 @@ def run():
             expected_count = prob_buy * truncated_mean
 
             st.subheader("Prediction Results")
+            st.write(f"Predicted probability of not buying any item: **{prob_not_buy:.4f}**")
             st.write(f"Predicted probability of buying at least 1 item: **{prob_buy:.4f}**")
             st.write(f"Predicted expected count if positive: **{truncated_mean:.4f}**")
             st.success(f"Final expected count for {response_original}: {expected_count:.4f}")
