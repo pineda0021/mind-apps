@@ -327,13 +327,16 @@ def run():
         else:
             st.warning("Not significant")
 
+    # ---------------- HURDLE COMPONENT (π = P(Y = 0)) ----------------
+
     st.subheader("Hurdle Component")
 
     st.markdown("Interpretation uses $e^{\\beta}$.")
 
     for term in hurdle_res.params.index:
 
-        coef = hurdle_res.params[term]
+        # 🔥 Reverse coefficient (since π = P(Y=0))
+        coef = -hurdle_res.params[term]
         pval = hurdle_res.pvalues[term]
         exp_coef = np.exp(coef)
 
@@ -342,40 +345,60 @@ def run():
         st.subheader(label)
         st.latex(f"e^{{{coef:.4f}}} = {exp_coef:.4f}")
 
-        if term in ["Intercept", "const"]:
+        # ---------------- INTERCEPT ----------------
+            if term in ["Intercept", "const"]:
+
             st.write(
                 f"When predictors are held at zero and reference levels, "
-                f"the baseline odds multiplier for buying at least one item is {exp_coef:.4f}."
+                f"the baseline odds of not purchasing textbooks are multiplied by {exp_coef:.4f}."
             )
 
+        # ---------------- CATEGORICAL ----------------
         elif term.startswith("C("):
+
             var = term.split("[")[0].replace("C(", "").split(",")[0]
             level = term.split("T.")[-1].replace("]", "")
             ref = reference_dict.get(var, "reference")
 
+            percent_change = abs((exp_coef - 1) * 100)
+
             st.write(
                 f"If {var} is an indicator variable, then $e^{{\\hat{{\\beta}}}} = {exp_coef:.4f}$ "
-                f"represents the ratio of the odds of buying at least one item for "
+                f"represents the ratio of the odds of not purchasing textbooks for "
                 f"{var} = {level} and {var} = {ref}."
             )
 
-            st.write(
-                f"Equivalently, $e^{{\\hat{{\\beta}}}}\\cdot 100\\% = {exp_coef * 100:.2f}\\%$ "
-                f"represents the estimated percent ratio of odds."
-            )
+            if coef >= 0:
+                st.write(
+                    f"Equivalently, the estimated odds increase by "
+                    f"$(e^{{\\hat{{\\beta}}}} - 1)\\cdot 100\\% = {percent_change:.2f}\\%.$"
+                )
+            else:
+                st.write(
+                    f"Equivalently, the estimated odds decrease by "
+                    f"$\\left(1 - e^{{\\hat{{\\beta}}}}\\right)\\cdot 100\\% = {percent_change:.2f}\\%.$"
+                )
 
+        # ---------------- NUMERIC ----------------
         else:
-            pct = (exp_coef - 1) * 100
+
+            percent_change = abs((exp_coef - 1) * 100)
 
             st.write(
                 f"If {label} is numeric, then $e^{{\\hat{{\\beta}}}} = {exp_coef:.4f}$ represents "
                 f"the odds ratio for a one-unit increase in {label}."
             )
 
-            st.write(
-                f"Equivalently, $(e^{{\\hat{{\\beta}}}} - 1)\\cdot 100\\% = {pct:.2f}\\% "
-                f"is the estimated percent change in odds."
-            )
+            if coef >= 0:
+                st.write(
+                    f"Equivalently, the estimated odds increase by "
+                    f"$(e^{{\\hat{{\\beta}}}} - 1)\\cdot 100\\% = {percent_change:.2f}\\%.$"
+                )
+            else:
+                st.write(
+                    f"Equivalently, the estimated odds decrease by "
+                    f"$\\left(1 - e^{{\\hat{{\\beta}}}}\\right)\\cdot 100\\% = {percent_change:.2f}\\%.$"
+                )
 
         st.write(f"Coefficient = {coef:.4f}")
         st.write(f"p-value = {pval:.4f}")
@@ -384,7 +407,6 @@ def run():
             st.success("Significant")
         else:
             st.warning("Not significant")
-
     # ======================================================
     # 7️⃣ PREDICTION
     # ======================================================
