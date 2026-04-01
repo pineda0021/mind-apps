@@ -252,7 +252,7 @@ def run():
     st.markdown("**From this output, the fitted regression model has estimated parameters:**")
 
     st.latex(
-        f"\\widehat{{\\pi}}=\\frac{{\\exp\\left\\{{{pi_eq}\\right\\}}}}{{1+\\exp\\left\\{{{pi_eq}\\right\\}}}},"
+        f"\\widehat{{\\pi}}=\\frac{{\\exp\\left\\{{{pi_eq}\\right\\}}}}{{1-\\exp\\left\\{{{pi_eq}\\right\\}}}},"
     )
 
     st.markdown("and")
@@ -312,7 +312,7 @@ def run():
             )
 
             st.write(
-                f"Equivalently, $(e^{{\\hat{{\\beta}}}} - 1)\\cdot 100\\% = {pct:.2f}\\% "
+                f"Equivalently, $(e^{{\\hat{{\\beta}}}} - 1)\\cdot 100\\% = {pct:.2f}\\%$"
                 f"is the estimated percent change in positive-count rate."
             )
 
