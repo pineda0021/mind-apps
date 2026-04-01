@@ -189,11 +189,9 @@ def run():
 
     def build_rate_equation(model_result):
         params = model_result.params
-
         pieces = []
 
         for name in params.index:
-
             coef = round(params[name], 4)
 
             if name == "Intercept":
@@ -213,7 +211,6 @@ def run():
                 pieces.append(f"- {abs(coef)}\\cdot {term_label}")
 
         inside = " ".join(pieces)
-
         return f"\\widehat{{\\lambda}} = \\exp\\left({inside}\\right)"
 
     st.markdown("**In the fitted model, the estimated rate is:**")
@@ -238,47 +235,11 @@ def run():
         else:
             numeric_terms.append(term)
 
-    significant_terms = [
-        term for term in res.params.index
-        if term != "Intercept" and res.pvalues[term] <= 0.05
-    ]
-
-    if significant_terms:
-
-        pretty_names = []
-
-        for term in significant_terms:
-
-            if term.startswith("C("):
-                var_name = term.split("[")[0].replace("C(", "").split(",")[0]
-                level = term.split("T.")[-1].replace("]", "")
-                pretty_names.append(f"the indicator of {var_name} = {level}")
-            else:
-                pretty_names.append(term)
-
-        if len(pretty_names) == 1:
-            sig_text = pretty_names[0]
-        elif len(pretty_names) == 2:
-            sig_text = f"{pretty_names[0]} and {pretty_names[1]}"
-        else:
-            sig_text = ", ".join(pretty_names[:-1]) + f", and {pretty_names[-1]}"
-
-        st.markdown(
-            f"**{sig_text.capitalize()} {'is' if len(pretty_names)==1 else 'are'} significant predictors of the average value of {response_name} at the 5% significance level.**"
-        )
-
-    else:
-        st.markdown(
-            f"**None of the predictors are significant predictors of the average value of {response_name} at the 5% significance level.**"
-        )
-
     st.markdown("---")
 
     for term in numeric_terms:
-
         coef = res.params[term]
         percent_change = (np.exp(coef) - 1) * 100
-
         direction = "increases" if percent_change > 0 else "decreases"
 
         st.markdown(
@@ -291,7 +252,6 @@ def run():
         )
 
     for term in categorical_terms:
-
         coef = res.params[term]
         rate_ratio = np.exp(coef)
 
@@ -318,7 +278,6 @@ def run():
     input_dict = {}
 
     for var in predictors:
-
         if var in categorical_vars:
             input_dict[var] = st.selectbox(var, list(df[var].cat.categories))
         else:
@@ -326,14 +285,10 @@ def run():
             input_dict[var] = st.number_input(var, value=float(numeric_series.mean()))
 
     if st.button("Predict"):
-
         new_df = pd.DataFrame([input_dict])
 
         for var in categorical_vars:
-            new_df[var] = pd.Categorical(
-                new_df[var],
-                categories=df[var].cat.categories
-            )
+            new_df[var] = pd.Categorical(new_df[var], categories=df[var].cat.categories)
 
         for var in predictors:
             if var not in categorical_vars:
@@ -341,52 +296,9 @@ def run():
 
         try:
             prediction = res.predict(new_df)[0]
-
-            st.subheader("Prediction Results")
-            st.success(f"Predicted expected count for {response_original}: {prediction:.4f}")
-
+            st.success(f"Predicted expected count: {prediction:.4f}")
         except Exception as e:
             st.error(f"Prediction failed: {e}")
-
-    # ======================================================
-    # 9️⃣ PREDICTED VS ACTUAL
-    # ======================================================
-
-    st.header("7️⃣ Predicted vs Actual")
-
-    try:
-        predicted_vals = res.predict(df_model)
-
-        plot_df = pd.DataFrame({
-            "Predicted": predicted_vals,
-            "Actual": df_model[response_original]
-        })
-
-        fig = px.scatter(
-            plot_df,
-            x="Predicted",
-            y="Actual",
-            title="Predicted Count vs Actual Count",
-            labels={"Predicted": "Predicted Count", "Actual": "Actual Count"},
-            trendline="ols"
-        )
-
-        min_val = min(plot_df["Predicted"].min(), plot_df["Actual"].min())
-        max_val = max(plot_df["Predicted"].max(), plot_df["Actual"].max())
-
-        fig.add_shape(
-            type="line",
-            x0=min_val,
-            y0=min_val,
-            x1=max_val,
-            y1=max_val,
-            line=dict(dash="dash")
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
-
-    except Exception as e:
-        st.warning(f"Could not create predicted vs actual plot: {e}")
 
 
 if __name__ == "__main__":
