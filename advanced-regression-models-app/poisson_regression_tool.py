@@ -124,7 +124,7 @@ def run():
     # 4️⃣ LIKELIHOOD RATIO TEST
     # ======================================================
 
-    st.subheader("Likelihood Ratio Test")
+    st.subheader("Likelihood Ratio (Deviance) Test")
 
     try:
         null_model = smf.glm(
