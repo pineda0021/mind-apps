@@ -3,14 +3,14 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import patsy
+import statsmodels.formula.api as smf
+from statsmodels.discrete.truncated_model import TruncatedLFPoisson
 from scipy.stats import chi2
-from scipy.special import expit
-from statsmodels.discrete.count_model import ZeroInflatedPoisson
 
 
 def run():
 
-    st.title("📘 Zero-inflated Poisson Regression Model (Count Response)")
+    st.title("📘 Hurdle Model (Logistic + Zero-truncated Poisson)")
 
     # ======================================================
     # 1️⃣ DATA UPLOAD
@@ -44,30 +44,30 @@ def run():
         return
 
     if (df[response_original].dropna() < 0).any():
-        st.error("The zero-inflated Poisson response variable must be nonnegative.")
+        st.error("The response variable must be nonnegative.")
         return
 
     all_predictors = [c for c in df.columns if c != response_original]
 
     count_predictors = st.multiselect(
-        "Select Count-Model Predictor Variables (X)",
+        "Select Positive-Count Model Predictor Variables (X)",
         all_predictors
     )
 
-    inflation_predictors = st.multiselect(
-        "Select Zero-Inflation Predictor Variables (Z)",
+    hurdle_predictors = st.multiselect(
+        "Select Hurdle Model Predictor Variables (Z)",
         all_predictors
     )
 
     if not count_predictors:
-        st.warning("Please select at least one predictor for the count model.")
+        st.warning("Please select at least one predictor for the positive-count model.")
         return
 
-    if not inflation_predictors:
-        st.warning("Please select at least one predictor for the zero-inflation model.")
+    if not hurdle_predictors:
+        st.warning("Please select at least one predictor for the hurdle model.")
         return
 
-    selected_predictors = sorted(set(count_predictors + inflation_predictors))
+    selected_predictors = sorted(set(count_predictors + hurdle_predictors))
 
     categorical_vars = st.multiselect(
         "Select Categorical Variables (Factors)",
@@ -81,7 +81,7 @@ def run():
 
         ref = st.selectbox(
             f"Select reference level for {col}",
-            df[col].cat.categories,
+            list(df[col].cat.categories),
             key=f"ref_{col}"
         )
 
@@ -100,22 +100,24 @@ def run():
         return terms_local
 
     count_terms = build_terms(count_predictors)
-    infl_terms = build_terms(inflation_predictors)
+    hurdle_terms = build_terms(hurdle_predictors)
 
     count_formula_rhs = " + ".join(count_terms) if count_terms else "1"
-    infl_formula_rhs = " + ".join(infl_terms) if infl_terms else "1"
+    hurdle_formula_rhs = " + ".join(hurdle_terms) if hurdle_terms else "1"
 
-    count_formula = response_original + " ~ " + count_formula_rhs
+    count_formula = f"{response_original} ~ {count_formula_rhs}"
+    hurdle_response = "bought_any"
+    hurdle_formula = f"{hurdle_response} ~ {hurdle_formula_rhs}"
 
-    st.subheader("Count Model Formula")
+    st.subheader("Positive-Count Model Formula")
     st.code(count_formula)
 
-    st.subheader("Zero-Inflation Model Formula")
-    st.code(f"logit(π) ~ {infl_formula_rhs}")
+    st.subheader("Hurdle Model Formula")
+    st.code(hurdle_formula)
 
     st.info(
-        "This model has two parts: a **Poisson count model** and a **logistic zero-inflation model** "
-        "for structural zeros."
+        "This model has two parts: a logistic model for whether the count is positive, "
+        "and a zero-truncated Poisson model for the positive counts."
     )
 
     # ======================================================
@@ -136,132 +138,90 @@ def run():
         st.error("No valid rows remain after removing missing values.")
         return
 
+    df_model["bought_any"] = (df_model[response_original] > 0).astype(int)
+
+    nonzero_data = df_model[df_model[response_original] > 0].copy()
+
+    if nonzero_data.empty:
+        st.error("No positive counts are available for the zero-truncated Poisson model.")
+        return
+
     try:
-        y, X_count = patsy.dmatrices(
+        y_count, X_count = patsy.dmatrices(
             count_formula,
-            df_model,
+            data=nonzero_data,
             return_type="dataframe"
         )
 
-        X_infl = patsy.dmatrix(
-            infl_formula_rhs,
-            df_model,
-            return_type="dataframe"
+        count_model = TruncatedLFPoisson(
+            y_count,
+            X_count,
+            truncation=0
         )
+        count_res = count_model.fit(disp=False)
 
-        y_series = y.iloc[:, 0]
-
-        model = ZeroInflatedPoisson(
-            endog=y_series,
-            exog=X_count,
-            exog_infl=X_infl,
-            inflation="logit"
-        )
-
-        res = model.fit(method="bfgs", maxiter=200, disp=False)
+        hurdle_res = smf.logit(
+            hurdle_formula,
+            data=df_model
+        ).fit(disp=False)
 
     except Exception as e:
         st.error(f"Model fitting failed: {e}")
         return
 
-    st.subheader("Model Summary")
-    st.text(res.summary())
+    st.subheader("Zero-truncated Poisson Summary")
+    st.text(count_res.summary())
+
+    st.subheader("Hurdle Logistic Summary")
+    st.text(hurdle_res.summary())
 
     # ======================================================
-    # 4️⃣ LIKELIHOOD RATIO TEST
-    # ======================================================
-
-    st.subheader("Likelihood Ratio Test")
-
-    try:
-        y_null, X_count_null = patsy.dmatrices(
-            response_original + " ~ 1",
-            df_model,
-            return_type="dataframe"
-        )
-
-        X_infl_null = patsy.dmatrix(
-            "1",
-            df_model,
-            return_type="dataframe"
-        )
-
-        null_model = ZeroInflatedPoisson(
-            endog=y_null.iloc[:, 0],
-            exog=X_count_null,
-            exog_infl=X_infl_null,
-            inflation="logit"
-        )
-
-        res_null = null_model.fit(method="bfgs", maxiter=200, disp=False)
-
-        ll_null = res_null.llf
-        ll_model = res.llf
-
-        dev_null = -2 * ll_null
-        dev_model = -2 * ll_model
-        lr_stat = dev_null - dev_model
-
-        df_diff = len(res.params) - len(res_null.params)
-        p_value = chi2.sf(lr_stat, df=df_diff)
-
-        st.write(f"Null Deviance: {dev_null:.4f}")
-        st.write(f"Model Deviance: {dev_model:.4f}")
-        st.write(f"LR Statistic: {lr_stat:.4f}")
-        st.write(f"Degrees of Freedom: {df_diff}")
-        st.write(f"p-value: {p_value:.6f}")
-
-    except Exception as e:
-        st.warning(f"Could not compute likelihood ratio test: {e}")
-        dev_model = -2 * res.llf
-
-    # ======================================================
-    # 5️⃣ MODEL FIT EVALUATION
+    # 4️⃣ MODEL FIT EVALUATION
     # ======================================================
 
     st.header("3️⃣ Model Fit Evaluation")
 
-    loglik = res.llf
-    aic = res.aic
-    bic = res.bic
+    try:
+        count_loglik = count_res.llf
+        count_aic = count_res.aic
+        count_bic = count_res.bic
+    except Exception:
+        count_loglik = np.nan
+        count_aic = np.nan
+        count_bic = np.nan
 
-    p = len(res.params)
-    n = res.nobs
+    try:
+        hurdle_loglik = hurdle_res.llf
+        hurdle_aic = hurdle_res.aic
+        hurdle_bic = hurdle_res.bic
+    except Exception:
+        hurdle_loglik = np.nan
+        hurdle_aic = np.nan
+        hurdle_bic = np.nan
 
-    if n - p - 1 > 0:
-        aicc = aic + ((2 * p * (p + 1)) / (n - p - 1))
-    else:
-        aicc = np.nan
+    st.subheader("Positive-Count Model")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Log-Likelihood", round(count_loglik, 2) if pd.notna(count_loglik) else "N/A")
+    c2.metric("AIC", round(count_aic, 2) if pd.notna(count_aic) else "N/A")
+    c3.metric("BIC", round(count_bic, 2) if pd.notna(count_bic) else "N/A")
 
-    observed_zero_rate = (df_model[response_original] == 0).mean()
-
-    col1, col2, col3, col4, col5 = st.columns(5)
-
-    col1.metric("Log-Likelihood", round(loglik, 2))
-    col2.metric("AIC", round(aic, 2))
-    col3.metric("AICc", round(aicc, 2) if pd.notna(aicc) else "N/A")
-    col4.metric("BIC", round(bic, 2))
-    col5.metric("Observed Zero Rate", round(observed_zero_rate, 3))
+    st.subheader("Hurdle Model")
+    h1, h2, h3 = st.columns(3)
+    h1.metric("Log-Likelihood", round(hurdle_loglik, 2) if pd.notna(hurdle_loglik) else "N/A")
+    h2.metric("AIC", round(hurdle_aic, 2) if pd.notna(hurdle_aic) else "N/A")
+    h3.metric("BIC", round(hurdle_bic, 2) if pd.notna(hurdle_bic) else "N/A")
 
     # ======================================================
-    # 6️⃣ FITTED REGRESSION MODEL
+    # 5️⃣ FITTED REGRESSION MODEL
     # ======================================================
 
     st.header("4️⃣ Fitted Regression Model")
 
-    def split_params(result_obj):
-        inflate_params = result_obj.params[result_obj.params.index.str.startswith("inflate_")]
-        count_params = result_obj.params[~result_obj.params.index.str.startswith("inflate_")]
-        return inflate_params, count_params
-
-    def clean_name(name, prefix=""):
-        return name.replace(prefix, "", 1) if name.startswith(prefix) else name
-
-    def build_linear_part(params, prefix=""):
+    def build_linear_part(params):
         intercept_name = None
 
         for name in params.index:
-            if name in [f"{prefix}Intercept", f"{prefix}const", "Intercept", "const"]:
+            if name in ["Intercept", "const"]:
                 intercept_name = name
                 break
 
@@ -273,24 +233,21 @@ def run():
                 continue
 
             coef = round(params[name], 4)
-            display = clean_name(name, prefix)
 
-            if display.startswith("C(") and "T." in display:
-                var = display.split("[")[0].replace("C(", "").split(",")[0]
-                level = display.split("T.")[-1].replace("]", "")
+            if name.startswith("C(") and "T." in name:
+                var = name.split("[")[0].replace("C(", "").split(",")[0]
+                level = name.split("T.")[-1].replace("]", "")
                 term = f"D_{{{var}={level}}}"
             else:
-                term = display
+                term = name
 
             sign = "+" if coef >= 0 else "-"
             pieces.append(f" {sign} {abs(coef)}\\cdot {term}")
 
         return "".join(pieces)
 
-    inflate_params, count_params = split_params(res)
-
-    pi_eq = build_linear_part(inflate_params, prefix="inflate_")
-    lambda_eq = build_linear_part(count_params)
+    pi_eq = build_linear_part(hurdle_res.params)
+    lambda_eq = build_linear_part(count_res.params)
 
     st.markdown("**From this output, the fitted regression model has estimated parameters:**")
 
@@ -305,20 +262,19 @@ def run():
     )
 
     # ======================================================
-    # 7️⃣ INTERPRETATION
+    # 6️⃣ INTERPRETATION
     # ======================================================
 
     st.header("5️⃣ Interpretation")
 
-    # ---------------- COUNT COMPONENT ----------------
-    st.subheader("Count Component")
+    st.subheader("Positive-Count Component")
 
     st.markdown("Interpretation uses $e^{\\beta}$.")
 
-    for term in count_params.index:
+    for term in count_res.params.index:
 
-        coef = count_params[term]
-        pval = res.pvalues[term]
+        coef = count_res.params[term]
+        pval = count_res.pvalues[term]
         exp_coef = np.exp(coef)
 
         label = term
@@ -329,27 +285,25 @@ def run():
         if term in ["Intercept", "const"]:
             st.write(
                 f"When all predictors are held at zero and all indicator variables are at their reference levels, "
-                f"the estimated count rate is {exp_coef:.4f}."
+                f"the estimated positive-count rate is {exp_coef:.4f}."
             )
 
         elif term.startswith("C("):
-
             var = term.split("[")[0].replace("C(", "").split(",")[0]
             level = term.split("T.")[-1].replace("]", "")
             ref = reference_dict.get(var, "reference")
 
             st.write(
                 f"If {var} is an indicator variable, then $e^{{\\hat{{\\beta}}}} = {exp_coef:.4f}$ "
-                f"represents the ratio of the estimated rates for {var} = {level} and {var} = {ref}."
+                f"represents the ratio of the estimated positive-count rates for {var} = {level} and {var} = {ref}."
             )
 
             st.write(
-                f"Equivalently, $e^{{\\hat{{\\beta}}}}\\cdot 100\\% = {exp_coef*100:.2f}\\%$ "
-                f"represents the estimated percent ratio of rates."
+                f"Equivalently, $e^{{\\hat{{\\beta}}}}\\cdot 100\\% = {exp_coef * 100:.2f}\\%$ "
+                f"represents the estimated percent ratio of positive-count rates."
             )
 
         else:
-
             pct = (exp_coef - 1) * 100
 
             st.write(
@@ -359,7 +313,7 @@ def run():
 
             st.write(
                 f"Equivalently, $(e^{{\\hat{{\\beta}}}} - 1)\\cdot 100\\% = {pct:.2f}\\% "
-                f"is the estimated percent change in rate."
+                f"is the estimated percent change in positive-count rate."
             )
 
         st.write(f"Coefficient = {coef:.4f}")
@@ -370,47 +324,44 @@ def run():
         else:
             st.warning("Not significant")
 
-    # ---------------- ZERO-INFLATION COMPONENT ----------------
-    st.subheader("Zero-Inflation Component")
+    st.subheader("Hurdle Component")
 
     st.markdown("Interpretation uses $e^{\\beta}$.")
 
-    for term in inflate_params.index:
+    for term in hurdle_res.params.index:
 
-        coef = inflate_params[term]
-        pval = res.pvalues[term]
+        coef = hurdle_res.params[term]
+        pval = hurdle_res.pvalues[term]
         exp_coef = np.exp(coef)
 
-        label = term.replace("inflate_", "")
+        label = term
 
         st.subheader(label)
         st.latex(f"e^{{{coef:.4f}}} = {exp_coef:.4f}")
 
-        if label in ["Intercept", "const"]:
+        if term in ["Intercept", "const"]:
             st.write(
                 f"When predictors are held at zero and reference levels, "
-                f"the baseline odds multiplier for structural zeros is {exp_coef:.4f}."
+                f"the baseline odds multiplier for buying at least one item is {exp_coef:.4f}."
             )
 
-        elif label.startswith("C("):
-
-            var = label.split("[")[0].replace("C(", "").split(",")[0]
-            level = label.split("T.")[-1].replace("]", "")
+        elif term.startswith("C("):
+            var = term.split("[")[0].replace("C(", "").split(",")[0]
+            level = term.split("T.")[-1].replace("]", "")
             ref = reference_dict.get(var, "reference")
 
             st.write(
                 f"If {var} is an indicator variable, then $e^{{\\hat{{\\beta}}}} = {exp_coef:.4f}$ "
-                f"represents the ratio of the odds of being a structural zero for "
+                f"represents the ratio of the odds of buying at least one item for "
                 f"{var} = {level} and {var} = {ref}."
             )
 
             st.write(
-                f"Equivalently, $e^{{\\hat{{\\beta}}}}\\cdot 100\\% = {exp_coef*100:.2f}\\% "
+                f"Equivalently, $e^{{\\hat{{\\beta}}}}\\cdot 100\\% = {exp_coef * 100:.2f}\\%$ "
                 f"represents the estimated percent ratio of odds."
             )
 
         else:
-
             pct = (exp_coef - 1) * 100
 
             st.write(
@@ -432,7 +383,7 @@ def run():
             st.warning("Not significant")
 
     # ======================================================
-    # 8️⃣ PREDICTION
+    # 7️⃣ PREDICTION
     # ======================================================
 
     st.header("6️⃣ Prediction")
@@ -440,7 +391,6 @@ def run():
     input_dict = {}
 
     for var in selected_predictors:
-
         if var in categorical_vars:
             input_dict[var] = st.selectbox(
                 var,
@@ -468,54 +418,46 @@ def run():
                 new_df[var] = pd.to_numeric(new_df[var], errors="coerce")
 
         try:
-            X_count_new = patsy.build_design_matrices(
+            prob_buy = hurdle_res.predict(new_df).iloc[0]
+
+            new_X_count = patsy.build_design_matrices(
                 [X_count.design_info],
                 new_df,
                 return_type="dataframe"
             )[0]
 
-            X_infl_new = patsy.build_design_matrices(
-                [X_infl.design_info],
-                new_df,
-                return_type="dataframe"
-            )[0]
-
-            overall_mean = res.predict(
-                exog=X_count_new,
-                exog_infl=X_infl_new,
-                which="mean"
-            )[0]
-
-            gamma = inflate_params.values
-            pi_hat = expit(np.dot(X_infl_new.iloc[0].values, gamma))
-
-            mu_hat = np.exp(np.dot(X_count_new.iloc[0].values, count_params.values))
-            prob_zero = pi_hat + (1 - pi_hat) * np.exp(-mu_hat)
+            truncated_mean = count_res.predict(new_X_count).iloc[0]
+            expected_count = prob_buy * truncated_mean
 
             st.subheader("Prediction Results")
-            st.write(f"Predicted structural-zero probability: **{pi_hat:.4f}**")
-            st.write(f"Predicted overall probability of zero count: **{prob_zero:.4f}**")
-            st.success(f"Predicted expected count for {response_original}: {overall_mean:.4f}")
+            st.write(f"Predicted probability of buying at least 1 item: **{prob_buy:.4f}**")
+            st.write(f"Predicted expected count if positive: **{truncated_mean:.4f}**")
+            st.success(f"Final expected count for {response_original}: {expected_count:.4f}")
 
         except Exception as e:
             st.error(f"Prediction failed: {e}")
 
     # ======================================================
-    # 9️⃣ PREDICTED VS ACTUAL
+    # 8️⃣ PREDICTED VS ACTUAL
     # ======================================================
 
-    st.header("6️⃣ Predicted vs Actual")
+    st.header("7️⃣ Predicted vs Actual")
 
     try:
-        predicted_mean = res.predict(
-            exog=X_count,
-            exog_infl=X_infl,
-            which="mean"
-        )
+        prob_buy_all = hurdle_res.predict(df_model)
+
+        X_count_all = patsy.build_design_matrices(
+            [X_count.design_info],
+            df_model,
+            return_type="dataframe"
+        )[0]
+
+        truncated_mean_all = count_res.predict(X_count_all)
+        overall_pred = prob_buy_all.values * truncated_mean_all.values
 
         plot_df = pd.DataFrame({
-            "Predicted": predicted_mean,
-            "Actual": df_model[response_original]
+            "Predicted": overall_pred,
+            "Actual": df_model[response_original].values
         })
 
         fig = px.scatter(
