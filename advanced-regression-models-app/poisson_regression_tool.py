@@ -124,7 +124,7 @@ def run():
     # 4️⃣ LIKELIHOOD RATIO TEST
     # ======================================================
 
-    st.subheader("Likelihood Ratio (Deviance) Test")
+    st.subheader("Likelihood Ratio Test")
 
     try:
         null_model = smf.glm(
@@ -189,9 +189,11 @@ def run():
 
     def build_rate_equation(model_result):
         params = model_result.params
+
         pieces = []
 
         for name in params.index:
+
             coef = round(params[name], 4)
 
             if name == "Intercept":
@@ -211,6 +213,7 @@ def run():
                 pieces.append(f"- {abs(coef)}\\cdot {term_label}")
 
         inside = " ".join(pieces)
+
         return f"\\widehat{{\\lambda}} = \\exp\\left({inside}\\right)"
 
     st.markdown("**In the fitted model, the estimated rate is:**")
@@ -222,52 +225,55 @@ def run():
 
     st.header("5️⃣ Interpretation")
 
-    response_name = response_original
-
-    numeric_terms = []
-    categorical_terms = []
+    st.markdown("Interpretation uses $e^{\\beta}$:")
+    st.markdown("New expected count = old expected count multiplied by $e^{\\beta}$.")
 
     for term in res.params.index:
-        if term == "Intercept":
-            continue
+
+        coef = res.params[term]
+        pval = res.pvalues[term]
+        exp_coef = np.exp(coef)
+
         if term.startswith("C("):
-            categorical_terms.append(term)
+            var_name = term.split("[")[0].replace("C(", "").split(",")[0]
+            level = term.split("T.")[-1].replace("]", "")
+            label = f"{var_name}[{level}]"
         else:
-            numeric_terms.append(term)
+            label = term
 
-    st.markdown("---")
+        st.subheader(label)
+        st.latex(f"e^{{{coef:.4f}}} = {exp_coef:.4f}")
 
-    for term in numeric_terms:
-        coef = res.params[term]
-        percent_change = (np.exp(coef) - 1) * 100
-        direction = "increases" if percent_change > 0 else "decreases"
+        if term == "Intercept":
 
-        st.markdown(
-            f"""
-**For a one-unit increase in {term}, the estimated average value of {response_name} {direction} by**
-\[
-(\exp\{{{coef:.4f}\}} - 1)\cdot 100\% = {percent_change:.2f}\%.
-\]
-"""
-        )
+            st.write(
+                f"When all predictors are at zero and categorical predictors are at their reference levels, "
+                f"the expected count is {exp_coef:.4f}."
+            )
 
-    for term in categorical_terms:
-        coef = res.params[term]
-        rate_ratio = np.exp(coef)
+        elif term.startswith("C("):
 
-        var_name = term.split("[")[0].replace("C(", "").split(",")[0]
-        level = term.split("T.")[-1].replace("]", "")
-        reference = reference_dict.get(var_name, "reference")
+            var_name = term.split("[")[0].replace("C(", "").split(",")[0]
+            level = term.split("T.")[-1].replace("]", "")
+            ref = reference_dict.get(var_name, "reference")
 
-        st.markdown(
-            f"""
-**Also, the estimated average value of {response_name} for {var_name} = {level} is**
-\[
-\exp\{{{coef:.4f}\}}\cdot 100\% = {rate_ratio*100:.2f}\%
-\]
-**of that for {var_name} = {reference}.**
-"""
-        )
+            st.write(
+                f"For {var_name} = {level} relative to {ref}, the expected count is multiplied by {exp_coef:.4f}."
+            )
+
+        else:
+
+            st.write(
+                f"If {label} increases by 1, the expected count is multiplied by {exp_coef:.4f}."
+            )
+
+        st.write(f"Coefficient = {coef:.4f}")
+        st.write(f"p-value = {pval:.4f}")
+
+        if pval <= 0.05:
+            st.success("Significant")
+        else:
+            st.warning("Not significant")
 
     # ======================================================
     # 8️⃣ PREDICTION
@@ -278,17 +284,32 @@ def run():
     input_dict = {}
 
     for var in predictors:
+
         if var in categorical_vars:
-            input_dict[var] = st.selectbox(var, list(df[var].cat.categories))
+
+            input_dict[var] = st.selectbox(
+                var,
+                list(df[var].cat.categories)
+            )
+
         else:
+
             numeric_series = pd.to_numeric(df[var], errors="coerce")
-            input_dict[var] = st.number_input(var, value=float(numeric_series.mean()))
+
+            input_dict[var] = st.number_input(
+                var,
+                value=float(numeric_series.mean())
+            )
 
     if st.button("Predict"):
+
         new_df = pd.DataFrame([input_dict])
 
         for var in categorical_vars:
-            new_df[var] = pd.Categorical(new_df[var], categories=df[var].cat.categories)
+            new_df[var] = pd.Categorical(
+                new_df[var],
+                categories=df[var].cat.categories
+            )
 
         for var in predictors:
             if var not in categorical_vars:
@@ -296,9 +317,52 @@ def run():
 
         try:
             prediction = res.predict(new_df)[0]
-            st.success(f"Predicted expected count: {prediction:.4f}")
+
+            st.subheader("Prediction Results")
+            st.success(f"Predicted expected count for {response_original}: {prediction:.4f}")
+
         except Exception as e:
             st.error(f"Prediction failed: {e}")
+
+    # ======================================================
+    # 9️⃣ PREDICTED VS ACTUAL
+    # ======================================================
+
+    st.header("7️⃣ Predicted vs Actual")
+
+    try:
+        predicted_vals = res.predict(df_model)
+
+        plot_df = pd.DataFrame({
+            "Predicted": predicted_vals,
+            "Actual": df_model[response_original]
+        })
+
+        fig = px.scatter(
+            plot_df,
+            x="Predicted",
+            y="Actual",
+            title="Predicted Count vs Actual Count",
+            labels={"Predicted": "Predicted Count", "Actual": "Actual Count"},
+            trendline="ols"
+        )
+
+        min_val = min(plot_df["Predicted"].min(), plot_df["Actual"].min())
+        max_val = max(plot_df["Predicted"].max(), plot_df["Actual"].max())
+
+        fig.add_shape(
+            type="line",
+            x0=min_val,
+            y0=min_val,
+            x1=max_val,
+            y1=max_val,
+            line=dict(dash="dash")
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+    except Exception as e:
+        st.warning(f"Could not create predicted vs actual plot: {e}")
 
 
 if __name__ == "__main__":
