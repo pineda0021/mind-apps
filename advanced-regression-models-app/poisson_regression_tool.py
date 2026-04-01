@@ -225,79 +225,79 @@ def run():
 
     st.header("5️⃣ Interpretation")
 
-response_name = response_original
+    response_name = response_original
 
-# Separate variables
-numeric_terms = []
-categorical_terms = []
+    # Separate variables
+    numeric_terms = []
+    categorical_terms = []
 
-for term in res.params.index:
-    if term == "Intercept":
-        continue
-    if term.startswith("C("):
-        categorical_terms.append(term)
-    else:
-        numeric_terms.append(term)
-
-# ======================================================
-# 1️⃣ SIGNIFICANCE SUMMARY SENTENCE
-# ======================================================
-
-significant_terms = [
-    term for term in res.params.index
-    if term != "Intercept" and res.pvalues[term] <= 0.05
-]
-
-if significant_terms:
-
-    pretty_names = []
-
-    for term in significant_terms:
-
+    for term in res.params.index:
+        if term == "Intercept":
+            continue
         if term.startswith("C("):
-            var_name = term.split("[")[0].replace("C(", "").split(",")[0]
-            level = term.split("T.")[-1].replace("]", "")
-            pretty_names.append(f"the indicator of {var_name} = {level}")
+        categorical_terms.append(term)
         else:
-            pretty_names.append(term)
+            numeric_terms.append(term)
 
-    if len(pretty_names) == 1:
-        sig_text = pretty_names[0]
-    elif len(pretty_names) == 2:
-        sig_text = f"{pretty_names[0]} and {pretty_names[1]}"
+    # ======================================================
+    # 1️⃣ SIGNIFICANCE SUMMARY SENTENCE
+    # ======================================================
+
+    significant_terms = [
+        term for term in res.params.index
+        if term != "Intercept" and res.pvalues[term] <= 0.05
+    ]
+
+    if significant_terms:
+
+        pretty_names = []
+
+        for term in significant_terms:
+
+            if term.startswith("C("):
+                var_name = term.split("[")[0].replace("C(", "").split(",")[0]
+                level = term.split("T.")[-1].replace("]", "")
+                pretty_names.append(f"the indicator of {var_name} = {level}")
+            else:
+                pretty_names.append(term)
+
+        if len(pretty_names) == 1:
+            sig_text = pretty_names[0]
+        elif len(pretty_names) == 2:
+            sig_text = f"{pretty_names[0]} and {pretty_names[1]}"
+        else:
+            sig_text = ", ".join(pretty_names[:-1]) + f", and {pretty_names[-1]}"
+
+        st.markdown(
+            f"**{sig_text.capitalize()} {'is' if len(pretty_names)==1 else 'are'} significant predictors of the average value of {response_name} at the 5% significance level.**"
+        )
+
     else:
-        sig_text = ", ".join(pretty_names[:-1]) + f", and {pretty_names[-1]}"
+        st.markdown(
+            f"**None of the predictors are significant predictors of the average value of {response_name} at the 5% significance level.**"
+        )
 
-    st.markdown(
-        f"**{sig_text.capitalize()} {'is' if len(pretty_names)==1 else 'are'} significant predictors of the average value of {response_name} at the 5% significance level.**"
-    )
+    st.markdown("---")
 
-else:
-    st.markdown(
-        f"**None of the predictors are significant predictors of the average value of {response_name} at the 5% significance level.**"
-    )
+    # ======================================================
+    # 2️⃣ NUMERIC VARIABLE INTERPRETATIONS
+    # ======================================================
 
-st.markdown("---")
+    for term in numeric_terms:
 
-# ======================================================
-# 2️⃣ NUMERIC VARIABLE INTERPRETATIONS
-# ======================================================
+        coef = res.params[term]
+        percent_change = (np.exp(coef) - 1) * 100
 
-for term in numeric_terms:
+        direction = "increases" if percent_change > 0 else "decreases"
 
-    coef = res.params[term]
-    percent_change = (np.exp(coef) - 1) * 100
-
-    direction = "increases" if percent_change > 0 else "decreases"
-
-    st.markdown(
-        f"""
-**For a one-unit increase in {term}, the estimated average value of {response_name} {direction} by**
-\[
-(\exp\{{{coef:.4f}\}} - 1)\cdot 100\% = {percent_change:.2f}\%.
-\]
-"""
-    )
+        st.markdown(
+            f"""
+    **For a one-unit increase in {term}, the estimated average value of {response_name} {direction} by**
+    \[
+    (\exp\{{{coef:.4f}\}} - 1)\cdot 100\% = {percent_change:.2f}\%.
+    \]
+    """
+        )
 
 # ======================================================
 # 3️⃣ CATEGORICAL VARIABLE INTERPRETATIONS
