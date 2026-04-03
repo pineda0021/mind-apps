@@ -102,7 +102,7 @@ def run():
         st.info("👆 Please select a category to begin.")
         return
 
-    decimal = st.number_input("Decimal places for output", min_value=0, max_value=10, value=4, step=1)
+    decimal = st.number_input("Decimal places for output", min_value=0, max_value=10, value=4)
 
     # ==========================================================
     # 1) Confidence Interval for Proportion (p, z)
@@ -114,13 +114,11 @@ def run():
             \hat{p} \pm z_{\alpha/2}\sqrt{\frac{\hat{p}(1-\hat{p})}{n}}
         """)
 
-        with st.form("ci_proportion_form"):
-            x = st.number_input("Number of successes (x)", min_value=0, step=1)
-            n = st.number_input("Sample size (n)", min_value=1, step=1)
-            conf = st.number_input("Confidence level (0–1)", value=0.950, step=0.001, format="%.3f")
-            submitted = st.form_submit_button("👨‍💻 Calculate")
+        x = st.number_input("Number of successes (x)", min_value=0, step=1)
+        n = st.number_input("Sample size (n)", min_value=1, step=1)
+        conf = st.number_input("Confidence level (0–1)", value=0.950, step=0.001, format="%.3f")
 
-        if submitted:
+        if st.button("👨‍💻 Calculate"):
 
             if x > n:
                 st.error("❌ Number of successes (x) cannot exceed sample size (n).")
@@ -154,6 +152,7 @@ def run():
                 f"<b>{upper:.{decimal}f}</b>."
             )
 
+
     # ==========================================================
     # 2) Sample Size for Proportion (p, z, E)
     # ==========================================================
@@ -163,13 +162,11 @@ def run():
             n = \hat{p}(1-\hat{p})\left(\frac{z_{\alpha/2}}{E}\right)^2
         """)
 
-        with st.form("sample_size_proportion_form"):
-            conf = st.number_input("Confidence level", value=0.950, step=0.001, format="%.3f")
-            p_est = st.number_input("Estimated proportion (p̂)", value=0.500, step=0.001, format="%.3f")
-            E = st.number_input("Margin of error (E)", value=0.050, step=0.001, format="%.3f")
-            submitted = st.form_submit_button("👨‍💻 Calculate")
+        conf = st.number_input("Confidence level", value=0.950, step=0.001, format="%.3f")
+        p_est = st.number_input("Estimated proportion (p̂)", value=0.500, step=0.001, format="%.3f")
+        E = st.number_input("Margin of error (E)", value=0.050, step=0.001, format="%.3f")
 
-        if submitted:
+        if st.button("👨‍💻 Calculate"):
 
             z = stats.norm.ppf((1 + conf) / 2)
             n_req = p_est * (1 - p_est) * (z / E) ** 2
@@ -190,6 +187,7 @@ def run():
                 f"<b>{conf*100:.3f}% confidence</b> with margin of error <b>{E:.3f}</b>."
             )
 
+
     # ==========================================================
     # 3) CI for Mean (σ known, z)
     # ==========================================================
@@ -199,14 +197,12 @@ def run():
             \bar{X} \pm z_{\alpha/2}\left(\frac{\sigma}{\sqrt{n}}\right)
         """)
 
-        with st.form("ci_mean_sigma_known_form"):
-            mean = st.number_input("Sample mean (x̄)")
-            sigma = st.number_input("Population SD (σ)", min_value=0.0)
-            n = st.number_input("Sample size (n)", min_value=1, step=1)
-            conf = st.number_input("Confidence level", value=0.950, step=0.001, format="%.3f")
-            submitted = st.form_submit_button("👨‍💻 Calculate")
+        mean = st.number_input("Sample mean (x̄)")
+        sigma = st.number_input("Population SD (σ)", min_value=0.0)
+        n = st.number_input("Sample size (n)", min_value=1)
+        conf = st.number_input("Confidence level", value=0.950, step=0.001, format="%.3f")
 
-        if submitted:
+        if st.button("👨‍💻 Calculate"):
 
             z = stats.norm.ppf((1 + conf) / 2)
             se = sigma / np.sqrt(n)
@@ -231,6 +227,7 @@ def run():
                 f"<b>{lower:.{decimal}f}</b> and <b>{upper:.{decimal}f}</b>."
             )
 
+
     # ==========================================================
     # 4) CI for Mean (s given, t)
     # ==========================================================
@@ -240,14 +237,12 @@ def run():
             \bar{X} \pm t_{\alpha/2,\,n-1}\left(\frac{s}{\sqrt{n}}\right)
         """)
 
-        with st.form("ci_mean_t_form"):
-            mean = st.number_input("Sample mean (x̄)")
-            s = st.number_input("Sample SD (s)")
-            n = st.number_input("Sample size (n)", min_value=2, step=1)
-            conf = st.number_input("Confidence level", value=0.950, step=0.001, format="%.3f")
-            submitted = st.form_submit_button("👨‍💻 Calculate")
+        mean = st.number_input("Sample mean (x̄)")
+        s = st.number_input("Sample SD (s)")
+        n = st.number_input("Sample size (n)", min_value=2)
+        conf = st.number_input("Confidence level", value=0.950, step=0.001, format="%.3f")
 
-        if submitted:
+        if st.button("👨‍💻 Calculate"):
 
             df = int(n - 1)
             tcrit = stats.t.ppf((1 + conf) / 2, df)
@@ -292,11 +287,9 @@ def run():
                 st.error("❌ Invalid input.")
                 return
 
-        with st.form("ci_mean_data_form"):
-            conf = st.number_input("Confidence level", value=0.950, step=0.001, format="%.3f")
-            submitted = st.form_submit_button("👨‍💻 Calculate")
+        conf = st.number_input("Confidence level", value=0.950, step=0.001, format="%.3f")
 
-        if submitted:
+        if st.button("👨‍💻 Calculate"):
 
             if data is None or len(data) < 2:
                 st.warning("⚠️ Need at least 2 numbers.")
@@ -335,13 +328,11 @@ def run():
             n = \left(\frac{z_{\alpha/2}\sigma}{E}\right)^2
         """)
 
-        with st.form("sample_size_mean_form"):
-            conf = st.number_input("Confidence level", value=0.950, step=0.001, format="%.3f")
-            sigma = st.number_input("Population SD (σ)", min_value=0.0)
-            E = st.number_input("Margin of error (E)", value=0.050, step=0.001, format="%.3f")
-            submitted = st.form_submit_button("👨‍💻 Calculate")
+        conf = st.number_input("Confidence level", value=0.950, step=0.001, format="%.3f")
+        sigma = st.number_input("Population SD (σ)", min_value=0.0)
+        E = st.number_input("Margin of error (E)", value=0.050, step=0.001, format="%.3f")
 
-        if submitted:
+        if st.button("👨‍💻 Calculate"):
 
             z = stats.norm.ppf((1 + conf) / 2)
             n_req = (z * sigma / E) ** 2
@@ -369,25 +360,23 @@ def run():
             \right)
         """)
 
-        with st.form("ci_variance_form"):
-            n = st.number_input("Sample size (n)", min_value=2, step=1)
-            method = st.radio(
-                "Provide input:",
-                ["Enter SD (s)", "Enter Variance (s²)"],
-                horizontal=True
-            )
+        n = st.number_input("Sample size (n)", min_value=2)
+        method = st.radio(
+            "Provide input:",
+            ["Enter SD (s)", "Enter Variance (s²)"],
+            horizontal=True
+        )
 
-            if method == "Enter SD (s)":
-                s = st.number_input("Sample SD (s)", min_value=0.0)
-                s2 = s ** 2
-            else:
-                s2 = st.number_input("Sample Variance (s²)", min_value=0.0)
-                s = np.sqrt(s2)
+        if method == "Enter SD (s)":
+            s = st.number_input("Sample SD (s)", min_value=0.0)
+            s2 = s ** 2
+        else:
+            s2 = st.number_input("Sample Variance (s²)", min_value=0.0)
+            s = np.sqrt(s2)
 
-            conf = st.number_input("Confidence level", value=0.950, step=0.001, format="%.3f")
-            submitted = st.form_submit_button("👨‍💻 Calculate")
+        conf = st.number_input("Confidence level", value=0.950, step=0.001, format="%.3f")
 
-        if submitted:
+        if st.button("👨‍💻 Calculate"):
 
             df = int(n - 1)
             chi_lower = stats.chi2.ppf((1 - conf) / 2, df)
@@ -406,11 +395,10 @@ def run():
             st.latex(fr"\text{{SD CI}} = ({sd_lower:.{decimal}f}, {sd_upper:.{decimal}f})")
 
             interpretation_box(
-                f"We are <b>{conf*100:.3f}% confident</b> that the population "
-                f"variance lies between <b>{var_lower:.{decimal}f}</b> and "
+                f"Variance is between <b>{var_lower:.{decimal}f}</b> and "
                 f"<b>{var_upper:.{decimal}f}</b>. "
-                f"The population standard deviation lies between "
-                f"<b>{sd_lower:.{decimal}f}</b> and <b>{sd_upper:.{decimal}f}</b>."
+                f"Standard deviation is between <b>{sd_lower:.{decimal}f}</b> and "
+                f"<b>{sd_upper:.{decimal}f}</b>."
             )
 
     # ==========================================================
@@ -432,11 +420,9 @@ def run():
                 st.error("❌ Invalid input.")
                 return
 
-        with st.form("ci_variance_data_form"):
-            conf = st.number_input("Confidence level", value=0.950, step=0.001, format="%.3f")
-            submitted = st.form_submit_button("👨‍💻 Calculate")
+        conf = st.number_input("Confidence level", value=0.950, step=0.001, format="%.3f")
 
-        if submitted:
+        if st.button("👨‍💻 Calculate"):
 
             if data is None or len(data) < 2:
                 st.warning("⚠️ Need at least two numbers.")
