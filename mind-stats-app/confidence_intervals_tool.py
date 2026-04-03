@@ -164,7 +164,7 @@ def run():
 
         conf = st.number_input("Confidence level", value=0.950, step=0.001, format="%.3f")
         p_est = st.number_input("Estimated proportion (p̂)", value=0.500, step=0.001, format="%.3f")
-        E = st.number_input("Margin of error (E)", value=0.050, step=0.001, format="%.3f")
+        E = st.number_input("Margin of error (E)", value=0.025, step=0.001, format="%.3f")
 
         if st.button("👨‍💻 Calculate"):
 
