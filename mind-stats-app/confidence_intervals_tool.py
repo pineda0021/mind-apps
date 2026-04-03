@@ -159,8 +159,8 @@ def run():
         """)
 
         conf = st.number_input("Confidence level", value=0.95, format="%.3f")
-        p_est = st.number_input("Estimated proportion (p̂)", value=0.5)
-        E = st.number_input("Margin of error (E)", value=0.05)
+        p_est = st.number_input("Estimated proportion (p̂)", value=0.5, format="%.3f")
+        E = st.number_input("Margin of error (E)", value=0.05, format="%.3f")
 
         if st.button("👨‍💻 Calculate"):
 
@@ -196,7 +196,7 @@ def run():
         mean = st.number_input("Sample mean (x̄)")
         sigma = st.number_input("Population SD (σ)", min_value=0.0)
         n = st.number_input("Sample size (n)", min_value=1)
-        conf = st.number_input("Confidence level", value=0.95)
+        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
 
         if st.button("👨‍💻 Calculate"):
 
@@ -236,7 +236,7 @@ def run():
         mean = st.number_input("Sample mean (x̄)")
         s = st.number_input("Sample SD (s)")
         n = st.number_input("Sample size (n)", min_value=2)
-        conf = st.number_input("Confidence level", value=0.95)
+        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
 
         if st.button("👨‍💻 Calculate"):
 
@@ -283,7 +283,7 @@ def run():
                 st.error("❌ Invalid input.")
                 return
 
-        conf = st.number_input("Confidence level", value=0.95)
+        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
 
         if st.button("👨‍💻 Calculate"):
 
@@ -324,9 +324,9 @@ def run():
             n = \left(\frac{z_{\alpha/2}\sigma}{E}\right)^2
         """)
 
-        conf = st.number_input("Confidence level", value=0.95)
+        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
         sigma = st.number_input("Population SD (σ)", min_value=0.0)
-        E = st.number_input("Margin of error (E)", value=0.05)
+        E = st.number_input("Margin of error (E)", value=0.05, format="%.3f")
 
         if st.button("👨‍💻 Calculate"):
 
