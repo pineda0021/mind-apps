@@ -115,11 +115,15 @@ def run():
         """)
 
         x = st.number_input("Number of successes (x)", min_value=0, step=1)
-        n = st.number_input("Sample size (n)", min_value=max(1, int(x)), step=1)
+        n = st.number_input("Sample size (n)", min_value=1, step=1)
         conf = st.number_input("Confidence level (0–1)", value=0.95, format="%.3f")
 
         if st.button("👨‍💻 Calculate"):
-            
+
+            if x > n:
+                st.error("❌ Number of successes (x) cannot exceed sample size (n).")
+                return
+
             p_hat = x / n
             z = stats.norm.ppf((1 + conf) / 2)
             se = np.sqrt(p_hat * (1 - p_hat) / n)
@@ -137,13 +141,13 @@ def run():
             st.latex(fr"SE = {se:.{decimal}f}")
 
             st.markdown("**Step 4:** Margin of error")
-            st.latex(fr"E = {moe:.{decimal}f}")
+            st.latex(fr"E = {moe:.3f}")
 
             st.markdown("**Step 5:** Final CI")
             st.latex(fr"({lower:.{decimal}f},\; {upper:.{decimal}f})")
 
             interpretation_box(
-                f"We are <b>{conf*100:.1f}% confident</b> that the true population "
+                f"We are <b>{conf*100:.3f}% confident</b> that the true population "
                 f"proportion lies between <b>{lower:.{decimal}f}</b> and "
                 f"<b>{upper:.{decimal}f}</b>."
             )
@@ -180,7 +184,7 @@ def run():
 
             interpretation_box(
                 f"A minimum of <b>{n_round}</b> participants is needed to achieve "
-                f"<b>{conf*100:.1f}% confidence</b> with margin of error <b>{E}</b>."
+                f"<b>{conf*100:.3f}% confidence</b> with margin of error <b>{E:.3f}</b>."
             )
 
 
@@ -213,13 +217,13 @@ def run():
             st.latex(fr"SE = {se:.{decimal}f}")
 
             st.markdown("**Step 3:** Margin of error")
-            st.latex(fr"E = {moe:.{decimal}f}")
+            st.latex(fr"E = {moe:.3f}")
 
             st.markdown("**Step 4:** Final CI")
             st.latex(fr"({lower:.{decimal}f}, {upper:.{decimal}f})")
 
             interpretation_box(
-                f"We are <b>{conf*100:.1f}% confident</b> that μ lies between "
+                f"We are <b>{conf*100:.3f}% confident</b> that μ lies between "
                 f"<b>{lower:.{decimal}f}</b> and <b>{upper:.{decimal}f}</b>."
             )
 
@@ -254,13 +258,13 @@ def run():
             st.latex(fr"SE = {se:.{decimal}f}")
 
             st.markdown("**Step 3:** MOE")
-            st.latex(fr"E = {moe:.{decimal}f}")
+            st.latex(fr"E = {moe:.3f}")
 
             st.markdown("**Step 4:** CI")
             st.latex(fr"({lower:.{decimal}f}, {upper:.{decimal}f})")
 
             interpretation_box(
-                f"We are <b>{conf*100:.1f}% confident</b> that μ lies between "
+                f"We are <b>{conf*100:.3f}% confident</b> that μ lies between "
                 f"<b>{lower:.{decimal}f}</b> and <b>{upper:.{decimal}f}</b>."
             )
 
@@ -311,7 +315,7 @@ def run():
             st.latex(fr"({lower:.{decimal}f}, {upper:.{decimal}f})")
 
             interpretation_box(
-                f"We are <b>{conf*100:.1f}% confident</b> that μ lies between "
+                f"We are <b>{conf*100:.3f}% confident</b> that μ lies between "
                 f"<b>{lower:.{decimal}f}</b> and <b>{upper:.{decimal}f}</b>."
             )
 
@@ -340,8 +344,8 @@ def run():
             st.latex(fr"n = {n_round}")
 
             interpretation_box(
-                f"At <b>{conf*100:.1f}% confidence</b>, you need at least "
-                f"<b>{n_round}</b> samples to estimate μ with margin of error <b>{E}</b>."
+                f"At <b>{conf*100:.3f}% confidence</b>, you need at least "
+                f"<b>{n_round}</b> samples to estimate μ with margin of error <b>{E:.3f}</b>."
             )
 
     # ==========================================================
@@ -370,7 +374,7 @@ def run():
             s2 = st.number_input("Sample Variance (s²)", min_value=0.0)
             s = np.sqrt(s2)
 
-        conf = st.number_input("Confidence level", value=0.95)
+        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
 
         if st.button("👨‍💻 Calculate"):
 
@@ -391,9 +395,9 @@ def run():
             st.latex(fr"\text{{SD CI}} = ({sd_lower:.{decimal}f}, {sd_upper:.{decimal}f})")
 
             interpretation_box(
-                f"Variance is between <b>{var_lower:.{decimal}f}</b> and "
-                f"<b>{var_upper:.{decimal}f}</b>. "
-                f"Standard deviation is between <b>{sd_lower:.{decimal}f}</b> and "
+                f"We are <b>{conf*100:.3f}% confident</b> that the population variance lies between "
+                f"<b>{var_lower:.{decimal}f}</b> and <b>{var_upper:.{decimal}f}</b>. "
+                f"The population standard deviation lies between <b>{sd_lower:.{decimal}f}</b> and "
                 f"<b>{sd_upper:.{decimal}f}</b>."
             )
 
@@ -416,7 +420,7 @@ def run():
                 st.error("❌ Invalid input.")
                 return
 
-        conf = st.number_input("Confidence level", value=0.95)
+        conf = st.number_input("Confidence level", value=0.95, format="%.3f")
 
         if st.button("👨‍💻 Calculate"):
 
@@ -446,7 +450,7 @@ def run():
             st.latex(fr"\text{{SD CI}} = ({sd_lower:.{decimal}f}, {sd_upper:.{decimal}f})")
 
             interpretation_box(
-                f"We are <b>{conf*100:.1f}% confident</b> that the population "
+                f"We are <b>{conf*100:.3f}% confident</b> that the population "
                 f"variance lies between <b>{var_lower:.{decimal}f}</b> and "
                 f"<b>{var_upper:.{decimal}f}</b>, and deviation between "
                 f"<b>{sd_lower:.{decimal}f}</b> and <b>{sd_upper:.{decimal}f}</b>."
@@ -458,4 +462,3 @@ def run():
 # ==========================================================
 if __name__ == "__main__":
     run()
-
