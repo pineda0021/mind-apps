@@ -210,10 +210,11 @@ separated by commas.
     col4.metric("BIC", round(bic, 2))
     col5.metric("Model Deviance", round(dev_model, 2) if pd.notna(dev_model) else "N/A")
 
+    
     # ======================================================
     # 6️⃣ EQUATION BUILDER
     # ======================================================
-
+    
     def clean_label(name):
         if name.startswith("C(") and "T." in name:
             var_name = name.split("[")[0]
@@ -221,36 +222,55 @@ separated by commas.
             level = name.split("T.")[-1].replace("]", "")
             return level
         return name
-
+    
     def build_equations(result, response_levels):
-
+    
         params = result.params
-
+    
         slope_terms = []
         threshold_terms = []
-
+    
         for name in params.index:
             if "/" in name:
                 threshold_terms.append((name, params[name]))
             else:
                 slope_terms.append((name, params[name]))
-
+    
+        # -----------------------------------
+        # Build linear predictor part
+        # -----------------------------------
         linear_part = ""
-
+    
         for name, coef in slope_terms:
             coef_r = round(coef, 4)
             sign = "+" if coef_r >= 0 else "-"
             label = clean_label(name)
-
+    
             linear_part += f" {sign} {abs(coef_r):.4f}\\cdot {label}"
-
+    
+        # -----------------------------------
+        # Reconstruct actual thresholds
+        # statsmodels stores:
+        # first threshold directly,
+        # later thresholds as transformed increments
+        # -----------------------------------
+        actual_thresholds = []
+    
+        for i, (thresh_name, thresh_val) in enumerate(threshold_terms):
+            if i == 0:
+                actual_val = float(thresh_val)
+            else:
+                actual_val = actual_thresholds[-1][1] + np.exp(float(thresh_val))
+    
+            actual_thresholds.append((thresh_name, actual_val, float(thresh_val)))
+    
         equations = []
-
-        for thresh_name, thresh_val in threshold_terms:
-            thresh_r = round(thresh_val, 4)
-
+    
+        for i, (thresh_name, actual_val, raw_val) in enumerate(actual_thresholds):
+            thresh_r = round(actual_val, 4)
+    
             lower_cat = thresh_name.split("/")[0]
-
+    
             try:
                 idx = list(response_levels).index(lower_cat)
                 cumulative_levels = list(response_levels)[:idx + 1]
@@ -258,14 +278,14 @@ separated by commas.
             except ValueError:
                 cumulative_levels = [lower_cat]
                 remaining_levels = []
-
+    
             if len(cumulative_levels) == 1:
                 left_num = cumulative_levels[0]
             elif len(cumulative_levels) == 2:
                 left_num = cumulative_levels[0] + r",\,\mathrm{or}\," + cumulative_levels[1]
             else:
                 left_num = r",\,".join(cumulative_levels[:-1]) + r",\,\mathrm{or}\," + cumulative_levels[-1]
-
+    
             if len(remaining_levels) == 1:
                 right_den = remaining_levels[0]
                 left_side = (
@@ -277,23 +297,49 @@ separated by commas.
                     rf"\frac{{\widehat{{\mathbb{{P}}}}({left_num})}}"
                     rf"{{1-\widehat{{\mathbb{{P}}}}({left_num})}}"
                 )
-
+    
             eq = (
                 left_side
                 + rf"=\exp\left\{{{thresh_r:.4f}{linear_part}\right\}}"
             )
-
+    
             equations.append(eq)
-
-        return equations
-
+    
+        return equations, actual_thresholds
+    
     st.subheader("Fitted Regression Equations (Cumulative Logits)")
-
+    
     response_levels = list(df[response_original].cat.categories)
-    equations = build_equations(res, response_levels)
-
+    equations, actual_thresholds = build_equations(res, response_levels)
+    
     for eq in equations:
         st.latex(eq)
+    
+    # -----------------------------------
+    # Optional threshold explanation
+    # -----------------------------------
+    st.subheader("Threshold Reconstruction")
+    
+    if len(actual_thresholds) > 0:
+        first_name, first_actual, first_raw = actual_thresholds[0]
+        st.markdown(
+            f"**{first_name} = {first_actual:.4f}**"
+        )
+    
+    for i in range(1, len(actual_thresholds)):
+        current_name, current_actual, current_raw = actual_thresholds[i]
+        prev_name, prev_actual, _ = actual_thresholds[i - 1]
+    
+        st.markdown(
+            f"**{current_name} = {prev_name} + e^{{{current_raw:.4f}}} = "
+            f"{prev_actual:.4f} + e^{{{current_raw:.4f}}} = {current_actual:.4f}**"
+        )
+    
+    st.markdown(
+        "**NOTE: R and Python outputs may look different, but they represent the same threshold values.**"
+    )
+    
+       
 
     # ======================================================
     # 7️⃣ INTERPRETATION
