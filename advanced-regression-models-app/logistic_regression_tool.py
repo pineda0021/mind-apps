@@ -192,13 +192,16 @@ def run():
 
         coef = model.params[term]
         pval = model.pvalues[term]
+        exp_beta = np.exp(coef)
+
+        st.markdown(f"### {term}")
 
         if term == "Intercept":
 
-            interpretation_latex = (
-                rf"When all predictors are at their reference levels or equal to zero, "
-                rf"the log-odds of $\pi=\mathbb{{P}}(\mathrm{{collaboration}})$ is "
-                rf"${coef:.4f}$."
+            interpretation = (
+                f"**When all predictors are at their reference levels, "
+                f"the estimated odds of {response} = 1 are "
+                rf"$e^{{{coef:.4f}}} = {exp_beta:.4f}$.**"
             )
 
         elif term.startswith("C("):
@@ -209,65 +212,38 @@ def run():
             level = term.split("T.")[-1].replace("]", "")
             reference = reference_dict.get(var_name, "reference")
 
-            if coef >= 0:
-                interpretation_latex = (
-                    rf"For {var_name} = {level}, the log-odds of "
-                    rf"$\pi=\mathbb{{P}}(\mathrm{{collaboration}})$ is "
-                    rf"${coef:.4f}$ higher than for {var_name} = {reference}, "
-                    rf"holding the other predictors fixed."
-                )
-            else:
-                interpretation_latex = (
-                    rf"For {var_name} = {level}, the log-odds of "
-                    rf"$\pi=\mathbb{{P}}(\mathrm{{collaboration}})$ is "
-                    rf"${abs(coef):.4f}$ lower than for {var_name} = {reference}, "
-                    rf"holding the other predictors fixed."
-                )
+            interpretation = (
+                f"**For observations where {var_name} = {level}, "
+                f"the estimated odds of {response} = 1 are "
+                rf"$e^{{{coef:.4f}}}\cdot 100\% = {exp_beta * 100:.2f}\%$ "
+                f"of that for {var_name} = {reference}.**"
+            )
 
         else:
 
-            if coef >= 0:
-                interpretation_latex = (
-                    rf"For every one-unit increase in ${term}$, the log-odds of "
-                    rf"$\pi=\mathbb{{P}}(\mathrm{{collaboration}})$ increases by "
-                    rf"${coef:.4f}$, holding the other predictors fixed."
-                )
+            percent_change = (exp_beta - 1) * 100
+
+            if percent_change >= 0:
+                direction = "larger"
             else:
-                interpretation_latex = (
-                    rf"For every one-unit increase in ${term}$, the log-odds of "
-                    rf"$\pi=\mathbb{{P}}(\mathrm{{collaboration}})$ decreases by "
-                    rf"${abs(coef):.4f}$, holding the other predictors fixed."
-                )
+                direction = "smaller"
+
+            interpretation = (
+                f"**If {term} were larger by one unit, then the estimated odds of {response} = 1 "
+                f"would be {direction} by "
+                rf"$\displaystyle (e^{{{coef:.4f}}} - 1)\cdot 100\% = {abs(percent_change):.2f}\%$.**"
+            )
+
+        st.markdown(interpretation)
+
+        st.write(f"Coefficient = {coef:.4f}")
+        st.write(f"p-value = {pval:.4f}")
 
         if pval <= 0.05:
-            significance = r"\text{Statistically significant at the 5\% level.}"
-            box_color = "#d4edda"
-            border_color = "#155724"
+            st.success("Statistically significant.")
         else:
-            significance = r"\text{Not statistically significant at the 5\% level.}"
-            box_color = "#fff3cd"
-            border_color = "#856404"
-
-        st.markdown(
-            f"""
-            <div style="
-                background-color: {box_color};
-                border-left: 6px solid {border_color};
-                padding: 14px;
-                border-radius: 8px;
-                margin-bottom: 14px;
-            ">
-                <h4 style="margin-top: 0;">{term}</h4>
-                <p><b>Coefficient:</b> {coef:.4f}</p>
-                <p><b>p-value:</b> {pval:.4f}</p>
-                <p><b>Interpretation:</b></p>
-                <p>{interpretation_latex}</p>
-                <p><b>Statistical significance:</b> ${significance}$</p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
+            st.warning("Not statistically significant.")
+    
     # ======================================================
     # 8️⃣ PREDICTION
     # ======================================================
