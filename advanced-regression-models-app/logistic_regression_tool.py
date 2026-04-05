@@ -164,7 +164,7 @@ def run():
     def build_equation(model):
         params = model.params
 
-        equation = r"\log\left(\frac{\pi}{1-\pi}\right)="
+        equation = r"\log\left(\hat{\pi}\right)="
         equation += f"{params['Intercept']:.5f}"
 
         for name in params.index:
