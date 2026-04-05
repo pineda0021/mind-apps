@@ -143,8 +143,19 @@ def run():
     # ======================================================
 
     st.header("4️⃣ Model Fit Evaluation")
-    st.write(f"AIC: {model.aic:.2f}")
-    st.write(f"BIC: {model.bic:.2f}")
+    loglik = model.llf
+    aic = model.aic
+    bic = model.bic_llf
+    deviance = model.deviance
+    pearson = model.pearson_chi2
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+    col1.metric("Log-Likelihood", round(loglik, 2))
+    col2.metric("AIC", round(aic, 2))
+    col3.metric("BIC", round(bic, 2))
+    col4.metric("Deviance", round(deviance, 2))
+    col5.metric("Pearson χ²", round(pearson, 2))
 
     # ======================================================
     # 7️⃣ EQUATION
@@ -190,10 +201,10 @@ New probability = old probability raised to $e^{\\beta}$.
         power = np.exp(coef)
 
         if pval <= 0.05:
-            sig = "✅ Significant"
+            sig = " Significant"
             color = st.success
         else:
-            sig = "⚠ Not significant"
+            sig = " Not significant"
             color = st.warning
 
         if term == "Intercept":
