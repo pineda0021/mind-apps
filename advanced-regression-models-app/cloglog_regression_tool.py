@@ -328,13 +328,14 @@ New probability = old probability raised to $e^{\\beta}$.
         aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
         bic = -2 * m.llf + k * np.log(n)
 
-        rows.append({"Model": name, "AIC": aic, "AICc": aicc, "BIC": bic})
+        rows.append({"Model": name, "AIC": aic, "AICC": aicc, "BIC": bic})
 
     comp = pd.DataFrame(rows)
 
     st.dataframe(comp.style.highlight_min(axis=0))
 
     st.write("Best AIC:", comp.loc[comp.AIC.idxmin(), "Model"])
+    st.write("Best AICC:", comp.loc[comp.AICC.idxmin(), "Model"])
     st.write("Best BIC:", comp.loc[comp.BIC.idxmin(), "Model"])
 
 
