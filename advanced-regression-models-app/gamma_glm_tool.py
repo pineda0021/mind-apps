@@ -331,17 +331,19 @@ def run():
         else:
             st.warning("Not statistically significant.")
 
+
     # ======================================================
     # 9️⃣ PREDICTION
     # ======================================================
 
     st.header("6️⃣ Prediction")
 
-    scale_prediction = st.checkbox("Multiply predicted response by a scale factor")
-    prediction_scale = 1.0
+    # --- Scaling Option ---
+    apply_scale = st.checkbox("Rescale prediction (e.g., if response was divided)")
+    scale_factor = 1.0
 
-    if scale_prediction:
-        prediction_scale = st.number_input(
+    if apply_scale:
+        scale_factor = st.number_input(
             "Scale factor",
             min_value=1.0,
             value=10000.0,
@@ -358,6 +360,7 @@ def run():
                 df_model[var].cat.categories,
                 key=f"pred_{var}"
             )
+
         else:
             numeric_series = pd.to_numeric(df_model[var], errors="coerce").dropna()
             default_value = float(numeric_series.mean()) if not numeric_series.empty else 0.0
@@ -381,14 +384,25 @@ def run():
             if var not in categorical_vars:
                 new_df[var] = pd.to_numeric(new_df[var], errors="coerce")
 
+        # --- Model prediction ---
         prediction = model.predict(new_df)[0]
 
-        st.subheader("Prediction Results")
-        st.success(f"Predicted {response}: {prediction:.4f}")
+        # --- Apply rescaling ---
+        final_prediction = rescale_prediction(
+            prediction,
+            apply_scale=apply_scale,
+            scale_factor=scale_factor
+        )
 
-        if scale_prediction:
-            scaled_prediction = prediction * prediction_scale
-            st.success(f"Predicted {response} × {prediction_scale:.0f}: {scaled_prediction:.4f}")
+        st.subheader("Prediction Results")
+
+        st.write(f"Raw prediction: {prediction:.4f}")
+
+        if apply_scale:
+            st.success(f"Rescaled prediction: {final_prediction:.4f}")
+        else:
+            st.success(f"Predicted {response}: {final_prediction:.4f}")
+
 
     # ======================================================
     # 🔟 PREDICTED VS ACTUAL
