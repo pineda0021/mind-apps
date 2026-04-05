@@ -214,6 +214,9 @@ separated by commas.
     # ======================================================
     # 6️⃣ EQUATION BUILDER
     # ======================================================
+    # ======================================================
+    # 6️⃣ EQUATION BUILDER
+    # ======================================================
     
     def clean_label(name):
         if name.startswith("C(") and "T." in name:
@@ -236,6 +239,9 @@ separated by commas.
             else:
                 slope_terms.append((name, params[name]))
     
+        # ✅ FIX 1: ensure correct threshold order
+        threshold_terms = sorted(threshold_terms, key=lambda x: list(response_levels).index(x[0].split("/")[0]))
+    
         # -----------------------------------
         # Build linear predictor part
         # -----------------------------------
@@ -250,9 +256,6 @@ separated by commas.
     
         # -----------------------------------
         # Reconstruct actual thresholds
-        # statsmodels stores:
-        # first threshold directly,
-        # later thresholds as transformed increments
         # -----------------------------------
         actual_thresholds = []
     
@@ -298,14 +301,16 @@ separated by commas.
                     rf"{{1-\widehat{{\mathbb{{P}}}}({left_num})}}"
                 )
     
+            # ✅ FIX 2: correct LaTeX exponential
             eq = (
                 left_side
-                + rf"=\exp\left\{{{thresh_r:.4f}{linear_part}\right\}}"
+                + rf"=\exp\left({thresh_r:.4f}{linear_part}\right)"
             )
     
             equations.append(eq)
     
         return equations, actual_thresholds
+    
     
     st.subheader("Fitted Regression Equations (Cumulative Logits)")
     
@@ -316,10 +321,10 @@ separated by commas.
         st.latex(eq)
     
     # -----------------------------------
-    # Optional threshold explanation
+    # Threshold Reconstruction (clean LaTeX)
     # -----------------------------------
     st.subheader("Threshold Reconstruction")
-
+    
     if len(actual_thresholds) > 0:
         first_name, first_actual, _ = actual_thresholds[0]
     
@@ -338,8 +343,7 @@ separated by commas.
     st.markdown(
         r"**Note:** R and Python outputs may differ in appearance, but they represent the same threshold values."
     )
-        
-
+       
     # ======================================================
     # 7️⃣ INTERPRETATION
     # ======================================================
