@@ -179,7 +179,7 @@ def run():
 
         return equation
 
-    st.subheader(r"The fitted model for $\pi=\mathbb{P}(\mathrm{collaboration})$ is:")
+    st.subheader(r"The fitted model is:")
     st.latex(build_equation(model))
 
     # ======================================================
