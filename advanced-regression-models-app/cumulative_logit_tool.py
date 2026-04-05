@@ -321,19 +321,22 @@ separated by commas.
     st.subheader("Threshold Reconstruction")
 
     if len(actual_thresholds) > 0:
-        first_name, first_actual, first_raw = actual_thresholds[0]
-        st.latex(rf"{first_name} = {first_actual:.4f}")
+        first_name, first_actual, _ = actual_thresholds[0]
+    
+        st.latex(
+            rf"\text{{{first_name}}} = {first_actual:.4f}"
+        )
     
     for i in range(1, len(actual_thresholds)):
         current_name, current_actual, current_raw = actual_thresholds[i]
-        prev_name, prev_actual, _ = actual_thresholds[i - 1]
+        _, prev_actual, _ = actual_thresholds[i - 1]
     
         st.latex(
-            rf"{current_name} = {prev_actual:.4f} + e^{{{current_raw:.4f}}} = {current_actual:.4f}"
+            rf"\text{{{current_name}}} = {prev_actual:.4f} + e^{{{current_raw:.4f}}} = {current_actual:.4f}"
         )
     
     st.markdown(
-        "**Note:** R and Python may display threshold parameters differently, but they correspond to the same fitted cutpoints."
+        r"**Note:** R and Python outputs may differ in appearance, but they represent the same threshold values."
     )
         
 
