@@ -183,12 +183,11 @@ def run():
     st.markdown("**From the output, the estimated complement log-log model is:**")
 
     st.latex(
-        r"1-\widehat{\pi}"
-        r"=1-\widehat{\mathbb{P}}(\mathrm{response})"
-        r"=\widehat{\mathbb{P}}(\mathrm{reference level})"
-        r"=\exp\left\{-\exp\left\{-"
-        + linear_part +
-        r"\right\}\right\}"
+    r"1-\widehat{\pi}"
+    r"=\widehat{\mathbb{P}}(\mathrm{reference})"
+    r"= e^{-\; e^{-\left("
+    + linear_part +
+    r"\right)}}"
     )
 
     # ======================================================
