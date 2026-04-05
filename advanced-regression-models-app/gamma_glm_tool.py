@@ -170,22 +170,52 @@ def run():
         st.markdown(f"### {term}")
 
         if term == "Intercept":
-            st.markdown(rf"$e^{{{coef:.4f}}} = {exp_beta:.4f}$")
+
+            interpretation = (
+                f"**When all predictors are at their reference levels, "
+                f"the estimated mean of {response} is "
+                rf"$e^{{{coef:.4f}}} = {exp_beta:.4f}$.**"
+            )
 
         elif term.startswith("C("):
-            st.markdown(rf"$e^{{{coef:.4f}}}\cdot100\% = {exp_beta*100:.2f}\%$")
+
+            var_name = term.split("[")[0]
+            var_name = var_name.replace("C(", "").split(",")[0]
+
+            level = term.split("T.")[-1].replace("]", "")
+            reference = reference_dict.get(var_name, "reference")
+
+            interpretation = (
+                f"**For observations where {var_name} = {level}, "
+                f"the estimated mean of {response} is "
+                rf"$e^{{{coef:.4f}}}\cdot 100\% = {exp_beta * 100:.2f}\%$ "
+                f"of that for {var_name} = {reference}.**"
+            )
 
         else:
-            pct = (exp_beta - 1) * 100
-            st.markdown(rf"$(e^{{{coef:.4f}}}-1)\cdot100\% = {pct:.2f}\%$")
+
+            percent_change = (exp_beta - 1) * 100
+
+            if percent_change >= 0:
+                direction = "larger"
+            else:
+                direction = "smaller"
+
+            interpretation = (
+                f"**If {term} were larger by one unit, then the estimated mean of {response} "
+                f"would be {direction} by "
+                rf"$\displaystyle (e^{{{coef:.4f}}} - 1)\cdot 100\% = {abs(percent_change):.2f}\%$.**"
+            )
+
+        st.markdown(interpretation)
 
         st.write(f"Coefficient = {coef:.4f}")
         st.write(f"p-value = {pval:.4f}")
 
         if pval <= 0.05:
-            st.success("Significant")
+            st.success("Statistically significant.")
         else:
-            st.warning("Not significant")
+            st.warning("Not statistically significant.")
 
     # ======================================================
     # 7️⃣ PREDICTION
@@ -230,7 +260,7 @@ def run():
    
 
     # ======================================================
-    # 🔟 PREDICTED VS ACTUAL
+    # 8️⃣ PREDICTED VS ACTUAL
     # ======================================================
 
     st.header("7️⃣ Predicted vs Actual")
