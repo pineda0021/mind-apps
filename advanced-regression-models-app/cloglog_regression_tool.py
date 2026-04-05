@@ -260,19 +260,34 @@ New probability = old probability raised to $e^{\\beta}$.
         st.success(f"Predicted probability = {prob:.4f}")
 
     # ======================================================
-    # 🔟 ROC
+    # 🔟 PREDICTED VS ACTUAL
     # ======================================================
 
-    st.header("7️⃣ ROC Curve")
+    st.header("6️⃣ Predicted vs Actual")
 
-    y_true = df_model[response]
-    y_pred = model.predict(df_model)
+    predicted_vals = model.predict(df_model)
 
-    fpr, tpr, _ = roc_curve(y_true, y_pred)
-    roc_auc = auc(fpr, tpr)
+    fig2 = px.scatter(
+        x=predicted_vals,
+        y=df_model[response],
+        labels={'x': 'Predicted Probability', 'y': 'Actual'},
+        title="Predicted Probability vs Actual"
+    )
 
-    fig = px.line(x=fpr, y=tpr, title=f"AUC = {roc_auc:.3f}")
-    st.plotly_chart(fig)
+    fig2.add_hline(y=0.5, line_dash="dash")
+
+    x_vals = np.linspace(0, 1, 200)
+    sigmoid = 1 / (1 + np.exp(-10 * (x_vals - 0.5)))
+
+    fig2.add_scatter(
+        x=x_vals,
+        y=sigmoid,
+        mode="lines",
+        line=dict(color="red", width=3),
+        name="Sigmoid Curve"
+    )
+
+    st.plotly_chart(fig2, use_container_width=True)
 
     # ======================================================
     # 1️⃣1️⃣ MODEL COMPARISON
