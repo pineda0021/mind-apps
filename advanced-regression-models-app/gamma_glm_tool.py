@@ -82,6 +82,7 @@ def run():
 
     df_model = df.copy()
     df_model[response] = pd.to_numeric(df_model[response], errors="coerce")
+    df_model = df_model.dropna(subset=[response])
 
     if (df_model[response] <= 0).any():
         st.error("Gamma GLM requires strictly positive response values.")
@@ -110,20 +111,9 @@ def run():
         )
         st.plotly_chart(fig_log)
 
-    if len(df_model[response]) >= 3:
-
-        stat_orig, p_orig = shapiro(df_model[response])
-        stat_log, p_log = shapiro(df_model[log_response])
-
-        st.subheader("Normality Diagnostics")
-
-        st.write(f"Original Y — Shapiro p-value: {p_orig:.4f}")
-        st.write(f"log(Y) — Shapiro p-value: {p_log:.4f}")
-
-        if p_log > 0.05:
-            st.success("log(Y) appears approximately normally distributed.")
-        else:
-            st.warning("log(Y) does NOT appear normally distributed.")
+    st.subheader("Distribution Diagnostics")
+    st.write("Original Y and log(Y) are shown for exploratory purposes.")
+    st.info("For a Gamma GLM, normality of Y or log(Y) is not required.")
 
     # ======================================================
     # 4️⃣ MODEL FITTING
@@ -179,6 +169,44 @@ def run():
     col3.metric("BIC", round(bic, 2))
     col4.metric("Deviance", round(deviance, 2))
     col5.metric("Pearson χ²", round(pearson, 2))
+
+    # ------------------------------------------------------
+    # Added GLM Diagnostics
+    # ------------------------------------------------------
+
+    fitted_vals = model.fittedvalues
+    deviance_resid = model.resid_deviance
+    pearson_resid = model.resid_pearson
+    dispersion = model.pearson_chi2 / model.df_resid
+
+    st.subheader("GLM Residual Diagnostics")
+
+    fig_resid = px.scatter(
+        x=fitted_vals,
+        y=deviance_resid,
+        labels={'x': 'Fitted Values', 'y': 'Deviance Residuals'},
+        title="Deviance Residuals vs Fitted Values"
+    )
+    fig_resid.add_hline(y=0, line_dash="dash")
+    st.plotly_chart(fig_resid)
+
+    fig_scale = px.scatter(
+        x=fitted_vals,
+        y=np.sqrt(np.abs(pearson_resid)),
+        labels={'x': 'Fitted Values', 'y': '√|Pearson Residuals|'},
+        title="Scale-Location Plot"
+    )
+    st.plotly_chart(fig_scale)
+
+    st.subheader("Dispersion Diagnostic")
+    st.write(f"Dispersion estimate: {dispersion:.4f}")
+
+    if dispersion > 2:
+        st.warning("Possible overdispersion (variance larger than expected under the Gamma GLM).")
+    elif dispersion < 0.5:
+        st.warning("Possible underdispersion.")
+    else:
+        st.success("Dispersion appears reasonable for the Gamma GLM.")
 
     # ======================================================
     # 7️⃣ EQUATION BUILDER
