@@ -172,13 +172,15 @@ separated by commas.
     st.subheader("Likelihood Ratio (Deviance) Test")
 
     try:
+        exog_null = np.zeros((len(df_model), 0))
+
         null_model = OrderedModel(
             df_model[response_original],
-            exog=None,
+            exog_null,
             distr=r_cloglog
         )
 
-        res_null = null_model.fit(method="newton", tol=1e-10, disp=False)
+        res_null = null_model.fit(method="bfgs", disp=False)
 
         ll_null = res_null.llf
         ll_model = res.llf
@@ -226,10 +228,78 @@ separated by commas.
 
     col1.metric("Log-Likelihood", round(loglik, 2))
     col2.metric("AIC", round(aic, 2))
-    col3.metric("AICC", round(aicc, 2) if pd.notna(aicc) else "N/A")
+    col3.metric("AICc", round(aicc, 2) if pd.notna(aicc) else "N/A")
     col4.metric("BIC", round(bic, 2))
     col5.metric("Model Deviance", round(dev_model, 2) if pd.notna(dev_model) else "N/A")
 
+    # ======================================================
+    # 6️⃣ EQUATION BUILDER
+    # ======================================================
+
+    def clean_term_label(name):
+        if name.startswith("C(") and "T." in name:
+            return name.split("T.")[-1].replace("]", "")
+        return name
+
+    def join_categories(cats):
+        if len(cats) == 1:
+            return cats[0]
+        elif len(cats) == 2:
+            return cats[0] + r",\mathrm{or}," + cats[1]
+        else:
+            return r",".join(cats[:-1]) + r",\mathrm{or}," + cats[-1]
+
+    def build_equations(result, response_levels):
+
+        params = result.params
+
+        slope_terms = []
+        threshold_terms = []
+
+        for name in params.index:
+            if "/" in name:
+                threshold_terms.append((name, params[name]))
+            else:
+                slope_terms.append((name, params[name]))
+
+        linear_part = ""
+
+        for name, coef in slope_terms:
+            coef_r = round(coef, 4)
+            sign = "+" if coef_r >= 0 else "-"
+            label = clean_term_label(name)
+
+            linear_part += f" {sign} {abs(coef_r):.4f}\\cdot {label}"
+
+        equations = []
+
+        for thresh_name, thresh_val in threshold_terms:
+            thresh_r = round(thresh_val, 4)
+            boundary = thresh_name.split("/")[0]
+
+            try:
+                idx = list(response_levels).index(boundary)
+                cumulative_levels = list(response_levels)[:idx + 1]
+            except ValueError:
+                cumulative_levels = [boundary]
+
+            left_side = join_categories(cumulative_levels)
+
+            eq = (
+                rf"\widehat{{P}}({left_side})"
+                rf"=1-\exp\left\{{-\exp\left({thresh_r:.4f}{linear_part}\right)\right\}}"
+            )
+
+            equations.append(eq)
+
+        return equations
+
+    st.subheader("Fitted Regression Equations (Cumulative Complementary Log-Log)")
+
+    equations = build_equations(res, response_order)
+
+    for eq in equations:
+        st.latex(eq)
 
     # ======================================================
     # 7️⃣ INTERPRETATION
@@ -405,14 +475,14 @@ separated by commas.
             data=df_model,
             distr="logit"
         )
-        res_logit = model_logit.fit(method="newton", disp=False)
+        res_logit = model_logit.fit(method="bfgs", disp=False)
 
         model_probit = OrderedModel.from_formula(
             formula,
             data=df_model,
             distr="probit"
         )
-        res_probit = model_probit.fit(method="newton", disp=False)
+        res_probit = model_probit.fit(method="bfgs", disp=False)
 
         model_cloglog = OrderedModel.from_formula(
             formula,
@@ -452,21 +522,21 @@ separated by commas.
         })
 
         comparison_df["AIC"] = comparison_df["AIC"].round(4)
-        comparison_df["AICc"] = comparison_df["AICC"].round(4)
+        comparison_df["AICc"] = comparison_df["AICc"].round(4)
         comparison_df["BIC"] = comparison_df["BIC"].round(4)
 
         st.subheader("Model Selection Criteria")
         st.dataframe(comparison_df, use_container_width=True)
 
         best_aic_model = comparison_df.loc[comparison_df["AIC"].idxmin(), "Model"]
-        best_aicc_model = comparison_df.loc[comparison_df["AICC"].idxmin(), "Model"]
+        best_aicc_model = comparison_df.loc[comparison_df["AICc"].idxmin(), "Model"]
         best_bic_model = comparison_df.loc[comparison_df["BIC"].idxmin(), "Model"]
 
         st.markdown(
             f"""
 **Best model by AIC:** {best_aic_model}  
 
-**Best model by AICC:** {best_aicc_model}  
+**Best model by AICc:** {best_aicc_model}  
 
 **Best model by BIC:** {best_bic_model}
 """
