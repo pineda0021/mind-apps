@@ -240,7 +240,7 @@ Fit a **Gamma GLM** if the response is positive and skewed.
     # ======================================================
     # Interpretation Panel
     # ======================================================
-
+    
     st.markdown("**Log-Likelihood (ℓ)**")
     st.latex(r"\ell(\hat{\beta})")
     st.markdown("Measures how probable the observed data are under the fitted model.")
@@ -334,10 +334,18 @@ Fit a **Gamma GLM** if the response is positive and skewed.
         else:
             label = term
 
-        st.subheader(label)
-        st.latex(f"\\hat{{\\beta}} = {coef:.4f}")
+        # Display (clean + colored like your example)
+    st.subheader(term_label)
+    st.latex(f"\\hat{{\\beta}} = {coef:.4f}")
 
-        if term in ["Intercept", "const"]:
+    st.write(interpretation)
+    st.write(f"Coefficient = {coef:.4f}")
+    st.write(f"p-value = {pval:.4f}")
+
+    if pval <= 0.05:
+        st.success("Significant")
+    else:
+        st.warning("Not significant")
 
             st.write(
                 f"When all predictors are held at zero and all indicator variables are at their reference levels, "
