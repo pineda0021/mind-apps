@@ -184,8 +184,8 @@ def run():
 
     st.latex(
         r"1-\widehat{\pi}"
-        r"=1-\widehat{\mathbb{P}}(\mathrm{collaboration})"
-        r"=\widehat{\mathbb{P}}(\mathrm{competition})"
+        r"=1-\widehat{\mathbb{P}}(\mathrm{response})"
+        r"=\widehat{\mathbb{P}}(\mathrm{reference level})"
         r"=\exp\left\{-\exp\left\{-"
         + linear_part +
         r"\right\}\right\}"
