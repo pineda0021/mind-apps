@@ -9,7 +9,7 @@ from scipy.stats import chi2
 
 def run():
 
-    st.title("📘 Probit Regression Model (Binary Response)")
+    st.title("📘 Logistic Regression Model (Binary Response)")
 
     # ======================================================
     # 1️⃣ DATA UPLOAD
@@ -103,7 +103,7 @@ def run():
     model = smf.glm(
         formula=formula,
         data=df_model,
-        family=sm.families.Binomial(link=sm.families.links.Probit())
+        family=sm.families.Binomial(link=sm.families.links.Logit())
     ).fit()
 
     st.subheader("Model Summary")
@@ -113,12 +113,12 @@ def run():
     # 4️⃣ LIKELIHOOD RATIO TEST
     # ======================================================
 
-    st.subheader("Likelihood Ratio Test")
+    st.subheader("Likelihood Ratio (Deviance) Test")
 
     null_model = smf.glm(
         response + " ~ 1",
         data=df_model,
-        family=sm.families.Binomial(link=sm.families.links.Probit())
+        family=sm.families.Binomial(link=sm.families.links.Logit())
     ).fit()
 
     lr_stat = 2 * (model.llf - null_model.llf)
@@ -153,37 +153,34 @@ def run():
     # 6️⃣ EQUATION BUILDER
     # ======================================================
 
-    def build_equation(model, response):
+    def clean_term_label(name):
+        if name.startswith("C(") and "T." in name:
+            var_name = name.split("[")[0]
+            var_name = var_name.replace("C(", "").split(",")[0]
+            level = name.split("T.")[1].rstrip("]")
+            return f"{level}"
+        return name
 
+    def build_equation(model):
         params = model.params
 
-        equation = f"\\Phi^{{-1}}(P({response}=1)) = {round(params['Intercept'],4)}"
+        equation = r"\log\left(\frac{\pi}{1-\pi}\right)="
+        equation += f"{params['Intercept']:.5f}"
 
         for name in params.index:
-
             if name == "Intercept":
                 continue
 
-            coef = round(params[name], 4)
+            coef = params[name]
             sign = "+" if coef >= 0 else "-"
+            label = clean_term_label(name)
 
-            if name.startswith("C(") and "T." in name:
-
-                var_name = name.split("[")[0]
-                var_name = var_name.replace("C(", "").split(",")[0]
-
-                level = name.split("T.")[1].rstrip("]")
-
-                equation += f" {sign} {abs(coef)} D_{{{var_name}={level}}}"
-
-            else:
-
-                equation += f" {sign} {abs(coef)} \\cdot {name}"
+            equation += f"{sign}{abs(coef):.5f}\\cdot {label}"
 
         return equation
 
-    st.subheader("Fitted Regression Equation (Full Model)")
-    st.latex(build_equation(model, response))
+    st.subheader(r"The fitted model for $\pi=\mathbb{P}(\mathrm{collaboration})$ is:")
+    st.latex(build_equation(model))
 
     # ======================================================
     # 7️⃣ INTERPRETATION
@@ -198,10 +195,10 @@ def run():
 
         if term == "Intercept":
 
-            interpretation = (
-                f"When all predictors are at their reference levels, "
-                f"the **z-score of the estimated probability that {response}=1** "
-                f"is **{coef:.4f}**."
+            interpretation_latex = (
+                rf"When all predictors are at their reference levels or equal to zero, "
+                rf"the log-odds of $\pi=\mathbb{{P}}(\mathrm{{collaboration}})$ is "
+                rf"${coef:.4f}$."
             )
 
         elif term.startswith("C("):
@@ -212,39 +209,63 @@ def run():
             level = term.split("T.")[-1].replace("]", "")
             reference = reference_dict.get(var_name, "reference")
 
-            interpretation = (
-                f"The z-score of the estimated probability that **{response}=1** "
-                f"for **{var_name} = {level}** is **{coef:.4f} larger** than "
-                f"for **{var_name} = {reference}**."
-            )
+            if coef >= 0:
+                interpretation_latex = (
+                    rf"For {var_name} = {level}, the log-odds of "
+                    rf"$\pi=\mathbb{{P}}(\mathrm{{collaboration}})$ is "
+                    rf"${coef:.4f}$ higher than for {var_name} = {reference}, "
+                    rf"holding the other predictors fixed."
+                )
+            else:
+                interpretation_latex = (
+                    rf"For {var_name} = {level}, the log-odds of "
+                    rf"$\pi=\mathbb{{P}}(\mathrm{{collaboration}})$ is "
+                    rf"${abs(coef):.4f}$ lower than for {var_name} = {reference}, "
+                    rf"holding the other predictors fixed."
+                )
 
         else:
 
-            interpretation = (
-                f"For every one-unit increase in **{term}**, "
-                f"the **z-score of the estimated probability that {response}=1** "
-                f"increases by **{coef:.4f}**."
-            )
+            if coef >= 0:
+                interpretation_latex = (
+                    rf"For every one-unit increase in ${term}$, the log-odds of "
+                    rf"$\pi=\mathbb{{P}}(\mathrm{{collaboration}})$ increases by "
+                    rf"${coef:.4f}$, holding the other predictors fixed."
+                )
+            else:
+                interpretation_latex = (
+                    rf"For every one-unit increase in ${term}$, the log-odds of "
+                    rf"$\pi=\mathbb{{P}}(\mathrm{{collaboration}})$ decreases by "
+                    rf"${abs(coef):.4f}$, holding the other predictors fixed."
+                )
 
-        significance = (
-            "Statistically significant at the 5% level."
-            if pval <= 0.05
-            else "Not statistically significant at the 5% level."
-        )
+        if pval <= 0.05:
+            significance = r"\text{Statistically significant at the 5\% level.}"
+            box_color = "#d4edda"
+            border_color = "#155724"
+        else:
+            significance = r"\text{Not statistically significant at the 5\% level.}"
+            box_color = "#fff3cd"
+            border_color = "#856404"
 
         st.markdown(
             f"""
-### {term}
-
-- **Coefficient:** {coef:.4f}  
-- **p-value:** {pval:.4f}  
-
-**Interpretation**
-
-{interpretation}
-
-**Statistical significance:** {significance}
-"""
+            <div style="
+                background-color: {box_color};
+                border-left: 6px solid {border_color};
+                padding: 14px;
+                border-radius: 8px;
+                margin-bottom: 14px;
+            ">
+                <h4 style="margin-top: 0;">{term}</h4>
+                <p><b>Coefficient:</b> {coef:.4f}</p>
+                <p><b>p-value:</b> {pval:.4f}</p>
+                <p><b>Interpretation:</b></p>
+                <p>{interpretation_latex}</p>
+                <p><b>Statistical significance:</b> ${significance}$</p>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
     # ======================================================
@@ -302,15 +323,10 @@ def run():
         title="Predicted Probability vs Actual"
     )
 
-    # reference line
     fig2.add_hline(y=0.5, line_dash="dash")
 
-    # ======================================
-    # Sigmoid curve
-    # ======================================
-
     x_vals = np.linspace(0, 1, 200)
-    sigmoid = 1 / (1 + np.exp(-10*(x_vals - 0.5)))  # centered sigmoid
+    sigmoid = 1 / (1 + np.exp(-10 * (x_vals - 0.5)))
 
     fig2.add_scatter(
         x=x_vals,
@@ -320,7 +336,8 @@ def run():
         name="Sigmoid Curve"
     )
 
-    st.plotly_chart(fig2)
+    st.plotly_chart(fig2, use_container_width=True)
+
 
 if __name__ == "__main__":
     run()
