@@ -232,12 +232,11 @@ def run():
 
         if term == "Intercept":
 
-            st.write(
-                f"When all predictors are at their reference levels, "
-                f"the expected mean of **{response}** equals:"
+            interpretation = (
+                f"**When all predictors are at their reference levels, "
+                f"the estimated mean of {response} is "
+                rf"$\exp\{{{coef:.4f}\}} = {exp_beta:.4f}$.**"
             )
-
-            st.latex(rf"e^{{{coef:.4f}}} = {exp_beta:.4f}")
 
         elif term.startswith("C("):
 
@@ -247,31 +246,24 @@ def run():
             level = term.split("T.")[-1].replace("]", "")
             reference = reference_dict.get(var_name, "reference")
 
-            st.write(
-                f"For observations where **{var_name} = {level}**, "
-                f"the estimated mean of **{response}** is:"
+            interpretation = (
+                f"**For observations where {var_name} = {level}, "
+                f"the estimated mean of {response} is "
+                rf"$\exp\{{{coef:.4f}\}}\cdot 100\% = {exp_beta * 100:.2f}\%$ "
+                f"of that for {var_name} = {reference}.**"
             )
-
-            st.latex(rf"e^{{{coef:.4f}}} = {exp_beta:.4f}")
-
-            st.write(
-                f"times that of **{var_name} = {reference}** (reference level)."
-            )
-
-            st.latex(rf"e^{{{coef:.4f}}}\times 100\% = {exp_beta*100:.2f}\%")
 
         else:
 
             percent_change = (exp_beta - 1) * 100
 
-            st.write(
-                f"If **{term}** increases by one unit, "
-                f"the expected mean of **{response}** changes by:"
+            interpretation = (
+                f"**If {term} increases by one unit, then the estimated mean of {response} "
+                f"would change by "
+                rf"$\displaystyle (\exp\{{{coef:.4f}\}} - 1)\cdot 100\% = {percent_change:.2f}\%$.**"
             )
 
-            st.latex(
-                rf"(e^{{{coef:.4f}}} - 1)\times 100\% = {percent_change:.2f}\%"
-            )
+        st.markdown(interpretation)
 
         st.write(f"Coefficient = {coef:.4f}")
         st.write(f"p-value = {pval:.4f}")
