@@ -210,12 +210,12 @@ separated by commas.
     # ======================================================
     # 6️⃣ EQUATION BUILDER
     # ======================================================
-
+    
     def clean_term_label(name):
         if name.startswith("C(") and "T." in name:
             return name.split("T.")[-1].replace("]", "")
         return name
-
+    
     def join_categories(cats):
         if len(cats) == 1:
             return cats[0]
@@ -223,60 +223,101 @@ separated by commas.
             return cats[0] + r",\mathrm{or}," + cats[1]
         else:
             return r",".join(cats[:-1]) + r",\mathrm{or}," + cats[-1]
-
+    
     def build_equations(result, response_levels):
-
+    
         params = result.params
-
+    
         slope_terms = []
         threshold_terms = []
-
+    
         for name in params.index:
             if "/" in name:
                 threshold_terms.append((name, params[name]))
             else:
                 slope_terms.append((name, params[name]))
-
+    
+        # ensure correct threshold order
+        threshold_terms = sorted(
+            threshold_terms,
+            key=lambda x: list(response_levels).index(x[0].split("/")[0])
+        )
+    
         linear_part = ""
-
+    
         for name, coef in slope_terms:
             coef_r = round(coef, 4)
             sign = "+" if coef_r >= 0 else "-"
             label = clean_term_label(name)
-
+    
             linear_part += f" {sign} {abs(coef_r):.4f}\\cdot {label}"
-
+    
+        # reconstruct actual thresholds
+        actual_thresholds = []
+    
+        for i, (thresh_name, thresh_val) in enumerate(threshold_terms):
+            if i == 0:
+                actual_val = float(thresh_val)
+            else:
+                actual_val = actual_thresholds[-1][1] + np.exp(float(thresh_val))
+    
+            actual_thresholds.append((thresh_name, actual_val, float(thresh_val)))
+    
         equations = []
-
-        for thresh_name, thresh_val in threshold_terms:
-
-            thresh_r = round(thresh_val, 4)
+    
+        for thresh_name, actual_val, raw_val in actual_thresholds:
+    
+            thresh_r = round(actual_val, 4)
             boundary = thresh_name.split("/")[0]
-
+    
             try:
                 idx = list(response_levels).index(boundary)
                 cumulative_levels = list(response_levels)[:idx + 1]
             except ValueError:
                 cumulative_levels = [boundary]
-
+    
             left_side = join_categories(cumulative_levels)
-
+    
             eq = (
                 rf"\widehat{{P}}({left_side})"
                 rf"=\Phi\left({thresh_r:.4f}{linear_part}\right)"
             )
-
+    
             equations.append(eq)
-
-        return equations
-
+    
+        return equations, actual_thresholds
+    
     st.subheader("Fitted Regression Equations (Cumulative Probits)")
-
+    
     response_levels = list(df[response_original].cat.categories)
-    equations = build_equations(res, response_levels)
-
+    equations, actual_thresholds = build_equations(res, response_levels)
+    
     for eq in equations:
         st.latex(eq)
+    
+    # -----------------------------------
+    # Threshold Reconstruction
+    # -----------------------------------
+    st.subheader("Threshold Reconstruction")
+    
+    if len(actual_thresholds) > 0:
+        first_name, first_actual, _ = actual_thresholds[0]
+    
+        st.latex(
+            rf"\text{{{first_name}}} = {first_actual:.4f}"
+        )
+    
+    for i in range(1, len(actual_thresholds)):
+        current_name, current_actual, current_raw = actual_thresholds[i]
+        _, prev_actual, _ = actual_thresholds[i - 1]
+    
+        st.latex(
+            rf"\text{{{current_name}}} = {prev_actual:.4f} + \exp\left({current_raw:.4f}\right) = {current_actual:.4f}"
+        )
+    
+    st.markdown(
+        r"**Note:** R and Python outputs may differ in appearance, but they represent the same threshold values."
+    )
 
     # ======================================================
     # 7️⃣ INTERPRETATION
