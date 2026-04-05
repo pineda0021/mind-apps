@@ -214,7 +214,15 @@ separated by commas.
     # 6️⃣ EQUATION BUILDER
     # ======================================================
 
-    def build_equations(result, predictors_used):
+    def clean_label(name):
+        if name.startswith("C(") and "T." in name:
+            var_name = name.split("[")[0]
+            var_name = var_name.replace("C(", "").split(",")[0]
+            level = name.split("T.")[-1].replace("]", "")
+            return level
+        return name
+
+    def build_equations(result, response_levels):
 
         params = result.params
 
@@ -232,24 +240,47 @@ separated by commas.
         for name, coef in slope_terms:
             coef_r = round(coef, 4)
             sign = "+" if coef_r >= 0 else "-"
+            label = clean_label(name)
 
-            if name.startswith("C(") and "T." in name:
-                var_name = name.split("[")[0]
-                var_name = var_name.replace("C(", "").split(",")[0]
-                level = name.split("T.")[-1].replace("]", "")
-                linear_part += f" {sign} {abs(coef_r)} D_{{{var_name}={level}}}"
-            else:
-                linear_part += f" {sign} {abs(coef_r)} \\cdot {name}"
+            linear_part += f" {sign} {abs(coef_r):.4f}\\cdot {label}"
 
         equations = []
 
         for thresh_name, thresh_val in threshold_terms:
             thresh_r = round(thresh_val, 4)
 
+            lower_cat = thresh_name.split("/")[0]
+
+            try:
+                idx = list(response_levels).index(lower_cat)
+                cumulative_levels = list(response_levels)[:idx + 1]
+                remaining_levels = list(response_levels)[idx + 1:]
+            except ValueError:
+                cumulative_levels = [lower_cat]
+                remaining_levels = []
+
+            if len(cumulative_levels) == 1:
+                left_num = cumulative_levels[0]
+            elif len(cumulative_levels) == 2:
+                left_num = cumulative_levels[0] + r",\,\mathrm{or}\," + cumulative_levels[1]
+            else:
+                left_num = r",\,".join(cumulative_levels[:-1]) + r",\,\mathrm{or}\," + cumulative_levels[-1]
+
+            if len(remaining_levels) == 1:
+                right_den = remaining_levels[0]
+                left_side = (
+                    rf"\frac{{\widehat{{\mathbb{{P}}}}({left_num})}}"
+                    rf"{{\widehat{{\mathbb{{P}}}}({right_den})}}"
+                )
+            else:
+                left_side = (
+                    rf"\frac{{\widehat{{\mathbb{{P}}}}({left_num})}}"
+                    rf"{{1-\widehat{{\mathbb{{P}}}}({left_num})}}"
+                )
+
             eq = (
-                f"\\log\\left(\\frac{{P(Y \\leq {thresh_name.split('/')[0]})}}"
-                f"{{P(Y > {thresh_name.split('/')[0]})}}\\right)"
-                f" = {thresh_r}{linear_part}"
+                left_side
+                + rf"=\exp\left\{{{thresh_r:.4f}{linear_part}\right\}}"
             )
 
             equations.append(eq)
@@ -258,11 +289,11 @@ separated by commas.
 
     st.subheader("Fitted Regression Equations (Cumulative Logits)")
 
-    equations = build_equations(res, predictors)
+    response_levels = list(df[response_original].cat.categories)
+    equations = build_equations(res, response_levels)
 
     for eq in equations:
         st.latex(eq)
-
     # ======================================================
     # 7️⃣ INTERPRETATION
     # ======================================================
