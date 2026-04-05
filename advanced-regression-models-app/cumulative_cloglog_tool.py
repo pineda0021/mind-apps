@@ -235,6 +235,10 @@ separated by commas.
     # 6️⃣ EQUATION BUILDER
     # ======================================================
 
+    # ======================================================
+    # 6️⃣ EQUATION BUILDER
+    # ======================================================
+
     def clean_term_label(name):
         if name.startswith("C(") and "T." in name:
             return name.split("T.")[-1].replace("]", "")
@@ -243,12 +247,12 @@ separated by commas.
     def build_equations(result, reference_label):
 
         params = result.params
-
         equations = []
 
         for outcome in params.columns:
 
-            linear_part = f"{params.loc['Intercept', outcome]:.4f}"
+            intercept = params.loc["Intercept", outcome]
+            linear_part = f"{intercept:.4f}"
 
             for name in params.index:
                 if name == "Intercept":
@@ -276,6 +280,7 @@ separated by commas.
 
     for eq in equations:
         st.latex(eq)
+    
 
     # ======================================================
     # 7️⃣ INTERPRETATION (Aligned LaTeX Block)
