@@ -163,18 +163,33 @@ def run():
 
     st.subheader("Model Equation")
 
+    def clean_term_label(name):
+        if name.startswith("C(") and "T." in name:
+            return name.split("T.")[1].rstrip("]")
+        return name
+
     params = model.params
 
-    eq = f"\\log(-\\log(1-p)) = {params['Intercept']:.4f}"
+    linear_part = f"{params['Intercept']:.5f}"
 
     for name in params.index:
         if name == "Intercept":
             continue
         coef = params[name]
         sign = "+" if coef >= 0 else "-"
-        eq += f" {sign} {abs(coef):.4f} {name}"
+        label = clean_term_label(name)
+        linear_part += f" {sign} {abs(coef):.4f}\\cdot {label}"
 
-    st.latex(eq)
+    st.markdown("**From the output, the estimated complement log-log model is:**")
+
+    st.latex(
+        r"1-\widehat{\pi}"
+        r"=1-\widehat{\mathbb{P}}(\mathrm{collaboration})"
+        r"=\widehat{\mathbb{P}}(\mathrm{competition})"
+        r"=\exp\left\{-\exp\left\{-"
+        + linear_part +
+        r"\right\}\right\}"
+    )
 
     # ======================================================
     # 8️⃣ INTERPRETATION
