@@ -235,7 +235,7 @@ separated by commas.
     # ======================================================
     # 6️⃣ EQUATION BUILDER
     # ======================================================
-    
+
     def clean_term_label(name):
         if name.startswith("C(") and "T." in name:
             return name.split("T.")[-1].replace("]", "")
@@ -303,7 +303,7 @@ separated by commas.
     
     for eq in equations:
         st.latex(eq)
-    
+        
 
     # ======================================================
     # 7️⃣ INTERPRETATION
