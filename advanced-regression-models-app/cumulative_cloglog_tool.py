@@ -300,7 +300,6 @@ separated by commas.
     for eq in equations:
         st.latex(eq)
    
-
     # ======================================================
     # 7️⃣ INTERPRETATION
     # ======================================================
@@ -311,12 +310,15 @@ separated by commas.
 
         coef = res.params[term]
         pval = res.pvalues[term]
+        exp_beta = np.exp(coef)
+
+        st.markdown(f"### {term}")
 
         if "/" in term:
 
             interpretation = (
-                "This is a **threshold (cutpoint)** parameter for the ordinal response. "
-                "It separates adjacent cumulative categories under the complementary log-log link."
+                f"**This is a threshold (cutpoint) parameter for the ordinal response. "
+                f"It separates adjacent cumulative categories under the complementary log-log link.**"
             )
 
         elif term.startswith("C("):
@@ -327,41 +329,41 @@ separated by commas.
             level = term.split("T.")[-1].replace("]", "")
             reference = reference_dict.get(var_name, "reference")
 
-            interpretation = (
-                f"For **{var_name} = {level}** relative to **{reference}**, "
-                f"the transformed cumulative probability "
-                f"**log(-log(1 - P(Y ≤ j)))** changes by **{coef:.4f}**."
-            )
+            if var_name.lower() in ["gender", "sex"]:
+                interpretation = (
+                    f"**The estimated probability of better health for {level} is that for "
+                    f"{reference} raised to the power "
+                    rf"$\exp\{{{coef:.4f}\}} = {exp_beta:.4f}$.**"
+                )
+            else:
+                interpretation = (
+                    f"**For {var_name} = {level}, the estimated probability is that for "
+                    f"{var_name} = {reference} raised to the power "
+                    rf"$\exp\{{{coef:.4f}\}} = {exp_beta:.4f}$.**"
+                )
 
         else:
 
             interpretation = (
-                f"For every one-unit increase in **{term}**, "
-                f"the transformed cumulative probability "
-                f"**log(-log(1 - P(Y ≤ j)))** changes by **{coef:.4f}**."
+                f"**For a one-unit increase in {term}, this estimated probability "
+                f"is the old one raised to the power "
+                rf"$\exp\{{{coef:.4f}\}} = {exp_beta:.4f}$.**"
             )
 
-        significance = (
-            "Statistically significant at the 5% level."
-            if pval <= 0.05
-            else "Not statistically significant at the 5% level."
-        )
+        st.markdown(interpretation)
 
-        st.markdown(
-            f"""
-### {term}
+        st.write(f"Coefficient = {coef:.4f}")
+        st.write(f"p-value = {pval:.4f}")
 
-- **Coefficient:** {coef:.4f}  
-- **p-value:** {pval:.4f}  
+        if "/" not in term:
+            st.write(f"exp(coefficient) = {exp_beta:.4f}")
 
-**Interpretation**
+        if pval <= 0.05:
+            st.success("Statistically significant.")
+        else:
+            st.warning("Not statistically significant.")
 
-{interpretation}
-
-**Statistical significance:** {significance}
-"""
-        )
-
+   
     # ======================================================
     # 8️⃣ PREDICTION
     # ======================================================
