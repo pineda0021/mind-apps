@@ -231,11 +231,11 @@ separated by commas.
     col3.metric("AICc", round(aicc, 2) if pd.notna(aicc) else "N/A")
     col4.metric("BIC", round(bic, 2))
     col5.metric("Model Deviance", round(dev_model, 2) if pd.notna(dev_model) else "N/A")
-    
+
     # ======================================================
     # 6️⃣ EQUATION BUILDER
     # ======================================================
-
+    
     def clean_term_label(name):
         if name.startswith("C(") and "T." in name:
             return name.split("T.")[-1].replace("]", "")
@@ -264,6 +264,12 @@ separated by commas.
             else:
                 slope_terms.append((name, params[name]))
     
+        # ensure correct threshold order
+        threshold_terms = sorted(
+            threshold_terms,
+            key=lambda x: list(response_levels).index(x[0].split("/")[0])
+        )
+    
         linear_part = ""
     
         for name, coef in slope_terms:
@@ -273,10 +279,21 @@ separated by commas.
     
             linear_part += f" {sign} {abs(coef_r):.4f}\\cdot {label}"
     
+        # reconstruct actual thresholds
+        actual_thresholds = []
+    
+        for i, (thresh_name, thresh_val) in enumerate(threshold_terms):
+            if i == 0:
+                actual_val = float(thresh_val)
+            else:
+                actual_val = actual_thresholds[-1][1] + np.exp(float(thresh_val))
+    
+            actual_thresholds.append((thresh_name, actual_val, float(thresh_val)))
+    
         equations = []
     
-        for thresh_name, thresh_val in threshold_terms:
-            thresh_r = round(thresh_val, 4)
+        for thresh_name, actual_val, raw_val in actual_thresholds:
+            thresh_r = round(actual_val, 4)
             boundary = thresh_name.split("/")[0]
     
             try:
@@ -294,16 +311,42 @@ separated by commas.
     
             equations.append(eq)
     
-        return equations
+        return equations, actual_thresholds
     
     
     st.subheader("Fitted Regression Equations (Cumulative Complementary Log-Log)")
     
-    equations = build_equations(res, response_order)
+    equations, actual_thresholds = build_equations(res, response_order)
     
     for eq in equations:
         st.latex(eq)
-        
+    
+    # -----------------------------------
+    # Threshold Reconstruction
+    # -----------------------------------
+    st.subheader("Threshold Reconstruction")
+    
+    st.markdown(
+        r"**NOTE: R & Python outputs differ, but the values are the same.**"
+    )
+    
+    if len(actual_thresholds) > 0:
+        first_name, first_actual, _ = actual_thresholds[0]
+        st.latex(rf"\text{{{first_name}}} = {first_actual:.4f}")
+    
+    for i in range(1, len(actual_thresholds)):
+        current_name, current_actual, current_raw = actual_thresholds[i]
+    
+        expr_text = actual_thresholds[0][0]
+        numeric_text = f"{actual_thresholds[0][1]:.4f}"
+    
+        for k in range(1, i + 1):
+            expr_text += rf" + e^{{\text{{{actual_thresholds[k][0]}}}_{{\text{{coeff}}}}}}"
+            numeric_text += rf" + e^{{{actual_thresholds[k][2]:.4f}}}"
+    
+        st.latex(
+            rf"\text{{{current_name}}} = \text{{{expr_text}}} = {numeric_text} = {current_actual:.4f}"
+        )
 
     # ======================================================
     # 7️⃣ INTERPRETATION
