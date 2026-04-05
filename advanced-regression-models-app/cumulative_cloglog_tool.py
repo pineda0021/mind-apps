@@ -226,7 +226,7 @@ separated by commas.
 
     col1.metric("Log-Likelihood", round(loglik, 2))
     col2.metric("AIC", round(aic, 2))
-    col3.metric("AICc", round(aicc, 2) if pd.notna(aicc) else "N/A")
+    col3.metric("AICC", round(aicc, 2) if pd.notna(aicc) else "N/A")
     col4.metric("BIC", round(bic, 2))
     col5.metric("Model Deviance", round(dev_model, 2) if pd.notna(dev_model) else "N/A")
 
