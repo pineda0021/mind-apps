@@ -228,12 +228,16 @@ def run():
         pval = model.pvalues[term]
         exp_beta = np.exp(coef)
 
+        st.markdown(f"### {term}")
+
         if term == "Intercept":
 
-            interpretation = (
+            st.write(
                 f"When all predictors are at their reference levels, "
-                f"the expected mean of **{response}** equals exp({coef:.4f})."
+                f"the expected mean of **{response}** equals:"
             )
+
+            st.latex(rf"e^{{{coef:.4f}}} = {exp_beta:.4f}")
 
         elif term.startswith("C("):
 
@@ -243,43 +247,39 @@ def run():
             level = term.split("T.")[-1].replace("]", "")
             reference = reference_dict.get(var_name, "reference")
 
-            interpretation = (
+            st.write(
                 f"For observations where **{var_name} = {level}**, "
-                f"the estimated mean of **{response}** is  \n"
-                f"**exp({coef:.4f}) × 100% = {exp_beta*100:.2f}%**  \n"
-                f"of that for **{var_name} = {reference}** (reference level)."
+                f"the estimated mean of **{response}** is:"
             )
+
+            st.latex(rf"e^{{{coef:.4f}}} = {exp_beta:.4f}")
+
+            st.write(
+                f"times that of **{var_name} = {reference}** (reference level)."
+            )
+
+            st.latex(rf"e^{{{coef:.4f}}}\times 100\% = {exp_beta*100:.2f}\%")
 
         else:
 
             percent_change = (exp_beta - 1) * 100
 
-            interpretation = (
+            st.write(
                 f"If **{term}** increases by one unit, "
-                f"the expected mean of **{response}** changes by  \n"
-                f"**(exp({coef:.4f}) − 1) × 100% = {percent_change:.2f}%**."
+                f"the expected mean of **{response}** changes by:"
             )
 
-        significance = (
-            "Statistically significant."
-            if pval <= 0.05
-            else "Not statistically significant."
-        )
+            st.latex(
+                rf"(e^{{{coef:.4f}}} - 1)\times 100\% = {percent_change:.2f}\%"
+            )
 
-        st.markdown(
-            f"""
-### {term}
+        st.write(f"Coefficient = {coef:.4f}")
+        st.write(f"p-value = {pval:.4f}")
 
-- **Coefficient:** {coef:.4f}  
-- **p-value:** {pval:.4f}  
-
-**Interpretation**
-
-{interpretation}
-
-**Statistical significance:** {significance}
-"""
-        )
+        if pval <= 0.05:
+            st.success("Statistically significant.")
+        else:
+            st.warning("Not statistically significant.")
 
     # ======================================================
     # 9️⃣ PREDICTION
