@@ -239,8 +239,11 @@ separated by commas.
             else:
                 slope_terms.append((name, params[name]))
     
-        # ✅ FIX 1: ensure correct threshold order
-        threshold_terms = sorted(threshold_terms, key=lambda x: list(response_levels).index(x[0].split("/")[0]))
+        # ensure correct threshold order
+        threshold_terms = sorted(
+            threshold_terms,
+            key=lambda x: list(response_levels).index(x[0].split("/")[0])
+        )
     
         # -----------------------------------
         # Build linear predictor part
@@ -301,7 +304,7 @@ separated by commas.
                     rf"{{1-\widehat{{\mathbb{{P}}}}({left_num})}}"
                 )
     
-            # ✅ FIX 2: correct LaTeX exponential
+            # ✅ only LaTeX fix (no logic change)
             eq = (
                 left_side
                 + rf"=\exp\left({thresh_r:.4f}{linear_part}\right)"
@@ -321,7 +324,7 @@ separated by commas.
         st.latex(eq)
     
     # -----------------------------------
-    # Threshold Reconstruction (clean LaTeX)
+    # Threshold Reconstruction
     # -----------------------------------
     st.subheader("Threshold Reconstruction")
     
@@ -336,14 +339,15 @@ separated by commas.
         current_name, current_actual, current_raw = actual_thresholds[i]
         _, prev_actual, _ = actual_thresholds[i - 1]
     
+        # ✅ only LaTeX consistency fix
         st.latex(
-            rf"\text{{{current_name}}} = {prev_actual:.4f} + e^{{{current_raw:.4f}}} = {current_actual:.4f}"
+            rf"\text{{{current_name}}} = {prev_actual:.4f} + \exp\left({current_raw:.4f}\right) = {current_actual:.4f}"
         )
     
     st.markdown(
         r"**Note:** R and Python outputs may differ in appearance, but they represent the same threshold values."
     )
-       
+      
     # ======================================================
     # 7️⃣ INTERPRETATION
     # ======================================================
