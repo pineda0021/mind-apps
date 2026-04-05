@@ -169,7 +169,7 @@ separated by commas.
     # 4️⃣ LIKELIHOOD RATIO TEST
     # ======================================================
 
-    st.subheader("Likelihood Ratio Test")
+    st.subheader("Likelihood Ratio (Deviance) Test")
 
     try:
         null_model = OrderedModel(
