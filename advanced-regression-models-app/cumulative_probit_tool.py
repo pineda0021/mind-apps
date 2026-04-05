@@ -252,14 +252,14 @@ separated by commas.
     
             linear_part += f" {sign} {abs(coef_r):.4f}\\cdot {label}"
     
-        # reconstruct actual thresholds
+        # reconstruct actual thresholds for Probit
         actual_thresholds = []
     
         for i, (thresh_name, thresh_val) in enumerate(threshold_terms):
             if i == 0:
                 actual_val = float(thresh_val)
             else:
-                actual_val = actual_thresholds[-1][1] + np.exp(float(thresh_val))
+                actual_val = actual_thresholds[-1][1] + float(thresh_val)
     
             actual_thresholds.append((thresh_name, actual_val, float(thresh_val)))
     
@@ -294,36 +294,32 @@ separated by commas.
     
     for eq in equations:
         st.latex(eq)
-    
-    # -----------------------------------
-    # Threshold Reconstruction
-    # -----------------------------------
-    st.subheader("Threshold Reconstruction")
 
-    if len(actual_thresholds) > 0:
-        first_name, first_actual, _ = actual_thresholds[0]
-    
-        st.latex(
-            rf"\text{{{first_name}}} = {first_actual:.4f}"
-        )
-    
-    for i in range(1, len(actual_thresholds)):
-        current_name, current_actual, current_raw = actual_thresholds[i]
-    
-        pieces = [f"{actual_thresholds[0][1]:.4f}"]
-        for k in range(1, i + 1):
-            pieces.append(f"{actual_thresholds[k][2]:.4f}")
-    
-        sum_string = " + ".join(pieces)
-    
-        st.latex(
-            rf"\text{{{current_name}}} = {sum_string} = {current_actual:.4f}"
-        )
-    
-    st.markdown(
-        r"**Note:** R and Python outputs may differ in appearance, but they represent the same threshold values."
+# -----------------------------------
+# Threshold Reconstruction
+# -----------------------------------
+st.subheader("Threshold Reconstruction")
+
+if len(actual_thresholds) > 0:
+    first_name, first_actual, _ = actual_thresholds[0]
+
+    st.latex(
+        rf"\text{{{first_name}}} = {first_actual:.4f}"
     )
 
+for i in range(1, len(actual_thresholds)):
+    current_name, current_actual, current_raw = actual_thresholds[i]
+    _, prev_actual, _ = actual_thresholds[i - 1]
+
+    st.latex(
+        rf"\text{{{current_name}}} = {prev_actual:.4f} + {current_raw:.4f} = {current_actual:.4f}"
+    )
+
+st.markdown(
+    r"**Note:** R and Python outputs may differ in appearance, but they represent the same threshold values."
+)
+    
+   
     # ======================================================
     # 7️⃣ INTERPRETATION
     # ======================================================
