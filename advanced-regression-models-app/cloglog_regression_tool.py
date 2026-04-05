@@ -309,11 +309,17 @@ New probability = old probability raised to $e^{\\beta}$.
 
     st.header("8️⃣ Model Comparison")
 
-    logit = smf.glm(formula, df_model,
-                    family=sm.families.Binomial(link=sm.families.links.logit())).fit()
+    logit = smf.glm(
+        formula=formula,
+        data=df_model,
+        family=sm.families.Binomial(link=sm.families.links.Logit())
+    ).fit()
 
-    probit = smf.glm(formula, df_model,
-                     family=sm.families.Binomial(link=sm.families.links.probit())).fit()
+    probit = smf.glm(
+        formula=formula,
+        data=df_model,
+        family=sm.families.Binomial(link=sm.families.links.Probit())
+    ).fit()
 
     cloglog = model
 
@@ -323,21 +329,46 @@ New probability = old probability raised to $e^{\\beta}$.
 
     for name, m in [("Logit", logit), ("Probit", probit), ("Cloglog", cloglog)]:
 
-        k = m.df_model + 1
+        k = int(m.df_model) + 1
         aic = m.aic
-        aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
+
+        if n - k - 1 > 0:
+            aicc = aic + (2 * k * (k + 1)) / (n - k - 1)
+        else:
+            aicc = np.nan
+
         bic = -2 * m.llf + k * np.log(n)
 
-        rows.append({"Model": name, "AIC": aic, "AICC": aicc, "BIC": bic})
+        rows.append({
+            "Model": name,
+            "AIC": aic,
+            "AICC": aicc,
+            "BIC": bic
+        })
 
     comp = pd.DataFrame(rows)
 
-    st.dataframe(comp.style.highlight_min(axis=0))
+    st.dataframe(
+        comp.style.highlight_min(subset=["AIC", "AICC", "BIC"], axis=0)
+    )
 
-    st.write("Best AIC:", comp.loc[comp.AIC.idxmin(), "Model"])
-    st.write("Best AICC:", comp.loc[comp.AICC.idxmin(), "Model"])
-    st.write("Best BIC:", comp.loc[comp.BIC.idxmin(), "Model"])
+    best_aic = comp.loc[comp["AIC"].idxmin(), "Model"]
+    best_aicc = comp.loc[comp["AICC"].idxmin(), "Model"] if comp["AICC"].notna().any() else "Unavailable"
+    best_bic = comp.loc[comp["BIC"].idxmin(), "Model"]
 
+    st.write(f"**Best AIC:** {best_aic}")
+    st.write(f"**Best AICC:** {best_aicc}")
+    st.write(f"**Best BIC:** {best_bic}")
+
+    if best_aic == best_aicc == best_bic:
+        st.success(
+            f"Based on the smallest AIC, AICC, and BIC, the best model is **{best_aic}**."
+        )
+    else:
+        st.info(
+            f"Based on the model comparison, **{best_aic}** is best by AIC, "
+            f"**{best_aicc}** is best by AICC, and **{best_bic}** is best by BIC."
+        )
 
 if __name__ == "__main__":
     run()
