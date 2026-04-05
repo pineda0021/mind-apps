@@ -137,7 +137,7 @@ def run():
 
     loglik = model.llf
     aic = model.aic
-    bic = model.bic
+    bic = model.bic_llf
     deviance = model.deviance
     pearson = model.pearson_chi2
 
