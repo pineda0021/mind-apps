@@ -244,15 +244,15 @@ separated by commas.
             return name.split("T.")[-1].replace("]", "")
         return name
 
-    def build_equations(result, reference_label):
+    def build_equations(result):
 
         params = result.params
+
         equations = []
 
         for outcome in params.columns:
 
-            intercept = params.loc["Intercept", outcome]
-            linear_part = f"{intercept:.4f}"
+            linear_part = f"{params.loc['Intercept', outcome]:.4f}"
 
             for name in params.index:
                 if name == "Intercept":
@@ -265,7 +265,7 @@ separated by commas.
                 linear_part += f" {sign} {abs(coef):.4f}\\cdot {label}"
 
             eq = (
-                rf"\frac{{\widehat{{P}}({outcome})}}{{\widehat{{P}}({reference_label})}}"
+                rf"\frac{{\widehat{{P}}({outcome})}}{{\widehat{{P}}(\mathrm{{reference}})}}"
                 rf"=\exp\left({linear_part}\right)"
             )
 
@@ -275,8 +275,7 @@ separated by commas.
 
     st.subheader("Fitted Regression Equations")
 
-    reference_label = ref_level
-    equations = build_equations(res, reference_label)
+    equations = build_equations(res)
 
     for eq in equations:
         st.latex(eq)
