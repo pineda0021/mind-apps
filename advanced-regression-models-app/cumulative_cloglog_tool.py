@@ -231,7 +231,7 @@ separated by commas.
     col3.metric("AICc", round(aicc, 2) if pd.notna(aicc) else "N/A")
     col4.metric("BIC", round(bic, 2))
     col5.metric("Model Deviance", round(dev_model, 2) if pd.notna(dev_model) else "N/A")
-
+    
     # ======================================================
     # 6️⃣ EQUATION BUILDER
     # ======================================================
@@ -270,16 +270,15 @@ separated by commas.
             key=lambda x: list(response_levels).index(x[0].split("/")[0])
         )
     
+        # build linear predictor
         linear_part = ""
-    
         for name, coef in slope_terms:
             coef_r = round(coef, 4)
             sign = "+" if coef_r >= 0 else "-"
             label = clean_term_label(name)
-    
             linear_part += f" {sign} {abs(coef_r):.4f}\\cdot {label}"
     
-        # reconstruct actual thresholds
+        # reconstruct thresholds (exponential increments)
         actual_thresholds = []
     
         for i, (thresh_name, thresh_val) in enumerate(threshold_terms):
@@ -290,6 +289,7 @@ separated by commas.
     
             actual_thresholds.append((thresh_name, actual_val, float(thresh_val)))
     
+        # build equations
         equations = []
     
         for thresh_name, actual_val, raw_val in actual_thresholds:
@@ -314,6 +314,10 @@ separated by commas.
         return equations, actual_thresholds
     
     
+    # ======================================================
+    # DISPLAY EQUATIONS
+    # ======================================================
+    
     st.subheader("Fitted Regression Equations (Cumulative Complementary Log-Log)")
     
     equations, actual_thresholds = build_equations(res, response_order)
@@ -321,33 +325,41 @@ separated by commas.
     for eq in equations:
         st.latex(eq)
     
-    # -----------------------------------
-    # Threshold Reconstruction
-    # -----------------------------------
+    
+    # ======================================================
+    # THRESHOLD RECONSTRUCTION (CLEAN LATEX)
+    # ======================================================
+    
     st.subheader("Threshold Reconstruction")
     
-    st.markdown(
-        r"**NOTE: R & Python outputs differ, but the values are the same.**"
-    )
+    st.markdown("**NOTE: R & Python outputs differ, but the values are the same.**")
     
     if len(actual_thresholds) > 0:
-        first_name, first_actual, _ = actual_thresholds[0]
-        st.latex(rf"\text{{{first_name}}} = {first_actual:.4f}")
     
-    for i in range(1, len(actual_thresholds)):
-        current_name, current_actual, current_raw = actual_thresholds[i]
+        base_name, base_val, _ = actual_thresholds[0]
     
-        expr_text = actual_thresholds[0][0]
-        numeric_text = f"{actual_thresholds[0][1]:.4f}"
+        for i in range(1, len(actual_thresholds)):
     
-        for k in range(1, i + 1):
-            expr_text += rf" + e^{{\text{{{actual_thresholds[k][0]}}}_{{\text{{coeff}}}}}}"
-            numeric_text += rf" + e^{{{actual_thresholds[k][2]:.4f}}}"
+            current_name, current_val, _ = actual_thresholds[i]
     
-        st.latex(
-            rf"\text{{{current_name}}} = \text{{{expr_text}}} = {numeric_text} = {current_actual:.4f}"
-        )
-
+            # build symbolic expression
+            symbolic = base_name
+            numeric = f"{base_val:.4f}"
+    
+            for k in range(1, i + 1):
+                name_k = actual_thresholds[k][0]
+                raw_k = actual_thresholds[k][2]
+    
+                symbolic += rf" + e^{{{name_k}_{{\text{{coeff}}}}}}"
+                numeric += rf" + e^{{{raw_k:.4f}}}"
+    
+            st.latex(
+                rf"""
+                \text{{{current_name}}} = {symbolic}
+                = {numeric}
+                = {current_val:.4f}
+                """
+            )
     # ======================================================
     # 7️⃣ INTERPRETATION
     # ======================================================
