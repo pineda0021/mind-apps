@@ -299,7 +299,7 @@ separated by commas.
     # Threshold Reconstruction
     # -----------------------------------
     st.subheader("Threshold Reconstruction")
-    
+
     if len(actual_thresholds) > 0:
         first_name, first_actual, _ = actual_thresholds[0]
     
@@ -309,10 +309,15 @@ separated by commas.
     
     for i in range(1, len(actual_thresholds)):
         current_name, current_actual, current_raw = actual_thresholds[i]
-        _, prev_actual, _ = actual_thresholds[i - 1]
+    
+        pieces = [f"{actual_thresholds[0][1]:.4f}"]
+        for k in range(1, i + 1):
+            pieces.append(f"{actual_thresholds[k][2]:.4f}")
+    
+        sum_string = " + ".join(pieces)
     
         st.latex(
-            rf"\text{{{current_name}}} = {prev_actual:.4f} + \exp\left({current_raw:.4f}\right) = {current_actual:.4f}"
+            rf"\text{{{current_name}}} = {sum_string} = {current_actual:.4f}"
         )
     
     st.markdown(
