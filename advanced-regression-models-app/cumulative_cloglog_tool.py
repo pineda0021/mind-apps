@@ -232,12 +232,10 @@ separated by commas.
 
 
     # ======================================================
-    # 7️⃣ INTERPRETATION (Aligned LaTeX Block)
+    # 7️⃣ INTERPRETATION
     # ======================================================
 
     st.header("4️⃣ Interpretation of Coefficients")
-
-    lines = []
 
     for term in res.params.index:
 
@@ -245,8 +243,16 @@ separated by commas.
         pval = res.pvalues[term]
         exp_beta = np.exp(coef)
 
+        st.markdown(f"### {term}")
+
         if "/" in term:
-            continue  # skip thresholds in this block
+
+            interpretation = (
+                f"**This is a threshold (cutpoint) parameter for the ordinal response. "
+                f"It separates adjacent cumulative categories under the complementary log-log link.**"
+            )
+
+            st.markdown(interpretation)
 
         elif term.startswith("C("):
 
@@ -256,74 +262,37 @@ separated by commas.
             level = term.split("T.")[-1].replace("]", "")
             reference = reference_dict.get(var_name, "reference")
 
-            line = (
-                rf"\text{{For }} {var_name} = {level},\ "
-                rf"\text{{the estimated probability is that for }} {reference}\ "
-                rf"\text{{raised to the power }} e^{{{coef:.4f}}} = {exp_beta:.4f}."
+            st.markdown(
+                f"**For {var_name} = {level}, the estimated probability is that for "
+                f"{var_name} = {reference} raised to the power**"
+            )
+
+            st.latex(
+                rf"e^{{{coef:.4f}}} = {exp_beta:.4f}"
             )
 
         else:
 
-            line = (
-                rf"\text{{For a one-unit increase in }} {term},\ "
-                rf"\text{{the estimated probability is multiplied by }} "
-                rf"e^{{{coef:.4f}}} = {exp_beta:.4f}."
+            st.markdown(
+                f"**For a one-unit increase in {term}, this estimated probability "
+                f"is the old one raised to the power**"
             )
 
-        lines.append(line)
-
-    # Build aligned LaTeX block
-    latex_block = r"\begin{aligned}" + " \\\\ ".join(lines) + r"\end{aligned}"
-
-    st.latex(latex_block)
-
-
-    # ======================================================
-    # 7️⃣ INTERPRETATION (Aligned LaTeX Block)
-    # ======================================================
-
-    st.header("4️⃣ Interpretation of Coefficients")
-
-    lines = []
-
-    for term in res.params.index:
-
-        coef = res.params[term]
-        pval = res.pvalues[term]
-        exp_beta = np.exp(coef)
-
-        if "/" in term:
-            continue  # skip thresholds in this block
-
-        elif term.startswith("C("):
-
-            var_name = term.split("[")[0]
-            var_name = var_name.replace("C(", "").split(",")[0]
-
-            level = term.split("T.")[-1].replace("]", "")
-            reference = reference_dict.get(var_name, "reference")
-
-            line = (
-                rf"\text{{For }} {var_name} = {level},\ "
-                rf"\text{{the estimated probability is that for }} {reference}\ "
-                rf"\text{{raised to the power }} e^{{{coef:.4f}}} = {exp_beta:.4f}."
+            st.latex(
+                rf"e^{{{coef:.4f}}} = {exp_beta:.4f}"
             )
 
+        st.write(f"Coefficient = {coef:.4f}")
+        st.write(f"p-value = {pval:.4f}")
+
+        if "/" not in term:
+            st.write(f"exp(coefficient) = {exp_beta:.4f}")
+
+        if pval <= 0.05:
+            st.success("Statistically significant.")
         else:
+            st.warning("Not statistically significant.")
 
-            line = (
-                rf"\text{{For a one-unit increase in }} {term},\ "
-                rf"\text{{the estimated probability is multiplied by }} "
-                rf"e^{{{coef:.4f}}} = {exp_beta:.4f}."
-            )
-
-        lines.append(line)
-
-    # Build aligned LaTeX block
-    latex_block = r"\begin{aligned}" + " \\\\ ".join(lines) + r"\end{aligned}"
-
-    st.latex(latex_block)
-   
     # ======================================================
     # 8️⃣ PREDICTION
     # ======================================================
