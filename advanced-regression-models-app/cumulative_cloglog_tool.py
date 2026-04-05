@@ -522,21 +522,21 @@ separated by commas.
         })
 
         comparison_df["AIC"] = comparison_df["AIC"].round(4)
-        comparison_df["AICc"] = comparison_df["AICc"].round(4)
+        comparison_df["AICC"] = comparison_df["AICC"].round(4)
         comparison_df["BIC"] = comparison_df["BIC"].round(4)
 
         st.subheader("Model Selection Criteria")
         st.dataframe(comparison_df, use_container_width=True)
 
         best_aic_model = comparison_df.loc[comparison_df["AIC"].idxmin(), "Model"]
-        best_aicc_model = comparison_df.loc[comparison_df["AICc"].idxmin(), "Model"]
+        best_aicc_model = comparison_df.loc[comparison_df["AICC"].idxmin(), "Model"]
         best_bic_model = comparison_df.loc[comparison_df["BIC"].idxmin(), "Model"]
 
         st.markdown(
             f"""
 **Best model by AIC:** {best_aic_model}  
 
-**Best model by AICc:** {best_aicc_model}  
+**Best model by AICC:** {best_aicc_model}  
 
 **Best model by BIC:** {best_bic_model}
 """
@@ -547,7 +547,7 @@ separated by commas.
             and best_aic_model == best_bic_model
         ):
             st.success(
-                f"The **{best_aic_model}** has the smallest AIC, AICc, and BIC values, "
+                f"The **{best_aic_model}** has the smallest AIC, AICC, and BIC values, "
                 f"so it fits the data the best among the three ordinal models and would typically be preferred."
             )
         else:
