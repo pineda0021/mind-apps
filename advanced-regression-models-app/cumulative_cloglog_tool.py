@@ -236,73 +236,71 @@ separated by commas.
     # 6️⃣ EQUATION BUILDER
     # ======================================================
      def clean_term_label(name):
-        if name.startswith("C(") and "T." in name:
-            return name.split("T.")[-1].replace("]", "")
-        return name
-
-    def join_categories(cats):
-        if len(cats) == 1:
-            return cats[0]
-        elif len(cats) == 2:
-            return cats[0] + r",\mathrm{or}," + cats[1]
-        else:
-            return r",".join(cats[:-1]) + r",\mathrm{or}," + cats[-1]
-
-    def build_equations(result, response_levels):
-
-        params = result.params
-
-        slope_terms = []
-        threshold_terms = []
-
-        for name in params.index:
-            if "/" in name:
-                threshold_terms.append((name, params[name]))
-            else:
-                slope_terms.append((name, params[name]))
-
-        linear_part = ""
-
-        for name, coef in slope_terms:
-            coef_r = round(coef, 4)
-            sign = "+" if coef_r >= 0 else "-"
-            label = clean_term_label(name)
-
-            linear_part += f" {sign} {abs(coef_r):.4f}\\cdot {label}"
-
-        equations = []
-
-        for thresh_name, thresh_val in threshold_terms:
-            thresh_r = round(thresh_val, 4)
-            boundary = thresh_name.split("/")[0]
-
-            try:
-                idx = list(response_levels).index(boundary)
-                cumulative_levels = list(response_levels)[:idx + 1]
-            except ValueError:
-                cumulative_levels = [boundary]
-
-            left_side = join_categories(cumulative_levels)
-
-            eq = (
-                rf"\widehat{{P}}({left_side})"
-                rf"=1-\exp\left\{{-\exp\left({thresh_r:.4f}{linear_part}\right)\right\}}"
-            )
-
-            equations.append(eq)
-
-        return equations
-
-    st.subheader("Fitted Regression Equations (Cumulative Complementary Log-Log)")
-
-    equations = build_equations(res, response_order)
-
-    for eq in equations:
-        st.latex(eq)
-
-
-
+            if name.startswith("C(") and "T." in name:
+                return name.split("T.")[-1].replace("]", "")
+            return name
     
+        def join_categories(cats):
+            if len(cats) == 1:
+                return cats[0]
+            elif len(cats) == 2:
+                return cats[0] + r",\mathrm{or}," + cats[1]
+            else:
+                return r",".join(cats[:-1]) + r",\mathrm{or}," + cats[-1]
+    
+        def build_equations(result, response_levels):
+    
+            params = result.params
+    
+            slope_terms = []
+            threshold_terms = []
+    
+            for name in params.index:
+                if "/" in name:
+                    threshold_terms.append((name, params[name]))
+                else:
+                    slope_terms.append((name, params[name]))
+    
+            linear_part = ""
+    
+            for name, coef in slope_terms:
+                coef_r = round(coef, 4)
+                sign = "+" if coef_r >= 0 else "-"
+                label = clean_term_label(name)
+    
+                linear_part += f" {sign} {abs(coef_r):.4f}\\cdot {label}"
+    
+            equations = []
+    
+            for thresh_name, thresh_val in threshold_terms:
+                thresh_r = round(thresh_val, 4)
+                boundary = thresh_name.split("/")[0]
+    
+                try:
+                    idx = list(response_levels).index(boundary)
+                    cumulative_levels = list(response_levels)[:idx + 1]
+                except ValueError:
+                    cumulative_levels = [boundary]
+    
+                left_side = join_categories(cumulative_levels)
+    
+                eq = (
+                    rf"\widehat{{P}}({left_side})"
+                    rf"=1-\exp\left\{{-\exp\left({thresh_r:.4f}{linear_part}\right)\right\}}"
+                )
+    
+                equations.append(eq)
+    
+            return equations
+    
+        st.subheader("Fitted Regression Equations (Cumulative Complementary Log-Log)")
+    
+        equations = build_equations(res, response_order)
+    
+        for eq in equations:
+            st.latex(eq)
+
+
     # ======================================================
     # 7️⃣ INTERPRETATION
     # ======================================================
