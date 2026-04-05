@@ -227,17 +227,37 @@ def run():
 
         st.success(f"Prediction: {final_prediction:.4f}")
 
+   
+
     # ======================================================
-    # 8️⃣ PLOT
+    # 🔟 PREDICTED VS ACTUAL
     # ======================================================
 
     st.header("7️⃣ Predicted vs Actual")
 
-    pred = model.predict(df_model)
+    predicted_vals = model.predict(df_model)
 
-    fig = px.scatter(x=pred, y=df_model[response])
-    st.plotly_chart(fig)
+    fig2 = px.scatter(
+        x=predicted_vals,
+        y=df_model[response],
+        labels={'x': 'Predicted', 'y': 'Actual'},
+        title="Predicted vs Actual Values"
+    )
 
+    # Perfect prediction line (y = x)
+    min_val = min(predicted_vals.min(), df_model[response].min())
+    max_val = max(predicted_vals.max(), df_model[response].max())
+
+    fig2.add_shape(
+        type="line",
+        x0=min_val,
+        y0=min_val,
+        x1=max_val,
+        y1=max_val,
+        line=dict(color="red", dash="dash", width=2)
+    )
+
+    st.plotly_chart(fig2)
 
 if __name__ == "__main__":
     run()
