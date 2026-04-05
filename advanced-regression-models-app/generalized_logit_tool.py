@@ -287,10 +287,6 @@ def run():
     # ======================================================
     # 7️⃣ INTERPRETATION
     # ======================================================
-
-    # ======================================================
-    # 7️⃣ INTERPRETATION
-    # ======================================================
     
     st.header("4️⃣ Interpretation of Coefficients")
     
@@ -334,28 +330,59 @@ def run():
     
         significant_terms = list(dict.fromkeys(significant_terms))
     
+        # -----------------------------------
+        # Styled summary box
+        # -----------------------------------
         if significant_terms:
+    
             if len(significant_terms) == 1:
-                sig_text = f"**{significant_terms[0].capitalize()} is a significant predictor**"
+                sig_text = f"{significant_terms[0].capitalize()} is a significant predictor"
             elif len(significant_terms) == 2:
                 sig_text = (
-                    f"**{significant_terms[0].capitalize()} and "
-                    f"{significant_terms[1]} are significant predictors**"
+                    f"{significant_terms[0].capitalize()} and "
+                    f"{significant_terms[1]} are significant predictors"
                 )
             else:
                 sig_text = (
-                    f"**{', '.join(significant_terms[:-1]).capitalize()}, and "
-                    f"{significant_terms[-1]} are significant predictors**"
+                    f"{', '.join(significant_terms[:-1]).capitalize()}, and "
+                    f"{significant_terms[-1]} are significant predictors"
                 )
     
             st.markdown(
-                f"{sig_text} of the odds in favor of **{category_label}** versus "
-                f"**{reference_level}**, since their $p$-values are less than 0.05."
+                f"""
+                <div style="
+                    background-color: rgba(40, 167, 69, 0.12);
+                    color: #2e7d32;
+                    padding: 18px 28px;
+                    border-radius: 14px;
+                    font-size: 1.05rem;
+                    font-weight: 500;
+                    margin-bottom: 25px;
+                ">
+                    <b>{sig_text}</b> of the odds in favor of <b>{category_label}</b> 
+                    versus <b>{reference_level}</b>, since their <i>p</i>-values are less than 0.05.
+                </div>
+                """,
+                unsafe_allow_html=True
             )
+    
         else:
             st.markdown(
-                f"**No predictors are statistically significant for the odds in favor of "
-                f"{category_label} versus {reference_level} at the 5% level.**"
+                f"""
+                <div style="
+                    background-color: rgba(255, 193, 7, 0.15);
+                    color: #9a7b0f;
+                    padding: 18px 28px;
+                    border-radius: 14px;
+                    font-size: 1.05rem;
+                    font-weight: 500;
+                    margin-bottom: 25px;
+                ">
+                    <b>No predictors are statistically significant</b> for the odds in favor of 
+                    <b>{category_label}</b> versus <b>{reference_level}</b> at the 5% level.
+                </div>
+                """,
+                unsafe_allow_html=True
             )
     
         # -----------------------------------
@@ -409,37 +436,37 @@ def run():
                         f"**As {term} increases by one unit, the estimated odds in favor of "
                         f"{category_label} versus {reference_level} increase by:**"
                     )
-                    st.latex(
-                        rf"(e^{{{coef:.4f}}}-1)\cdot 100\% = {percent_change:.2f}\%"
-                    )
                 else:
                     st.markdown(
                         f"**As {term} increases by one unit, the estimated odds in favor of "
                         f"{category_label} versus {reference_level} decrease by:**"
                     )
-                    st.latex(
-                        rf"(e^{{{coef:.4f}}}-1)\cdot 100\% = {percent_change:.2f}\%"
-                    )
+    
+                st.latex(
+                    rf"(e^{{{coef:.4f}}}-1)\cdot 100\% = {percent_change:.2f}\%"
+                )
     
             st.write(f"Coefficient = {coef:.4f}")
             st.write(f"p-value = {pval:.4f}")
             st.write(f"Odds Ratio = {odds_ratio:.4f}")
     
             # -----------------------------------
-            # Bottom significance label only
+            # Bottom significance bar
             # -----------------------------------
             if pval <= 0.05:
                 st.markdown(
                     """
                     <div style="
-                        background-color: #d4edda;
-                        color: #155724;
-                        padding: 8px 12px;
-                        border-radius: 6px;
-                        font-weight: 600;
-                        margin-bottom: 12px;
+                        background-color: rgba(40, 167, 69, 0.12);
+                        color: #2e7d32;
+                        padding: 18px 28px;
+                        border-radius: 14px;
+                        font-size: 1.05rem;
+                        font-weight: 500;
+                        margin-top: 10px;
+                        margin-bottom: 28px;
                     ">
-                        Statistically significant.
+                        Significant
                     </div>
                     """,
                     unsafe_allow_html=True
@@ -448,20 +475,22 @@ def run():
                 st.markdown(
                     """
                     <div style="
-                        background-color: #fff3cd;
-                        color: #856404;
-                        padding: 8px 12px;
-                        border-radius: 6px;
-                        font-weight: 600;
-                        margin-bottom: 12px;
+                        background-color: rgba(255, 193, 7, 0.15);
+                        color: #9a7b0f;
+                        padding: 18px 28px;
+                        border-radius: 14px;
+                        font-size: 1.05rem;
+                        font-weight: 500;
+                        margin-top: 10px;
+                        margin-bottom: 28px;
                     ">
-                        Not statistically significant.
+                        Not significant
                     </div>
                     """,
                     unsafe_allow_html=True
                 )
-        
-      
+
+   
     # ======================================================
     # 8️⃣ PREDICTION
     # ======================================================
