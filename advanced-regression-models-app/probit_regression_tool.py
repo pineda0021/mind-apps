@@ -9,7 +9,7 @@ from scipy.stats import chi2
 
 def run():
 
-    st.title("📘 Logistic Regression Model (Binary Response)")
+    st.title("📘 Probit Regression Model (Binary Response)")
 
     # ======================================================
     # 1️⃣ DATA UPLOAD
@@ -103,7 +103,7 @@ def run():
     model = smf.glm(
         formula=formula,
         data=df_model,
-        family=sm.families.Binomial(link=sm.families.links.Logit())
+        family=sm.families.Binomial(link=sm.families.links.Probit())
     ).fit()
 
     st.subheader("Model Summary")
@@ -118,7 +118,7 @@ def run():
     null_model = smf.glm(
         response + " ~ 1",
         data=df_model,
-        family=sm.families.Binomial(link=sm.families.links.Logit())
+        family=sm.families.Binomial(link=sm.families.links.Probit())
     ).fit()
 
     lr_stat = 2 * (model.llf - null_model.llf)
@@ -164,7 +164,7 @@ def run():
     def build_equation(model):
         params = model.params
 
-        equation = r"\log\left(\frac{\pi}{1-\pi}\right)="
+        equation = r"\log\left(\hat{\pi}\right)="
         equation += f"{params['Intercept']:.5f}"
 
         for name in params.index:
@@ -187,7 +187,6 @@ def run():
     # ======================================================
 
     st.header("4️⃣ Interpretation of Coefficients")
-
 
     for term in model.params.index:
 
@@ -244,7 +243,7 @@ def run():
             st.success("Statistically significant.")
         else:
             st.warning("Not statistically significant.")
-
+    
     # ======================================================
     # 8️⃣ PREDICTION
     # ======================================================
