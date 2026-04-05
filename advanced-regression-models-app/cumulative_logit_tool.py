@@ -294,6 +294,7 @@ separated by commas.
 
     for eq in equations:
         st.latex(eq)
+
     # ======================================================
     # 7️⃣ INTERPRETATION
     # ======================================================
@@ -305,13 +306,17 @@ separated by commas.
         coef = res.params[term]
         pval = res.pvalues[term]
 
+        st.markdown(f"### {term}")
+
         if "/" in term:
+
             interpretation = (
-                f"This is a **threshold (cutpoint)** parameter for the ordinal response. "
-                f"It helps separate adjacent cumulative categories on the latent scale."
+                f"**This is a threshold (cutpoint) parameter for the ordinal response. "
+                f"It helps separate adjacent cumulative categories on the latent scale.**"
             )
 
         elif term.startswith("C("):
+
             var_name = term.split("[")[0]
             var_name = var_name.replace("C(", "").split(",")[0]
 
@@ -321,46 +326,40 @@ separated by commas.
             odds_ratio = np.exp(coef)
 
             interpretation = (
-                f"For **{var_name} = {level}** relative to **{reference}**, "
-                f"the cumulative log-odds of being in a **lower or equal** response category "
-                f"change by **{coef:.4f}**. The proportional odds ratio is **{odds_ratio:.4f}**."
+                f"**For observations where {var_name} = {level}, "
+                f"the estimated cumulative odds of being in a lower response category are "
+                rf"$e^{{{coef:.4f}}}\cdot 100\% = {odds_ratio * 100:.2f}\%$ "
+                f"of those for {var_name} = {reference}.**"
             )
 
         else:
+
             odds_ratio = np.exp(coef)
+            percent_change = (odds_ratio - 1) * 100
+
+            if percent_change >= 0:
+                direction = "larger"
+            else:
+                direction = "smaller"
 
             interpretation = (
-                f"For every one-unit increase in **{term}**, "
-                f"the cumulative log-odds of being in a **lower or equal** response category "
-                f"change by **{coef:.4f}**. The proportional odds ratio is **{odds_ratio:.4f}**."
+                f"**If {term} were larger by one unit, then the estimated cumulative odds "
+                f"of being in a lower response category would be {direction} by "
+                rf"$\displaystyle (e^{{{coef:.4f}}} - 1)\cdot 100\% = {abs(percent_change):.2f}\%$.**"
             )
 
-        significance = (
-            "Statistically significant at the 5% level."
-            if pval <= 0.05
-            else "Not statistically significant at the 5% level."
-        )
+        st.markdown(interpretation)
 
-        st.markdown(
-            f"""
-### {term}
+        st.write(f"Coefficient = {coef:.4f}")
+        st.write(f"p-value = {pval:.4f}")
 
-- **Coefficient:** {coef:.4f}  
-- **p-value:** {pval:.4f}  
-"""
-            + (
-                f"- **Odds Ratio:** {np.exp(coef):.4f}  \n"
-                if "/" not in term
-                else ""
-            )
-            + f"""
-**Interpretation**
+        if "/" not in term:
+            st.write(f"Odds Ratio = {np.exp(coef):.4f}")
 
-{interpretation}
-
-**Statistical significance:** {significance}
-"""
-        )
+        if pval <= 0.05:
+            st.success("Statistically significant.")
+        else:
+            st.warning("Not statistically significant.")
 
     # ======================================================
     # 8️⃣ PREDICTION
