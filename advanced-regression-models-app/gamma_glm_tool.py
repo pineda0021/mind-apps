@@ -235,7 +235,7 @@ def run():
             interpretation = (
                 f"**When all predictors are at their reference levels, "
                 f"the estimated mean of {response} is "
-                rf"$\exp\{{{coef:.4f}\}} = {exp_beta:.4f}$.**"
+                rf"$e^{{{coef:.4f}}} = {exp_beta:.4f}$.**"
             )
 
         elif term.startswith("C("):
@@ -249,7 +249,7 @@ def run():
             interpretation = (
                 f"**For observations where {var_name} = {level}, "
                 f"the estimated mean of {response} is "
-                rf"$\exp\{{{coef:.4f}\}}\cdot 100\% = {exp_beta * 100:.2f}\%$ "
+                rf"$e^{{{coef:.4f}}}\cdot 100\% = {exp_beta * 100:.2f}\%$ "
                 f"of that for {var_name} = {reference}.**"
             )
 
@@ -260,7 +260,7 @@ def run():
             interpretation = (
                 f"**If {term} increases by one unit, then the estimated mean of {response} "
                 f"would change by "
-                rf"$\displaystyle (\exp\{{{coef:.4f}\}} - 1)\cdot 100\% = {percent_change:.2f}\%$.**"
+                rf"$\displaystyle (e^{{{coef:.4f}}} - 1)\cdot 100\% = {percent_change:.2f}\%$.**"
             )
 
         st.markdown(interpretation)
