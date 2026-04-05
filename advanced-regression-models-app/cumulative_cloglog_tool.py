@@ -230,9 +230,6 @@ separated by commas.
     col4.metric("BIC", round(bic, 2))
     col5.metric("Model Deviance", round(dev_model, 2) if pd.notna(dev_model) else "N/A")
 
-    # ======================================================
-    # 6️⃣ EQUATION BUILDER
-    # ======================================================
 
     # ======================================================
     # 6️⃣ EQUATION BUILDER
