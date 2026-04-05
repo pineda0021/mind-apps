@@ -232,54 +232,51 @@ separated by commas.
 
 
     # ======================================================
-    # 6️⃣ EQUATION BUILDER
+    # 7️⃣ INTERPRETATION (Aligned LaTeX Block)
     # ======================================================
 
-    # ======================================================
-    # 6️⃣ EQUATION BUILDER
-    # ======================================================
+    st.header("4️⃣ Interpretation of Coefficients")
 
-    def clean_term_label(name):
-        if name.startswith("C(") and "T." in name:
-            return name.split("T.")[-1].replace("]", "")
-        return name
+    lines = []
 
-    def build_equations(result):
+    for term in res.params.index:
 
-        params = result.params
+        coef = res.params[term]
+        pval = res.pvalues[term]
+        exp_beta = np.exp(coef)
 
-        equations = []
+        if "/" in term:
+            continue  # skip thresholds in this block
 
-        for outcome in params.columns:
+        elif term.startswith("C("):
 
-            linear_part = f"{params.loc['Intercept', outcome]:.4f}"
+            var_name = term.split("[")[0]
+            var_name = var_name.replace("C(", "").split(",")[0]
 
-            for name in params.index:
-                if name == "Intercept":
-                    continue
+            level = term.split("T.")[-1].replace("]", "")
+            reference = reference_dict.get(var_name, "reference")
 
-                coef = params.loc[name, outcome]
-                sign = "+" if coef >= 0 else "-"
-                label = clean_term_label(name)
-
-                linear_part += f" {sign} {abs(coef):.4f}\\cdot {label}"
-
-            eq = (
-                rf"\frac{{\widehat{{P}}({outcome})}}{{\widehat{{P}}(\mathrm{{reference}})}}"
-                rf"=\exp\left({linear_part}\right)"
+            line = (
+                rf"\text{{For }} {var_name} = {level},\ "
+                rf"\text{{the estimated probability is that for }} {reference}\ "
+                rf"\text{{raised to the power }} e^{{{coef:.4f}}} = {exp_beta:.4f}."
             )
 
-            equations.append(eq)
+        else:
 
-        return equations
+            line = (
+                rf"\text{{For a one-unit increase in }} {term},\ "
+                rf"\text{{the estimated probability is multiplied by }} "
+                rf"e^{{{coef:.4f}}} = {exp_beta:.4f}."
+            )
 
-    st.subheader("Fitted Regression Equations")
+        lines.append(line)
 
-    equations = build_equations(res)
+    # Build aligned LaTeX block
+    latex_block = r"\begin{aligned}" + " \\\\ ".join(lines) + r"\end{aligned}"
 
-    for eq in equations:
-        st.latex(eq)
-    
+    st.latex(latex_block)
+
 
     # ======================================================
     # 7️⃣ INTERPRETATION (Aligned LaTeX Block)
