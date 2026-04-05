@@ -282,11 +282,7 @@ def run():
 
     for eq in equations:
         st.latex(eq)
-    
-   
-    # ======================================================
-    # 7️⃣ INTERPRETATION
-    # ======================================================
+
 
     # ======================================================
     # 7️⃣ INTERPRETATION
@@ -296,11 +292,6 @@ def run():
 
     params = res.params
     pvalues = res.pvalues
-
-    def nice_label(var, level):
-        if var.lower() in ["gender", "sex"]:
-            return level
-        return f"{var} = {level}"
 
     category_labels = get_nonbaseline_labels(params.shape[1], ordered_response_levels)
 
@@ -316,44 +307,46 @@ def run():
 
         st.subheader(f"{category_label} vs {reference_level}")
 
-        # -----------------------------
-        # Significant predictors summary
-        # -----------------------------
+        # -----------------------------------
+        # Summary of significant predictors
+        # -----------------------------------
         significant_terms = []
 
         for term in params.index:
             if term == "const":
                 continue
             if pvalues.loc[term, col] <= 0.05:
-                significant_terms.append(term)
+                if "_" in term and any(term.startswith(f"{v}_") for v in categorical_vars):
+                    significant_terms.append(term.split("_", 1)[0])
+                else:
+                    significant_terms.append(term)
+
+        significant_terms = list(dict.fromkeys(significant_terms))
 
         if significant_terms:
-
-            readable = []
-
-            for term in significant_terms:
-                if "_" in term and any(term.startswith(f"{v}_") for v in categorical_vars):
-                    readable.append(term.split("_")[0])
-                else:
-                    readable.append(term)
-
-            readable = list(dict.fromkeys(readable))
-
-            if len(readable) == 1:
-                sentence = f"{readable[0].capitalize()} is a significant predictor"
-            elif len(readable) == 2:
-                sentence = f"{readable[0].capitalize()} and {readable[1]} are significant predictors"
+            if len(significant_terms) == 1:
+                sig_text = f"{significant_terms[0].capitalize()} is a significant predictor"
+            elif len(significant_terms) == 2:
+                sig_text = f"{significant_terms[0].capitalize()} and {significant_terms[1]} are significant predictors"
             else:
-                sentence = ", ".join(readable[:-1]) + f", and {readable[-1]} are significant predictors"
+                sig_text = (
+                    f"{', '.join(significant_terms[:-1])}, and {significant_terms[-1]} "
+                    f"are significant predictors"
+                )
 
             st.markdown(
-                f"**{sentence} of odds in favor of {category_label} versus {reference_level}, "
+                f"**{sig_text} of odds in favor of {category_label} versus {reference_level}, "
                 f"since their $p$-values are less than 0.05.**"
             )
+        else:
+            st.markdown(
+                f"**No predictors are statistically significant for the odds in favor of "
+                f"{category_label} versus {reference_level} at the 5% level.**"
+            )
 
-        # -----------------------------
-        # Individual interpretations
-        # -----------------------------
+        # -----------------------------------
+        # Term-by-term interpretations
+        # -----------------------------------
         for term in params.index:
 
             coef = params.loc[term, col]
@@ -366,19 +359,19 @@ def run():
             if term == "const":
 
                 st.markdown(
-                    f"**When all predictors are at their reference levels, "
+                    f"**When all predictors are at their reference levels or zero values, "
                     f"the log-odds of choosing {category_label} rather than {reference_level} "
                     f"is {coef:.4f}.**"
                 )
 
             elif "_" in term and any(term.startswith(f"{v}_") for v in categorical_vars):
 
-                var_name = term.split("_")[0]
-                level = term.split("_")[1]
+                var_name = term.split("_", 1)[0]
+                level = term.split("_", 1)[1]
                 reference = reference_dict.get(var_name, "reference")
 
                 st.markdown(
-                    f"**For {nice_label(var_name, level)}, the estimated odds in favor of "
+                    f"**For {var_name} = {level}, the estimated odds in favor of "
                     f"{category_label} versus {reference_level} are:**"
                 )
 
@@ -418,7 +411,7 @@ def run():
                 st.success("Statistically significant.")
             else:
                 st.warning("Not statistically significant.")
-
+  
     # ======================================================
     # 8️⃣ PREDICTION
     # ======================================================
