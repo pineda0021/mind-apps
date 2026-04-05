@@ -234,7 +234,20 @@ separated by commas.
     # 6️⃣ EQUATION BUILDER
     # ======================================================
 
-    def build_equations(result):
+    def clean_term_label(name):
+        if name.startswith("C(") and "T." in name:
+            return name.split("T.")[-1].replace("]", "")
+        return name
+
+    def join_categories(cats):
+        if len(cats) == 1:
+            return cats[0]
+        elif len(cats) == 2:
+            return cats[0] + r",\mathrm{or}," + cats[1]
+        else:
+            return r",".join(cats[:-1]) + r",\mathrm{or}," + cats[-1]
+
+    def build_equations(result, response_levels):
 
         params = result.params
 
@@ -252,14 +265,9 @@ separated by commas.
         for name, coef in slope_terms:
             coef_r = round(coef, 4)
             sign = "+" if coef_r >= 0 else "-"
+            label = clean_term_label(name)
 
-            if name.startswith("C(") and "T." in name:
-                var_name = name.split("[")[0]
-                var_name = var_name.replace("C(", "").split(",")[0]
-                level = name.split("T.")[-1].replace("]", "")
-                linear_part += f" {sign} {abs(coef_r)} D_{{{var_name}={level}}}"
-            else:
-                linear_part += f" {sign} {abs(coef_r)} \\cdot {name}"
+            linear_part += f" {sign} {abs(coef_r):.4f}\\cdot {label}"
 
         equations = []
 
@@ -267,9 +275,17 @@ separated by commas.
             thresh_r = round(thresh_val, 4)
             boundary = thresh_name.split("/")[0]
 
+            try:
+                idx = list(response_levels).index(boundary)
+                cumulative_levels = list(response_levels)[:idx + 1]
+            except ValueError:
+                cumulative_levels = [boundary]
+
+            left_side = join_categories(cumulative_levels)
+
             eq = (
-                f"\\log\\left(-\\log\\left(1 - P(Y \\leq {boundary})\\right)\\right)"
-                f" = {thresh_r}{linear_part}"
+                rf"\widehat{{P}}({left_side})"
+                rf"=1-\exp\left\{{-\exp\left({thresh_r:.4f}{linear_part}\right)\right\}}"
             )
 
             equations.append(eq)
@@ -278,10 +294,12 @@ separated by commas.
 
     st.subheader("Fitted Regression Equations (Cumulative Complementary Log-Log)")
 
-    equations = build_equations(res)
+    response_levels = list(df[response_original].cat.categories)
+    equations = build_equations(res, response_levels)
 
     for eq in equations:
         st.latex(eq)
+   
 
     # ======================================================
     # 7️⃣ INTERPRETATION
@@ -503,21 +521,21 @@ separated by commas.
         })
 
         comparison_df["AIC"] = comparison_df["AIC"].round(4)
-        comparison_df["AICc"] = comparison_df["AICc"].round(4)
+        comparison_df["AICc"] = comparison_df["AICC"].round(4)
         comparison_df["BIC"] = comparison_df["BIC"].round(4)
 
         st.subheader("Model Selection Criteria")
         st.dataframe(comparison_df, use_container_width=True)
 
         best_aic_model = comparison_df.loc[comparison_df["AIC"].idxmin(), "Model"]
-        best_aicc_model = comparison_df.loc[comparison_df["AICc"].idxmin(), "Model"]
+        best_aicc_model = comparison_df.loc[comparison_df["AICC"].idxmin(), "Model"]
         best_bic_model = comparison_df.loc[comparison_df["BIC"].idxmin(), "Model"]
 
         st.markdown(
             f"""
 **Best model by AIC:** {best_aic_model}  
 
-**Best model by AICc:** {best_aicc_model}  
+**Best model by AICC:** {best_aicc_model}  
 
 **Best model by BIC:** {best_bic_model}
 """
