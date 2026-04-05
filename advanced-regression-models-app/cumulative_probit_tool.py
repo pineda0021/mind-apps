@@ -203,7 +203,7 @@ separated by commas.
 
     col1.metric("Log-Likelihood", round(loglik, 2))
     col2.metric("AIC", round(aic, 2))
-    col3.metric("AICc", round(aicc, 2) if pd.notna(aicc) else "N/A")
+    col3.metric("AICC", round(aicc, 2) if pd.notna(aicc) else "N/A")
     col4.metric("BIC", round(bic, 2))
     col5.metric("Model Deviance", round(dev_model, 2))
 
@@ -211,7 +211,20 @@ separated by commas.
     # 6️⃣ EQUATION BUILDER
     # ======================================================
 
-    def build_equations(result):
+    def clean_term_label(name):
+        if name.startswith("C(") and "T." in name:
+            return name.split("T.")[-1].replace("]", "")
+        return name
+
+    def join_categories(cats):
+        if len(cats) == 1:
+            return cats[0]
+        elif len(cats) == 2:
+            return cats[0] + r",\mathrm{or}," + cats[1]
+        else:
+            return r",".join(cats[:-1]) + r",\mathrm{or}," + cats[-1]
+
+    def build_equations(result, response_levels):
 
         params = result.params
 
@@ -229,18 +242,9 @@ separated by commas.
         for name, coef in slope_terms:
             coef_r = round(coef, 4)
             sign = "+" if coef_r >= 0 else "-"
+            label = clean_term_label(name)
 
-            if name.startswith("C(") and "T." in name:
-
-                var_name = name.split("[")[0]
-                var_name = var_name.replace("C(", "").split(",")[0]
-
-                level = name.split("T.")[-1].replace("]", "")
-
-                linear_part += f" {sign} {abs(coef_r)} D_{{{var_name}={level}}}"
-
-            else:
-                linear_part += f" {sign} {abs(coef_r)} \\cdot {name}"
+            linear_part += f" {sign} {abs(coef_r):.4f}\\cdot {label}"
 
         equations = []
 
@@ -249,9 +253,17 @@ separated by commas.
             thresh_r = round(thresh_val, 4)
             boundary = thresh_name.split("/")[0]
 
+            try:
+                idx = list(response_levels).index(boundary)
+                cumulative_levels = list(response_levels)[:idx + 1]
+            except ValueError:
+                cumulative_levels = [boundary]
+
+            left_side = join_categories(cumulative_levels)
+
             eq = (
-                f"\\Phi^{{-1}}(P(Y \\leq {boundary}))"
-                f" = {thresh_r}{linear_part}"
+                rf"\widehat{{P}}({left_side})"
+                rf"=\Phi\left({thresh_r:.4f}{linear_part}\right)"
             )
 
             equations.append(eq)
@@ -260,7 +272,8 @@ separated by commas.
 
     st.subheader("Fitted Regression Equations (Cumulative Probits)")
 
-    equations = build_equations(res)
+    response_levels = list(df[response_original].cat.categories)
+    equations = build_equations(res, response_levels)
 
     for eq in equations:
         st.latex(eq)
@@ -276,11 +289,13 @@ separated by commas.
         coef = res.params[term]
         pval = res.pvalues[term]
 
+        st.markdown(f"### {term}")
+
         if "/" in term:
 
             interpretation = (
-                "This is a **threshold (cutpoint)** parameter for the ordinal response. "
-                "It separates adjacent cumulative categories on the latent probit scale."
+                f"**This is a threshold (cutpoint) parameter for the ordinal response. "
+                f"It separates adjacent cumulative categories on the latent probit scale.**"
             )
 
         elif term.startswith("C("):
@@ -291,40 +306,42 @@ separated by commas.
             level = term.split("T.")[-1].replace("]", "")
             reference = reference_dict.get(var_name, "reference")
 
-            interpretation = (
-                f"For **{var_name} = {level}** relative to **{reference}**, "
-                f"the cumulative probit for being in a **lower or equal** response category "
-                f"changes by **{coef:.4f}**."
-            )
+            # nicer phrasing depending on variable
+            if var_name.lower() in ["gender", "sex"]:
+                interpretation = (
+                    f"**The z-score of the estimated probability of worse health for "
+                    f"{level} is larger than that for {reference} by {coef:.4f}.**"
+                )
+            else:
+                interpretation = (
+                    f"**People with {var_name} = {level} have a z-score that is "
+                    f"{'larger' if coef >= 0 else 'smaller'} than that for "
+                    f"{var_name} = {reference} by {abs(coef):.4f}.**"
+                )
 
         else:
 
-            interpretation = (
-                f"For every one-unit increase in **{term}**, "
-                f"the cumulative probit for being in a **lower or equal** response category "
-                f"changes by **{coef:.4f}**."
-            )
+            if coef >= 0:
+                interpretation = (
+                    f"**As {term} increases by one unit, the z-score of the estimated "
+                    f"probability of worse health increases by {coef:.4f}.**"
+                )
+            else:
+                interpretation = (
+                    f"**As {term} increases by one unit, the z-score of the estimated "
+                    f"probability of worse health decreases by {abs(coef):.4f}.**"
+                )
 
-        significance = (
-            "Statistically significant at the 5% level."
-            if pval <= 0.05
-            else "Not statistically significant at the 5% level."
-        )
+        st.markdown(interpretation)
 
-        st.markdown(
-            f"""
-### {term}
+        st.write(f"Coefficient = {coef:.4f}")
+        st.write(f"p-value = {pval:.4f}")
 
-- **Coefficient:** {coef:.4f}  
-- **p-value:** {pval:.4f}  
-
-**Interpretation**
-
-{interpretation}
-
-**Statistical significance:** {significance}
-"""
-        )
+        if pval <= 0.05:
+            st.success("Statistically significant.")
+        else:
+            st.warning("Not statistically significant.")
+    
 
     # ======================================================
     # 8️⃣ PREDICTION
