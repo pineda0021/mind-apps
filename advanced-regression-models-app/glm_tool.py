@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st 
 import pandas as pd
 import plotly.express as px
 import statsmodels.api as sm
@@ -316,55 +316,61 @@ Fit a **Gamma GLM** if the response is positive and skewed.
     # Coefficient Interpretation
     # ======================================================
 
+    st.header("5️⃣ Interpretation")
+
     st.subheader("Coefficient Interpretation")
 
-    for name in model.params.index:
+    st.markdown("Interpretation uses $\\hat{\\beta}$ directly.")
 
-        coef = round(model.params[name], 4)
-        pval = model.pvalues[name]
+    for term in model.params.index:
 
-        significance = (
-            "Statistically significant."
-            if pval <= 0.05
-            else "Not statistically significant."
-        )
+        coef = model.params[term]
+        pval = model.pvalues[term]
 
-        # Intercept
-        if name == "Intercept":
-            interpretation = (
-                f"Estimated mean of {response} when all predictors "
-                f"are at their reference levels or equal to zero."
-            )
-            term_label = f"Intercept"
-
-        # Categorical predictors (dummy variables)
-        elif name.startswith("C(") and "T." in name:
-            var_name = name.split("[")[0]
-            var_name = var_name.replace("C(", "").split(",")[0]
-            level = name.split("T.")[1].rstrip("]")
-
-            interpretation = (
-                f"The estimated mean difference in {response} between "
-                f"{level} and the reference level, holding other variables constant."
-            )
-            term_label = f"{var_name} = {level}"
-
-        # Continuous predictors
+        if term.startswith("C("):
+            var_name = term.split("[")[0].replace("C(", "").split(",")[0]
+            level = term.split("T.")[-1].replace("]", "")
+            label = f"{var_name}[{level}]"
         else:
-            interpretation = (
-                f"For each one-unit increase in {name}, {response} changes "
-                f"by {coef} units, holding other predictors constant."
+            label = term
+
+        st.subheader(label)
+        st.latex(f"\\hat{{\\beta}} = {coef:.4f}")
+
+        if term in ["Intercept", "const"]:
+
+            st.write(
+                f"When all predictors are held at zero and all indicator variables are at their reference levels, "
+                f"the estimated mean of {response} is {coef:.4f}."
             )
-            term_label = name
-       
-        # Display
-        st.markdown(
-            f"**{term_label}**  \n"
-            f"- Coefficient (β): {coef:.4f}  \n"
-            f"- p-value: {pval:.4f}  \n"
-            f"- Interpretation: {interpretation}  \n"
-            f"- {significance}"
-        )
+
+        elif term.startswith("C("):
+
+            var_name = term.split("[")[0].replace("C(", "").split(",")[0]
+            level = term.split("T.")[-1].replace("]", "")
+            ref = reference_dict.get(var_name, "reference")
+
+            st.write(
+                f"If {var_name} is an indicator variable, then "
+                f"$\\hat{{\\beta}} = {coef:.4f}$ represents the estimated mean difference in {response} "
+                f"for {var_name} = {level} compared with {var_name} = {ref}, holding all other predictors constant."
+            )
+
+        else:
+
+            st.write(
+                f"If {label} is numeric, then $\\hat{{\\beta}} = {coef:.4f}$ represents "
+                f"the estimated change in the mean of {response} for a one-unit increase in {label}, "
+                f"holding all other predictors constant."
+            )
+
+        st.write(f"Coefficient = {coef:.4f}")
+        st.write(f"p-value = {pval:.4f}")
+
+        if pval <= 0.05:
+            st.success("Significant")
+        else:
+            st.warning("Not significant")
 
 
     # ======================================================
