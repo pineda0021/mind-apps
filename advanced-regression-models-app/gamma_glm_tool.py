@@ -7,6 +7,16 @@ import statsmodels.api as sm
 from scipy.stats import shapiro, chi2
 
 
+# ======================================================
+# Helper: Rescale Prediction
+# ======================================================
+
+def rescale_prediction(value, apply_scale=False, scale_factor=1.0):
+    if apply_scale:
+        return value * scale_factor
+    return value
+
+
 def run():
 
     st.title("📘 Gamma Generalized Linear Model (Log Link)")
@@ -48,22 +58,16 @@ def run():
 
     reference_dict = {}
 
-    # Build a working copy for modeling
     df_model = df.copy()
-
-    # Response must be numeric
     df_model[response] = pd.to_numeric(df_model[response], errors="coerce")
 
-    # Coerce numeric predictors
     for var in predictors:
         if var not in categorical_vars:
             df_model[var] = pd.to_numeric(df_model[var], errors="coerce")
 
-    # Set categorical predictors
     for col in categorical_vars:
         df_model[col] = df_model[col].astype("category")
 
-    # Drop rows with missing values in variables used by the model
     model_vars = [response] + predictors
     df_model = df_model.dropna(subset=model_vars)
 
@@ -75,7 +79,6 @@ def run():
         st.error("Gamma GLM requires strictly positive response values.")
         return
 
-    # Reference levels
     for col in categorical_vars:
         ref = st.selectbox(
             f"Select reference level for {col}",
@@ -109,45 +112,20 @@ def run():
     col1, col2 = st.columns(2)
 
     with col1:
-        fig_orig = px.histogram(
-            df_model,
-            x=response,
-            title="Original Response",
-            marginal="box"
-        )
+        fig_orig = px.histogram(df_model, x=response, title="Original Response", marginal="box")
         st.plotly_chart(fig_orig)
 
     with col2:
-        fig_log = px.histogram(
-            df_model,
-            x=log_response,
-            title="log(Response)",
-            marginal="box"
-        )
+        fig_log = px.histogram(df_model, x=log_response, title="log(Response)", marginal="box")
         st.plotly_chart(fig_log)
 
     st.subheader("Distribution Diagnostics")
-    st.write("Original Y and log(Y) are shown for exploratory purposes.")
-    st.info("For a Gamma GLM, normality of Y is not required. The Shapiro-Wilk test below is exploratory only.")
+    st.info("Shapiro test below is exploratory only for Gamma GLM.")
 
-    # ------------------------------------------------------
-    # Added Shapiro-Wilk Test on log(Response)
-    # ------------------------------------------------------
-
-    if len(df_model[log_response].dropna()) >= 3:
-        stat, p_value = shapiro(df_model[log_response].dropna())
-
-        st.subheader("Shapiro-Wilk Test on log(Response)")
-        st.write(f"Shapiro-Wilk Test Statistic: {stat:.4f}")
-        st.write(f"P-Value: {p_value:.4f}")
-
-        alpha = 0.05
-        if p_value > alpha:
-            st.success("The log-transformed response appears approximately normally distributed (fail to reject H0).")
-        else:
-            st.warning("The log-transformed response does not appear normally distributed (reject H0).")
-    else:
-        st.warning("Not enough observations to perform the Shapiro-Wilk test.")
+    if len(df_model[log_response]) >= 3:
+        stat, p_value = shapiro(df_model[log_response])
+        st.write(f"Shapiro Statistic: {stat:.4f}")
+        st.write(f"p-value: {p_value:.4f}")
 
     # ======================================================
     # 4️⃣ MODEL FITTING
@@ -165,118 +143,20 @@ def run():
     st.text(model.summary())
 
     # ======================================================
-    # 5️⃣ LIKELIHOOD RATIO TEST
-    # ======================================================
-
-    st.subheader("Likelihood Ratio (Deviance) Test")
-
-    null_model = smf.glm(
-        response + " ~ 1",
-        data=df_model,
-        family=sm.families.Gamma(link=sm.families.links.Log())
-    ).fit()
-
-    lr_stat = 2 * (model.llf - null_model.llf)
-    df_diff = int(model.df_model)
-    p_value = chi2.sf(lr_stat, df_diff)
-
-    st.write(f"LR Statistic: {lr_stat:.4f}")
-    st.write(f"Degrees of Freedom: {df_diff}")
-    st.write(f"p-value: {p_value:.6f}")
-
-    # ======================================================
-    # 6️⃣ MODEL FIT EVALUATION
+    # 5️⃣ MODEL FIT
     # ======================================================
 
     st.header("4️⃣ Model Fit Evaluation")
 
-    loglik = model.llf
-    aic = model.aic
-    bic = model.bic
-    deviance = model.deviance
-    pearson = model.pearson_chi2
-
     col1, col2, col3, col4, col5 = st.columns(5)
-
-    col1.metric("Log-Likelihood", round(loglik, 2))
-    col2.metric("AIC", round(aic, 2))
-    col3.metric("BIC", round(bic, 2))
-    col4.metric("Deviance", round(deviance, 2))
-    col5.metric("Pearson χ²", round(pearson, 2))
-
-    # ------------------------------------------------------
-    # Added GLM Diagnostics
-    # ------------------------------------------------------
-
-    fitted_vals = model.fittedvalues
-    deviance_resid = model.resid_deviance
-    pearson_resid = model.resid_pearson
-    dispersion = model.pearson_chi2 / model.df_resid
-
-    st.subheader("GLM Residual Diagnostics")
-
-    fig_resid = px.scatter(
-        x=fitted_vals,
-        y=deviance_resid,
-        labels={'x': 'Fitted Values', 'y': 'Deviance Residuals'},
-        title="Deviance Residuals vs Fitted Values"
-    )
-    fig_resid.add_hline(y=0, line_dash="dash")
-    st.plotly_chart(fig_resid)
-
-    fig_scale = px.scatter(
-        x=fitted_vals,
-        y=np.sqrt(np.abs(pearson_resid)),
-        labels={'x': 'Fitted Values', 'y': '√|Pearson Residuals|'},
-        title="Scale-Location Plot"
-    )
-    st.plotly_chart(fig_scale)
-
-    st.subheader("Dispersion Diagnostic")
-    st.write(f"Dispersion estimate: {dispersion:.4f}")
-
-    if dispersion > 2:
-        st.warning("Possible overdispersion (variance larger than expected under the Gamma GLM).")
-    elif dispersion < 0.5:
-        st.warning("Possible underdispersion.")
-    else:
-        st.success("Dispersion appears reasonable for the Gamma GLM.")
+    col1.metric("LogLik", round(model.llf, 2))
+    col2.metric("AIC", round(model.aic, 2))
+    col3.metric("BIC", round(model.bic, 2))
+    col4.metric("Deviance", round(model.deviance, 2))
+    col5.metric("Pearson", round(model.pearson_chi2, 2))
 
     # ======================================================
-    # 7️⃣ EQUATION BUILDER
-    # ======================================================
-
-    def build_equation(model, response):
-
-        params = model.params
-        equation = f"\\log(\\widehat{{\\mathbb{{E}}}}({response})) = {round(params['Intercept'],4)}"
-
-        for name in params.index:
-
-            if name == "Intercept":
-                continue
-
-            coef = round(params[name], 4)
-            sign = "+" if coef >= 0 else "-"
-
-            if name.startswith("C(") and "T." in name:
-
-                var_name = name.split("[")[0]
-                var_name = var_name.replace("C(", "").split(",")[0]
-                level = name.split("T.")[1].rstrip("]")
-
-                equation += f" {sign} {abs(coef)} D_{{{var_name}={level}}}"
-
-            else:
-                equation += f" {sign} {abs(coef)} \\cdot {name}"
-
-        return equation
-
-    st.subheader("Fitted Regression Equation (Full Model)")
-    st.latex(build_equation(model, response))
-
-    # ======================================================
-    # 8️⃣ INTERPRETATION
+    # 6️⃣ INTERPRETATION
     # ======================================================
 
     st.header("5️⃣ Interpretation of Coefficients")
@@ -290,85 +170,42 @@ def run():
         st.markdown(f"### {term}")
 
         if term == "Intercept":
-
-            interpretation = (
-                f"**When all predictors are at their reference levels, "
-                f"the estimated mean of {response} is "
-                rf"$e^{{{coef:.4f}}} = {exp_beta:.4f}$.**"
-            )
+            st.markdown(rf"$e^{{{coef:.4f}}} = {exp_beta:.4f}$")
 
         elif term.startswith("C("):
-
-            var_name = term.split("[")[0]
-            var_name = var_name.replace("C(", "").split(",")[0]
-            level = term.split("T.")[-1].replace("]", "")
-            reference = reference_dict.get(var_name, "reference")
-
-            interpretation = (
-                f"**For observations where {var_name} = {level}, "
-                f"the estimated mean of {response} is "
-                rf"$e^{{{coef:.4f}}}\cdot 100\% = {exp_beta * 100:.2f}\%$ "
-                f"of that for {var_name} = {reference}.**"
-            )
+            st.markdown(rf"$e^{{{coef:.4f}}}\cdot100\% = {exp_beta*100:.2f}\%$")
 
         else:
-
-            percent_change = (exp_beta - 1) * 100
-
-            interpretation = (
-                f"**If {term} increases by one unit, then the estimated mean of {response} "
-                f"would change by "
-                rf"$\displaystyle (e^{{{coef:.4f}}} - 1)\cdot 100\% = {percent_change:.2f}\%$.**"
-            )
-
-        st.markdown(interpretation)
+            pct = (exp_beta - 1) * 100
+            st.markdown(rf"$(e^{{{coef:.4f}}}-1)\cdot100\% = {pct:.2f}\%$")
 
         st.write(f"Coefficient = {coef:.4f}")
         st.write(f"p-value = {pval:.4f}")
 
         if pval <= 0.05:
-            st.success("Statistically significant.")
+            st.success("Significant")
         else:
-            st.warning("Not statistically significant.")
-
+            st.warning("Not significant")
 
     # ======================================================
-    # 9️⃣ PREDICTION
+    # 7️⃣ PREDICTION
     # ======================================================
 
     st.header("6️⃣ Prediction")
 
-    # --- Scaling Option ---
-    apply_scale = st.checkbox("Rescale prediction (e.g., if response was divided)")
+    apply_scale = st.checkbox("Rescale prediction")
     scale_factor = 1.0
 
     if apply_scale:
-        scale_factor = st.number_input(
-            "Scale factor",
-            min_value=1.0,
-            value=10000.0,
-            step=1.0
-        )
+        scale_factor = st.number_input("Scale factor", value=10000.0)
 
     input_dict = {}
 
     for var in predictors:
-
         if var in categorical_vars:
-            input_dict[var] = st.selectbox(
-                var,
-                df_model[var].cat.categories,
-                key=f"pred_{var}"
-            )
-
+            input_dict[var] = st.selectbox(var, df_model[var].cat.categories)
         else:
-            numeric_series = pd.to_numeric(df_model[var], errors="coerce").dropna()
-            default_value = float(numeric_series.mean()) if not numeric_series.empty else 0.0
-            input_dict[var] = st.number_input(
-                var,
-                value=default_value,
-                key=f"pred_{var}"
-            )
+            input_dict[var] = st.number_input(var, value=float(df_model[var].mean()))
 
     if st.button("Predict"):
 
@@ -380,58 +217,26 @@ def run():
                 categories=df_model[var].cat.categories
             )
 
-        for var in predictors:
-            if var not in categorical_vars:
-                new_df[var] = pd.to_numeric(new_df[var], errors="coerce")
-
-        # --- Model prediction ---
         prediction = model.predict(new_df)[0]
 
-        # --- Apply rescaling ---
         final_prediction = rescale_prediction(
             prediction,
             apply_scale=apply_scale,
             scale_factor=scale_factor
         )
 
-        st.subheader("Prediction Results")
-
-        st.write(f"Raw prediction: {prediction:.4f}")
-
-        if apply_scale:
-            st.success(f"Rescaled prediction: {final_prediction:.4f}")
-        else:
-            st.success(f"Predicted {response}: {final_prediction:.4f}")
-
+        st.success(f"Prediction: {final_prediction:.4f}")
 
     # ======================================================
-    # 🔟 PREDICTED VS ACTUAL
+    # 8️⃣ PLOT
     # ======================================================
 
     st.header("7️⃣ Predicted vs Actual")
 
-    predicted_vals = model.predict(df_model)
+    pred = model.predict(df_model)
 
-    fig2 = px.scatter(
-        x=predicted_vals,
-        y=df_model[response],
-        labels={'x': 'Predicted', 'y': 'Actual'},
-        title="Predicted vs Actual Values"
-    )
-
-    min_val = min(predicted_vals.min(), df_model[response].min())
-    max_val = max(predicted_vals.max(), df_model[response].max())
-
-    fig2.add_shape(
-        type="line",
-        x0=min_val,
-        y0=min_val,
-        x1=max_val,
-        y1=max_val,
-        line=dict(color="red", dash="dash")
-    )
-
-    st.plotly_chart(fig2)
+    fig = px.scatter(x=pred, y=df_model[response])
+    st.plotly_chart(fig)
 
 
 if __name__ == "__main__":
