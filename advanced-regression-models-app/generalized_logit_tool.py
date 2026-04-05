@@ -249,40 +249,41 @@ def run():
             if category_label == baseline_label:
                 continue
 
-            equation = (
-                f"\\log\\left(\\frac{{P(Y={category_label})}}{{P(Y={baseline_label})}}\\right)"
-            )
-
             intercept_val = params.loc["const", col] if "const" in params.index else 0
-            equation += f" = {round(intercept_val, 4)}"
+            linear_part = f"{intercept_val:.4f}"
 
             for name in params.index:
 
                 if name == "const":
                     continue
 
-                coef = round(params.loc[name, col], 4)
+                coef = params.loc[name, col]
                 sign = "+" if coef >= 0 else "-"
 
                 if "_" in name and any(name.startswith(f"{v}_") for v in categorical_vars):
-                    var_name = name.split("_", 1)[0]
-                    level = name.split("_", 1)[1]
-                    equation += f" {sign} {abs(coef)} D_{{{var_name}={level}}}"
+                    label = name.split("_", 1)[1]
+                    linear_part += f" {sign} {abs(coef):.4f}\\cdot {label}"
                 else:
-                    equation += f" {sign} {abs(coef)} \\cdot {name}"
+                    linear_part += f" {sign} {abs(coef):.4f}\\cdot {name}"
 
-            equations.append((category_label, equation))
+            eq = (
+                rf"\frac{{\widehat{{\mathbb{{P}}}}({category_label})}}"
+                rf"{{\widehat{{\mathbb{{P}}}}({baseline_label})}}"
+                rf"=\exp\big\{{{linear_part}\big\}}"
+            )
+
+            equations.append(eq)
 
         return equations
 
-    st.subheader("Fitted Regression Equations (Generalized Logits)")
+    st.subheader("From the output, the estimated generalized logit model for nominal response is:")
 
     equations = build_equations(res, reference_level, ordered_response_levels)
 
-    for category_label, eq in equations:
-        st.markdown(f"**Baseline comparison: {category_label} vs {reference_level}**")
+    for eq in equations:
         st.latex(eq)
-
+    
+   
     # ======================================================
     # 7️⃣ INTERPRETATION
     # ======================================================
