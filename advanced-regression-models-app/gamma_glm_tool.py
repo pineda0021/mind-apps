@@ -48,25 +48,48 @@ def run():
 
     reference_dict = {}
 
-    for col in categorical_vars:
-        df[col] = df[col].astype("category")
+    # Build a working copy for modeling
+    df_model = df.copy()
 
+    # Response must be numeric
+    df_model[response] = pd.to_numeric(df_model[response], errors="coerce")
+
+    # Coerce numeric predictors
+    for var in predictors:
+        if var not in categorical_vars:
+            df_model[var] = pd.to_numeric(df_model[var], errors="coerce")
+
+    # Set categorical predictors
+    for col in categorical_vars:
+        df_model[col] = df_model[col].astype("category")
+
+    # Drop rows with missing values in variables used by the model
+    model_vars = [response] + predictors
+    df_model = df_model.dropna(subset=model_vars)
+
+    if df_model.empty:
+        st.error("No complete cases remain after removing missing values.")
+        return
+
+    if (df_model[response] <= 0).any():
+        st.error("Gamma GLM requires strictly positive response values.")
+        return
+
+    # Reference levels
+    for col in categorical_vars:
         ref = st.selectbox(
             f"Select reference level for {col}",
-            df[col].cat.categories,
+            df_model[col].cat.categories,
             key=f"ref_{col}"
         )
-
         reference_dict[col] = ref
 
     terms = []
 
     for var in predictors:
-
         if var in categorical_vars:
             ref = reference_dict[var]
             terms.append(f'C({var}, Treatment(reference="{ref}"))')
-
         else:
             terms.append(var)
 
@@ -79,14 +102,6 @@ def run():
     # ======================================================
 
     st.header("2️⃣ Response Diagnostics")
-
-    df_model = df.copy()
-    df_model[response] = pd.to_numeric(df_model[response], errors="coerce")
-    df_model = df_model.dropna(subset=[response])
-
-    if (df_model[response] <= 0).any():
-        st.error("Gamma GLM requires strictly positive response values.")
-        return
 
     log_response = response + "_log"
     df_model[log_response] = np.log(df_model[response])
@@ -113,7 +128,26 @@ def run():
 
     st.subheader("Distribution Diagnostics")
     st.write("Original Y and log(Y) are shown for exploratory purposes.")
-    st.info("For a Gamma GLM, normality of Y or log(Y) is not required.")
+    st.info("For a Gamma GLM, normality of Y is not required. The Shapiro-Wilk test below is exploratory only.")
+
+    # ------------------------------------------------------
+    # Added Shapiro-Wilk Test on log(Response)
+    # ------------------------------------------------------
+
+    if len(df_model[log_response].dropna()) >= 3:
+        stat, p_value = shapiro(df_model[log_response].dropna())
+
+        st.subheader("Shapiro-Wilk Test on log(Response)")
+        st.write(f"Shapiro-Wilk Test Statistic: {stat:.4f}")
+        st.write(f"P-Value: {p_value:.4f}")
+
+        alpha = 0.05
+        if p_value > alpha:
+            st.success("The log-transformed response appears approximately normally distributed (fail to reject H0).")
+        else:
+            st.warning("The log-transformed response does not appear normally distributed (reject H0).")
+    else:
+        st.warning("Not enough observations to perform the Shapiro-Wilk test.")
 
     # ======================================================
     # 4️⃣ MODEL FITTING
@@ -215,7 +249,6 @@ def run():
     def build_equation(model, response):
 
         params = model.params
-
         equation = f"\\log(\\widehat{{\\mathbb{{E}}}}({response})) = {round(params['Intercept'],4)}"
 
         for name in params.index:
@@ -230,13 +263,11 @@ def run():
 
                 var_name = name.split("[")[0]
                 var_name = var_name.replace("C(", "").split(",")[0]
-
                 level = name.split("T.")[1].rstrip("]")
 
                 equation += f" {sign} {abs(coef)} D_{{{var_name}={level}}}"
 
             else:
-
                 equation += f" {sign} {abs(coef)} \\cdot {name}"
 
         return equation
@@ -270,7 +301,6 @@ def run():
 
             var_name = term.split("[")[0]
             var_name = var_name.replace("C(", "").split(",")[0]
-
             level = term.split("T.")[-1].replace("]", "")
             reference = reference_dict.get(var_name, "reference")
 
@@ -307,18 +337,34 @@ def run():
 
     st.header("6️⃣ Prediction")
 
+    scale_prediction = st.checkbox("Multiply predicted response by a scale factor")
+    prediction_scale = 1.0
+
+    if scale_prediction:
+        prediction_scale = st.number_input(
+            "Scale factor",
+            min_value=1.0,
+            value=10000.0,
+            step=1.0
+        )
+
     input_dict = {}
 
     for var in predictors:
 
         if var in categorical_vars:
-            input_dict[var] = st.selectbox(var, df[var].cat.categories)
-
+            input_dict[var] = st.selectbox(
+                var,
+                df_model[var].cat.categories,
+                key=f"pred_{var}"
+            )
         else:
-            numeric_series = pd.to_numeric(df[var], errors="coerce")
+            numeric_series = pd.to_numeric(df_model[var], errors="coerce").dropna()
+            default_value = float(numeric_series.mean()) if not numeric_series.empty else 0.0
             input_dict[var] = st.number_input(
                 var,
-                value=float(numeric_series.mean())
+                value=default_value,
+                key=f"pred_{var}"
             )
 
     if st.button("Predict"):
@@ -328,13 +374,21 @@ def run():
         for var in categorical_vars:
             new_df[var] = pd.Categorical(
                 new_df[var],
-                categories=df[var].cat.categories
+                categories=df_model[var].cat.categories
             )
+
+        for var in predictors:
+            if var not in categorical_vars:
+                new_df[var] = pd.to_numeric(new_df[var], errors="coerce")
 
         prediction = model.predict(new_df)[0]
 
         st.subheader("Prediction Results")
         st.success(f"Predicted {response}: {prediction:.4f}")
+
+        if scale_prediction:
+            scaled_prediction = prediction * prediction_scale
+            st.success(f"Predicted {response} × {prediction_scale:.0f}: {scaled_prediction:.4f}")
 
     # ======================================================
     # 🔟 PREDICTED VS ACTUAL
