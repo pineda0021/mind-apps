@@ -137,7 +137,7 @@ def run():
 
     loglik = model.llf
     aic = model.aic
-    bic = model.bic
+    bic = model.bic_llf
     deviance = model.deviance
     pearson = model.pearson_chi2
 
@@ -164,8 +164,8 @@ def run():
     def build_equation(model):
         params = model.params
 
-        equation = r"\log\left(\hat{\pi}\right)="
-        equation += f"{params['Intercept']:.5f}"
+        equation = r"\Phi^{-1}\big(\widehat{\pi}\big)="
+        equation += f"{params['Intercept']:.4f}"
 
         for name in params.index:
             if name == "Intercept":
@@ -175,11 +175,13 @@ def run():
             sign = "+" if coef >= 0 else "-"
             label = clean_term_label(name)
 
-            equation += f"{sign}{abs(coef):.5f}\\cdot {label}"
+            equation += f" {sign} {abs(coef):.4f}\\cdot {label}"
+
+        equation += "."
 
         return equation
 
-    st.subheader(r"The fitted model for $\pi=\mathbb{P}(\mathrm{response})$ is:")
+    st.subheader("The fitted probit model is:")
     st.latex(build_equation(model))
 
     # ======================================================
@@ -192,7 +194,6 @@ def run():
 
         coef = model.params[term]
         pval = model.pvalues[term]
-        exp_beta = np.exp(coef)
 
         st.markdown(f"### {term}")
 
@@ -200,8 +201,8 @@ def run():
 
             interpretation = (
                 f"**When all predictors are at their reference levels, "
-                f"the estimated odds of {response} = 1 are "
-                rf"$e^{{{coef:.4f}}} = {exp_beta:.4f}$.**"
+                f"the z-score of the estimated probability that {response_original} ≠ '{ref_level}' "
+                f"is {coef:.4f}.**"
             )
 
         elif term.startswith("C("):
@@ -213,25 +214,21 @@ def run():
             reference = reference_dict.get(var_name, "reference")
 
             interpretation = (
-                f"**For observations where {var_name} = {level}, "
-                f"the estimated odds of {response} = 1 are "
-                rf"$e^{{{coef:.4f}}}\cdot 100\% = {exp_beta * 100:.2f}\%$ "
-                f"of that for {var_name} = {reference}.**"
+                f"**The z-score of the estimated probability of the collaborative approach "
+                f"in companies with {level} is larger by {coef:.4f} than that in companies "
+                f"with {reference}.**"
             )
 
         else:
 
-            percent_change = (exp_beta - 1) * 100
-
-            if percent_change >= 0:
-                direction = "larger"
+            if coef >= 0:
+                direction = "increases"
             else:
-                direction = "smaller"
+                direction = "decreases"
 
             interpretation = (
-                f"**If {term} were larger by one unit, then the estimated odds of {response} = 1 "
-                f"would be {direction} by "
-                rf"$\displaystyle (e^{{{coef:.4f}}} - 1)\cdot 100\% = {abs(percent_change):.2f}\%$.**"
+                f"**For every additional unit of {term}, the z-score of the estimated "
+                f"probability of the collaborative strategy {direction} by {abs(coef):.4f}.**"
             )
 
         st.markdown(interpretation)
@@ -243,7 +240,7 @@ def run():
             st.success("Statistically significant.")
         else:
             st.warning("Not statistically significant.")
-    
+
     # ======================================================
     # 8️⃣ PREDICTION
     # ======================================================
