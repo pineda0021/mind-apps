@@ -288,6 +288,11 @@ def run():
     # 7️⃣ INTERPRETATION
     # ======================================================
 
+
+    # ======================================================
+    # 7️⃣ INTERPRETATION
+    # ======================================================
+
     st.header("4️⃣ Interpretation of Coefficients")
 
     params = res.params
@@ -315,28 +320,38 @@ def run():
         for term in params.index:
             if term == "const":
                 continue
+
             if pvalues.loc[term, col] <= 0.05:
-                if "_" in term and any(term.startswith(f"{v}_") for v in categorical_vars):
-                    significant_terms.append(term.split("_", 1)[0])
-                else:
+                matched_categorical = False
+
+                for v in categorical_vars:
+                    if term.startswith(f"{v}_"):
+                        significant_terms.append(v)
+                        matched_categorical = True
+                        break
+
+                if not matched_categorical:
                     significant_terms.append(term)
 
         significant_terms = list(dict.fromkeys(significant_terms))
 
         if significant_terms:
             if len(significant_terms) == 1:
-                sig_text = f"{significant_terms[0].capitalize()} is a significant predictor"
+                sig_text = f"**{significant_terms[0].capitalize()} is a significant predictor**"
             elif len(significant_terms) == 2:
-                sig_text = f"{significant_terms[0].capitalize()} and {significant_terms[1]} are significant predictors"
+                sig_text = (
+                    f"**{significant_terms[0].capitalize()} and "
+                    f"{significant_terms[1]} are significant predictors**"
+                )
             else:
                 sig_text = (
-                    f"{', '.join(significant_terms[:-1])}, and {significant_terms[-1]} "
-                    f"are significant predictors"
+                    f"**{', '.join(significant_terms[:-1]).capitalize()}, and "
+                    f"{significant_terms[-1]} are significant predictors**"
                 )
 
             st.markdown(
-                f"**{sig_text} of odds in favor of {category_label} versus {reference_level}, "
-                f"since their $p$-values are less than 0.05.**"
+                f"{sig_text} of the odds in favor of **{category_label}** versus "
+                f"**{reference_level}**, since their $p$-values are less than 0.05."
             )
         else:
             st.markdown(
@@ -357,18 +372,24 @@ def run():
             st.markdown(f"### {term}")
 
             if term == "const":
-
                 st.markdown(
                     f"**When all predictors are at their reference levels or zero values, "
-                    f"the log-odds of choosing {category_label} rather than {reference_level} "
-                    f"is {coef:.4f}.**"
+                    f"the estimated log-odds of choosing {category_label} rather than "
+                    f"{reference_level} is {coef:.4f}.**"
                 )
 
-            elif "_" in term and any(term.startswith(f"{v}_") for v in categorical_vars):
+            elif any(term.startswith(f"{v}_") for v in categorical_vars):
 
-                var_name = term.split("_", 1)[0]
-                level = term.split("_", 1)[1]
-                reference = reference_dict.get(var_name, "reference")
+                var_name = None
+                level = None
+
+                for v in categorical_vars:
+                    if term.startswith(f"{v}_"):
+                        var_name = v
+                        level = term[len(v) + 1:]
+                        break
+
+                reference = reference_dict.get(var_name, "reference category")
 
                 st.markdown(
                     f"**For {var_name} = {level}, the estimated odds in favor of "
@@ -380,27 +401,25 @@ def run():
                 )
 
                 st.markdown(
-                    f"**of those for {reference}.**"
+                    f"**of the odds for {var_name} = {reference}.**"
                 )
 
             else:
-
                 if percent_change >= 0:
                     st.markdown(
-                        f"**As {term} increases by one unit, the estimated odds grow by:**"
+                        f"**As {term} increases by one unit, the estimated odds in favor of "
+                        f"{category_label} versus {reference_level} increase by:**"
+                    )
+                    st.latex(
+                        rf"(e^{{{coef:.4f}}}-1)\cdot 100\% = {percent_change:.2f}\%"
                     )
                 else:
                     st.markdown(
-                        f"**As {term} increases by one unit, the estimated odds change by:**"
+                        f"**As {term} increases by one unit, the estimated odds in favor of "
+                        f"{category_label} versus {reference_level} decrease by:**"
                     )
-
-                st.latex(
-                    rf"(e^{{{coef:.4f}}}-1)\cdot 100\% = {percent_change:.2f}\%"
-                )
-
-                if percent_change < 0:
-                    st.markdown(
-                        f"**that is, decrease by {abs(percent_change):.2f}%.**"
+                    st.latex(
+                        rf"(e^{{{coef:.4f}}}-1)\cdot 100\% = {percent_change:.2f}\%"
                     )
 
             st.write(f"Coefficient = {coef:.4f}")
@@ -411,6 +430,7 @@ def run():
                 st.success("Statistically significant.")
             else:
                 st.warning("Not statistically significant.")
+    
   
     # ======================================================
     # 8️⃣ PREDICTION
