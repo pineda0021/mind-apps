@@ -293,7 +293,6 @@ def run():
     st.subheader("Fitted Regression Equation (Full Model)")
     st.latex(build_equation(model, response))
 
-
     # ======================================================
     # 6️⃣ Interpretation
     # ======================================================
@@ -304,6 +303,8 @@ def run():
 
         coef = model.params[term]
         pval = model.pvalues[term]
+
+        st.subheader(term)
 
         if term == "Intercept":
             interpretation = (
@@ -316,17 +317,14 @@ def run():
                 f"transformed response by {coef:.4f}, holding other variables constant."
             )
 
-        significance = (
-            "Statistically significant."
-            if pval <= 0.05
-            else "Not statistically significant."
-        )
+        st.write(f"Coefficient = {coef:.4f}")
+        st.write(f"p-value = {pval:.4f}")
+        st.write(interpretation)
 
-        st.markdown(f"**{term}**  \n"
-                    f"- Coefficient: {coef:.4f}  \n"
-                    f"- p-value: {pval:.4f}  \n"
-                    f"- {interpretation}  \n"
-                    f"- {significance}")
+        if pval <= 0.05:
+            st.success("Significant")
+        else:
+            st.warning("Not significant")
 
     # ======================================================
     # 7️⃣ Prediction
