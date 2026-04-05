@@ -288,6 +288,144 @@ def run():
     # 7️⃣ INTERPRETATION
     # ======================================================
 
+    st.header("4️⃣ Interpretation of Coefficients")
+    
+    params = res.params
+    pvalues = res.pvalues
+    
+    category_labels = get_nonbaseline_labels(params.shape[1], ordered_response_levels)
+    
+    for j, col in enumerate(params.columns):
+    
+        if j < len(category_labels):
+            category_label = category_labels[j]
+        else:
+            category_label = f"Category {col}"
+    
+        if category_label == reference_level:
+            continue
+    
+        st.subheader(f"{category_label} vs {reference_level}")
+    
+        # -----------------------------------
+        # Summary of significant predictors
+        # -----------------------------------
+        significant_terms = []
+    
+        for term in params.index:
+            if term == "const":
+                continue
+    
+            if pvalues.loc[term, col] <= 0.05:
+                matched_categorical = False
+    
+                for v in categorical_vars:
+                    if term.startswith(f"{v}_"):
+                        significant_terms.append(v)
+                        matched_categorical = True
+                        break
+    
+                if not matched_categorical:
+                    significant_terms.append(term)
+    
+        significant_terms = list(dict.fromkeys(significant_terms))
+    
+        if significant_terms:
+            if len(significant_terms) == 1:
+                sig_text = f"**{significant_terms[0].capitalize()} is a significant predictor**"
+            elif len(significant_terms) == 2:
+                sig_text = (
+                    f"**{significant_terms[0].capitalize()} and "
+                    f"{significant_terms[1]} are significant predictors**"
+                )
+            else:
+                sig_text = (
+                    f"**{', '.join(significant_terms[:-1]).capitalize()}, and "
+                    f"{significant_terms[-1]} are significant predictors**"
+                )
+    
+            st.markdown(
+                f"{sig_text} of the odds in favor of **{category_label}** versus "
+                f"**{reference_level}**, since their $p$-values are less than 0.05."
+            )
+        else:
+            st.markdown(
+                f"**No predictors are statistically significant for the odds in favor of "
+                f"{category_label} versus {reference_level} at the 5% level.**"
+            )
+    
+        # -----------------------------------
+        # Term-by-term interpretations
+        # -----------------------------------
+        for term in params.index:
+    
+            coef = params.loc[term, col]
+            pval = pvalues.loc[term, col]
+            odds_ratio = np.exp(coef)
+            percent_change = (odds_ratio - 1) * 100
+    
+            st.markdown(f"### {term}")
+    
+            if term == "const":
+                st.markdown(
+                    f"**When all predictors are at their reference levels or zero values, "
+                    f"the estimated log-odds of choosing {category_label} rather than "
+                    f"{reference_level} is {coef:.4f}.**"
+                )
+    
+            elif any(term.startswith(f"{v}_") for v in categorical_vars):
+    
+                var_name = None
+                level = None
+    
+                for v in categorical_vars:
+                    if term.startswith(f"{v}_"):
+                        var_name = v
+                        level = term[len(v) + 1:]
+                        break
+    
+                reference = reference_dict.get(var_name, "reference category")
+    
+                st.markdown(
+                    f"**For {var_name} = {level}, the estimated odds in favor of "
+                    f"{category_label} versus {reference_level} are:**"
+                )
+    
+                st.latex(
+                    rf"e^{{{coef:.4f}}}\cdot 100\% = {odds_ratio * 100:.2f}\%"
+                )
+    
+                st.markdown(
+                    f"**of the odds for {var_name} = {reference}.**"
+                )
+    
+            else:
+                if percent_change >= 0:
+                    st.markdown(
+                        f"**As {term} increases by one unit, the estimated odds in favor of "
+                        f"{category_label} versus {reference_level} increase by:**"
+                    )
+                    st.latex(
+                        rf"(e^{{{coef:.4f}}}-1)\cdot 100\% = {percent_change:.2f}\%"
+                    )
+                else:
+                    st.markdown(
+                        f"**As {term} increases by one unit, the estimated odds in favor of "
+                        f"{category_label} versus {reference_level} decrease by:**"
+                    )
+                    st.latex(
+                        rf"(e^{{{coef:.4f}}}-1)\cdot 100\% = {percent_change:.2f}\%"
+                    )
+    
+            st.write(f"Coefficient = {coef:.4f}")
+            st.write(f"p-value = {pval:.4f}")
+            st.write(f"Odds Ratio = {odds_ratio:.4f}")
+    
+            if pval <= 0.05:
+                st.success("Statistically significant.")
+            else:
+                st.warning("Not statistically significant.")
+        
 
     # ======================================================
     # 7️⃣ INTERPRETATION
