@@ -23,8 +23,15 @@ def gain_color(x):
 
 def compute_df(df):
     df = df.copy()
+
+    # Ensure numeric stability after editing
+    df["Buy"] = pd.to_numeric(df["Buy"], errors="coerce")
+    df["Have"] = pd.to_numeric(df["Have"], errors="coerce")
+    df["Close"] = pd.to_numeric(df["Close"], errors="coerce")
+
     df["Total"] = df["Buy"] * df["Have"]
     df["Today"] = df["Close"] * df["Have"]
+
     return df
 
 def section_summary(df):
@@ -111,6 +118,7 @@ st.markdown("---")
 
 cypress_df, cypress_buy, cypress_today = show_section("Cypress", cypress_df, "cypress", invest_target=cypress_target)
 
+# Grant Summary
 grant_buy = csuf_buy + cypress_buy
 grant_today = csuf_today + cypress_today
 grant_diff = grant_today - grant_buy
