@@ -17,9 +17,15 @@ def gain_color(x):
 
 def compute_df(df):
     df = df.copy()
-    df["Buy"] = pd.to_numeric(df["Buy"], errors="coerce")
-    df["Have"] = pd.to_numeric(df["Have"], errors="coerce")
-    df["Close"] = pd.to_numeric(df["Close"], errors="coerce")
+
+    for col in ["Buy", "Have", "Close"]:
+        if col not in df.columns:
+            df[col] = 0
+
+    df["Buy"] = pd.to_numeric(df["Buy"], errors="coerce").fillna(0)
+    df["Have"] = pd.to_numeric(df["Have"], errors="coerce").fillna(0)
+    df["Close"] = pd.to_numeric(df["Close"], errors="coerce").fillna(0)
+
     df["Total"] = df["Buy"] * df["Have"]
     df["Today"] = df["Close"] * df["Have"]
     return df
@@ -41,7 +47,9 @@ def show_section(title, df, key, invest_target=None):
     )
 
     edited = compute_df(edited)
-    st.dataframe(edited, use_container_width=True)
+
+    display_cols = ["Ticker", "Buy", "Have", "Close", "Total", "Today"]
+    st.dataframe(edited[display_cols], use_container_width=True)
 
     buy_total, today_total, diff = section_summary(edited)
 
