@@ -1,16 +1,10 @@
 import streamlit as st
 import pandas as pd
 
-# ======================================================
-# PAGE SETUP
-# ======================================================
 st.set_page_config(page_title="Portfolio Tracker", layout="wide")
 st.title("📊 Portfolio Tracker")
 st.caption("Editable version")
 
-# ======================================================
-# HELPERS
-# ======================================================
 def money(x):
     return f"${x:,.2f}"
 
@@ -23,15 +17,11 @@ def gain_color(x):
 
 def compute_df(df):
     df = df.copy()
-
-    # Ensure numeric stability after editing
     df["Buy"] = pd.to_numeric(df["Buy"], errors="coerce")
     df["Have"] = pd.to_numeric(df["Have"], errors="coerce")
     df["Close"] = pd.to_numeric(df["Close"], errors="coerce")
-
     df["Total"] = df["Buy"] * df["Have"]
     df["Today"] = df["Close"] * df["Have"]
-
     return df
 
 def section_summary(df):
@@ -75,41 +65,32 @@ def show_section(title, df, key, invest_target=None):
 
     return edited, buy_total, today_total
 
-# ======================================================
-# DEFAULT DATA
-# ======================================================
 occ_df = pd.DataFrame([
     {"Ticker": "VBAIX", "Buy": 50.92, "Have": 23.0230, "Close": 50.17},
 ])
 
 csuf_df = pd.DataFrame([
     {"Ticker": "FXAIX", "Buy": 226.59, "Have": 25.6787, "Close": 229.32},
-    {"Ticker": "FXNAX", "Buy": 10.42,  "Have": 1694.75, "Close": 10.49},
-    {"Ticker": "VTIFX", "Buy": 28.70,  "Have": 204.75,  "Close": 28.76},
+    {"Ticker": "FXNAX", "Buy": 10.42, "Have": 1694.75, "Close": 10.49},
+    {"Ticker": "VTIFX", "Buy": 28.70, "Have": 204.75, "Close": 28.76},
 ])
 
 cypress_df = pd.DataFrame([
     {"Ticker": "FXAIX", "Buy": 226.59, "Have": 91.5840, "Close": 229.32},
-    {"Ticker": "FXNAX", "Buy": 10.42,  "Have": 2686.407, "Close": 10.49},
+    {"Ticker": "FXNAX", "Buy": 10.42, "Have": 2686.407, "Close": 10.49},
     {"Ticker": "VTSNX", "Buy": 160.93, "Have": 127.2164, "Close": 166.38},
 ])
 
 lacc_df = pd.DataFrame([
     {"Ticker": "FXAIX", "Buy": 226.59, "Have": 51.5224, "Close": 229.32},
-    {"Ticker": "FXNAX", "Buy": 10.42,  "Have": 3402.867, "Close": 10.49},
+    {"Ticker": "FXNAX", "Buy": 10.42, "Have": 3402.867, "Close": 10.49},
     {"Ticker": "VTSNX", "Buy": 160.93, "Have": 71.5681, "Close": 166.38},
 ])
 
-# ======================================================
-# SIDEBAR
-# ======================================================
 st.sidebar.header("Targets")
 occ_target = st.sidebar.number_input("OCC Invest Target", value=1184.77, step=1.0)
 cypress_target = st.sidebar.number_input("Cypress Invest Target", value=100031.60, step=1.0)
 
-# ======================================================
-# SECTIONS
-# ======================================================
 occ_df, occ_buy, occ_today = show_section("OCC", occ_df, "occ", invest_target=occ_target)
 st.markdown("---")
 
@@ -118,7 +99,6 @@ st.markdown("---")
 
 cypress_df, cypress_buy, cypress_today = show_section("Cypress", cypress_df, "cypress", invest_target=cypress_target)
 
-# Grant Summary
 grant_buy = csuf_buy + cypress_buy
 grant_today = csuf_today + cypress_today
 grant_diff = grant_today - grant_buy
@@ -137,9 +117,6 @@ st.markdown("---")
 
 lacc_df, lacc_buy, lacc_today = show_section("LACC", lacc_df, "lacc")
 
-# ======================================================
-# OVERALL SUMMARY
-# ======================================================
 overall_buy = occ_buy + csuf_buy + cypress_buy + lacc_buy
 overall_today = occ_today + csuf_today + cypress_today + lacc_today
 overall_diff = overall_today - overall_buy
