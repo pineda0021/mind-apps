@@ -19,6 +19,14 @@ def step_box(text: str):
         unsafe_allow_html=True,
     )
 
+# ---------- Input Helper ----------
+def parse_sample_text(sample_text: str):
+    try:
+        values = [float(i.strip()) for i in sample_text.split(",") if i.strip() != ""]
+        return np.array(values, dtype=float)
+    except ValueError:
+        return None
+
 # ---------- Critical Value Display ----------
 def display_critical_value(crit, tail, stat_label, dec):
     if tail == "left":
@@ -86,8 +94,7 @@ def f_tail_metrics(F, df1, df2, alpha, tail):
     else:
         crit_low = stats.f.ppf(alpha / 2, df1, df2)
         crit_high = stats.f.ppf(1 - alpha / 2, df1, df2)
-        p = 2 * min(stats.f.cdf(F, df1, df2),
-                    1 - stats.f.cdf(F, df1, df2))
+        p = 2 * min(stats.f.cdf(F, df1, df2), 1 - stats.f.cdf(F, df1, df2))
         reject = (F < crit_low) or (F > crit_high)
         return p, reject, (crit_low, crit_high)
 
@@ -122,20 +129,82 @@ def run_two_sample_tool():
     show_ci = st.checkbox("Show Confidence Interval (always two-tailed)")
 
     # ==========================================================
+    # TWO-PROPORTION Z-TEST
+    # ==========================================================
+    if test_choice == "Two-Proportion Z-Test":
+        x1 = st.number_input("x₁ (successes in Sample 1):", min_value=0, step=1)
+        n1 = st.number_input("n₁ (size of Sample 1):", min_value=1, step=1)
+        x2 = st.number_input("x₂ (successes in Sample 2):", min_value=0, step=1)
+        n2 = st.number_input("n₂ (size of Sample 2):", min_value=1, step=1)
+
+        if st.button("Calculate"):
+            if x1 > n1 or x2 > n2:
+                st.error("Each number of successes must be less than or equal to its sample size.")
+                return
+
+            p1 = x1 / n1
+            p2 = x2 / n2
+            p_pool = (x1 + x2) / (n1 + n2)
+
+            se_test = np.sqrt(p_pool * (1 - p_pool) * (1 / n1 + 1 / n2))
+            if se_test == 0:
+                st.error("Standard error is zero. Check your input values.")
+                return
+
+            z = (p1 - p2) / se_test
+            p_val, reject, crit = z_tail_metrics(z, alpha, tails)
+
+            st.markdown("### 📝 Result Summary")
+            display_critical_value(crit, tails, "z", dec)
+            st.markdown(f"• Sample Proportion 1 (p̂₁): {p1:.{dec}f}")
+            st.markdown(f"• Sample Proportion 2 (p̂₂): {p2:.{dec}f}")
+            st.markdown(f"• Pooled Proportion (p̂): {p_pool:.{dec}f}")
+            st.markdown(f"• Test Statistic (z): {z:.{dec}f}")
+            st.markdown(f"• P-value: {p_val:.{dec}f}")
+
+            if show_ci:
+                ci_message()
+                zcrit = stats.norm.ppf(1 - alpha / 2)
+                se_ci = np.sqrt((p1 * (1 - p1) / n1) + (p2 * (1 - p2) / n2))
+                ci_low = (p1 - p2) - zcrit * se_ci
+                ci_high = (p1 - p2) + zcrit * se_ci
+                st.markdown(
+                    f"• Confidence Interval ({100*(1-alpha):.0f}%): "
+                    f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
+                )
+
+            st.markdown(f"• Decision: {'✅ Reject H₀' if reject else '❌ Do not reject H₀'}")
+
+    # ==========================================================
     # PAIRED t-TEST (DATA)
     # ==========================================================
-    if test_choice == "Paired t-Test (Data)":
+    elif test_choice == "Paired t-Test (Data)":
         s1 = st.text_area("Sample 1:", "1,2,3")
         s2 = st.text_area("Sample 2:", "1,2,3")
 
         if st.button("Calculate"):
-            x1 = np.array([float(i) for i in s1.split(",")])
-            x2 = np.array([float(i) for i in s2.split(",")])
-            d = x1 - x2
+            x1 = parse_sample_text(s1)
+            x2 = parse_sample_text(s2)
 
+            if x1 is None or x2 is None:
+                st.error("Please enter valid numeric data separated by commas.")
+                return
+            if len(x1) != len(x2):
+                st.error("For a paired t-test, both samples must have the same length.")
+                return
+            if len(x1) < 2:
+                st.error("At least two paired observations are required.")
+                return
+
+            d = x1 - x2
             mean_d = np.mean(d)
             sd_d = np.std(d, ddof=1)
             se = sd_d / np.sqrt(len(d))
+
+            if se == 0:
+                st.error("Standard error is zero. The paired differences may all be identical.")
+                return
+
             tstat = mean_d / se
             df = len(d) - 1
 
@@ -143,6 +212,44 @@ def run_two_sample_tool():
 
             st.markdown("### 📝 Result Summary")
             display_critical_value(crit, tails, "t", dec)
+            st.markdown(f"• Mean Difference: {mean_d:.{dec}f}")
+            st.markdown(f"• Test Statistic (t): {tstat:.{dec}f}")
+            st.markdown(f"• P-value: {p_val:.{dec}f}")
+
+            if show_ci:
+                ci_message()
+                tcrit = stats.t.ppf(1 - alpha / 2, df)
+                ci_low = mean_d - tcrit * se
+                ci_high = mean_d + tcrit * se
+                st.markdown(
+                    f"• Confidence Interval ({100*(1-alpha):.0f}%): "
+                    f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
+                )
+
+            st.markdown(f"• Decision: {'✅ Reject H₀' if reject else '❌ Do not reject H₀'}")
+
+    # ==========================================================
+    # PAIRED t-TEST (SUMMARY)
+    # ==========================================================
+    elif test_choice == "Paired t-Test (Summary)":
+        n = st.number_input("n (number of pairs):", min_value=2, step=1)
+        mean_d = st.number_input("Mean of differences (d̄):", value=0.0)
+        sd_d = st.number_input("Standard deviation of differences (s_d):", min_value=0.0, value=1.0)
+
+        if st.button("Calculate"):
+            if sd_d == 0:
+                st.error("The standard deviation of differences must be greater than 0.")
+                return
+
+            se = sd_d / np.sqrt(n)
+            tstat = mean_d / se
+            df = n - 1
+
+            p_val, reject, crit = t_tail_metrics(tstat, df, alpha, tails)
+
+            st.markdown("### 📝 Result Summary")
+            display_critical_value(crit, tails, "t", dec)
+            st.markdown(f"• Mean Difference: {mean_d:.{dec}f}")
             st.markdown(f"• Test Statistic (t): {tstat:.{dec}f}")
             st.markdown(f"• P-value: {p_val:.{dec}f}")
 
@@ -166,22 +273,38 @@ def run_two_sample_tool():
         b = st.text_area("Sample 2:", "4,5,6")
 
         if st.button("Calculate"):
-            x1 = np.array([float(i) for i in a.split(",")])
-            x2 = np.array([float(i) for i in b.split(",")])
+            x1 = parse_sample_text(a)
+            x2 = parse_sample_text(b)
+
+            if x1 is None or x2 is None:
+                st.error("Please enter valid numeric data separated by commas.")
+                return
+            if len(x1) < 2 or len(x2) < 2:
+                st.error("Each sample must contain at least two observations.")
+                return
 
             m1, m2 = np.mean(x1), np.mean(x2)
             s1, s2 = np.std(x1, ddof=1), np.std(x2, ddof=1)
             n1, n2 = len(x1), len(x2)
 
-            se = np.sqrt(s1**2/n1 + s2**2/n2)
+            se = np.sqrt(s1**2 / n1 + s2**2 / n2)
+            if se == 0:
+                st.error("Standard error is zero. Check your sample data.")
+                return
+
             tstat = (m1 - m2) / se
-            df = (se**4) / (((s1**2/n1)**2)/(n1-1) + ((s2**2/n2)**2)/(n2-1))
+            df = (s1**2 / n1 + s2**2 / n2)**2 / (
+                ((s1**2 / n1)**2) / (n1 - 1) + ((s2**2 / n2)**2) / (n2 - 1)
+            )
 
             p_val, reject, crit = t_tail_metrics(tstat, df, alpha, tails)
 
             st.markdown("### 📝 Result Summary")
             display_critical_value(crit, tails, "t", dec)
+            st.markdown(f"• Sample Mean 1: {m1:.{dec}f}")
+            st.markdown(f"• Sample Mean 2: {m2:.{dec}f}")
             st.markdown(f"• Test Statistic (t): {tstat:.{dec}f}")
+            st.markdown(f"• Degrees of Freedom: {df:.{dec}f}")
             st.markdown(f"• P-value: {p_val:.{dec}f}")
 
             if show_ci:
@@ -197,40 +320,127 @@ def run_two_sample_tool():
             st.markdown(f"• Decision: {'✅ Reject H₀' if reject else '❌ Do not reject H₀'}")
 
     # ==========================================================
+    # INDEPENDENT t-TEST (SUMMARY, WELCH)
+    # ==========================================================
+    elif test_choice == "Independent t-Test (Summary, Welch)":
+        n1 = st.number_input("n₁:", min_value=2, step=1)
+        mean1 = st.number_input("x̄₁:", value=0.0)
+        s1 = st.number_input("s₁:", min_value=0.0, value=1.0)
+
+        n2 = st.number_input("n₂:", min_value=2, step=1)
+        mean2 = st.number_input("x̄₂:", value=0.0)
+        s2 = st.number_input("s₂:", min_value=0.0, value=1.0)
+
+        if st.button("Calculate"):
+            if s1 == 0 and s2 == 0:
+                st.error("At least one sample standard deviation must be greater than 0.")
+                return
+
+            se = np.sqrt(s1**2 / n1 + s2**2 / n2)
+            if se == 0:
+                st.error("Standard error is zero. Check your summary values.")
+                return
+
+            tstat = (mean1 - mean2) / se
+            df = (s1**2 / n1 + s2**2 / n2)**2 / (
+                ((s1**2 / n1)**2) / (n1 - 1) + ((s2**2 / n2)**2) / (n2 - 1)
+            )
+
+            p_val, reject, crit = t_tail_metrics(tstat, df, alpha, tails)
+
+            st.markdown("### 📝 Result Summary")
+            display_critical_value(crit, tails, "t", dec)
+            st.markdown(f"• Difference in Means: {(mean1 - mean2):.{dec}f}")
+            st.markdown(f"• Test Statistic (t): {tstat:.{dec}f}")
+            st.markdown(f"• Degrees of Freedom: {df:.{dec}f}")
+            st.markdown(f"• P-value: {p_val:.{dec}f}")
+
+            if show_ci:
+                ci_message()
+                tcrit = stats.t.ppf(1 - alpha / 2, df)
+                ci_low = (mean1 - mean2) - tcrit * se
+                ci_high = (mean1 - mean2) + tcrit * se
+                st.markdown(
+                    f"• Confidence Interval ({100*(1-alpha):.0f}%): "
+                    f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
+                )
+
+            st.markdown(f"• Decision: {'✅ Reject H₀' if reject else '❌ Do not reject H₀'}")
+
+    # ==========================================================
     # F-TESTS (DATA & SUMMARY)
     # ==========================================================
     elif test_choice in ["F-Test (Data)", "F-Test (Summary)"]:
         if test_choice == "F-Test (Data)":
             a = st.text_area("Sample 1:", "1,2,3")
             b = st.text_area("Sample 2:", "4,5,6")
-            x1 = np.array([float(i) for i in a.split(",")])
-            x2 = np.array([float(i) for i in b.split(",")])
-            s1, s2 = np.std(x1, ddof=1), np.std(x2, ddof=1)
-            df1, df2 = len(x1)-1, len(x2)-1
+
+            if st.button("Calculate"):
+                x1 = parse_sample_text(a)
+                x2 = parse_sample_text(b)
+
+                if x1 is None or x2 is None:
+                    st.error("Please enter valid numeric data separated by commas.")
+                    return
+                if len(x1) < 2 or len(x2) < 2:
+                    st.error("Each sample must contain at least two observations.")
+                    return
+
+                s1, s2 = np.std(x1, ddof=1), np.std(x2, ddof=1)
+                df1, df2 = len(x1) - 1, len(x2) - 1
+
+                if s2 == 0:
+                    st.error("The second sample standard deviation is zero, so F cannot be computed.")
+                    return
+
+                F = (s1**2) / (s2**2)
+                p_val, reject, crit = f_tail_metrics(F, df1, df2, alpha, tails)
+
+                st.markdown("### 📝 Result Summary")
+                if tails == "two":
+                    st.markdown(
+                        f"• Critical Values (Hypothesis Test): "
+                        f"({crit[0]:.{dec}f}, {crit[1]:.{dec}f})"
+                    )
+                else:
+                    st.markdown(f"• Critical Value (Hypothesis Test): {crit:.{dec}f}")
+
+                st.markdown(f"• Test Statistic (F): {F:.{dec}f}")
+                st.markdown(f"• P-value: {p_val:.{dec}f}")
+                st.markdown(f"• Decision: {'✅ Reject H₀' if reject else '❌ Do not reject H₀'}")
+
         else:
-            n1 = st.number_input("n₁:", 2, step=1)
-            s1 = st.number_input("s₁:", 1.0)
-            n2 = st.number_input("n₂:", 2, step=1)
-            s2 = st.number_input("s₂:", 1.0)
-            df1, df2 = n1-1, n2-1
+            n1 = st.number_input("n₁:", min_value=2, step=1)
+            s1 = st.number_input("s₁:", min_value=0.0, value=1.0)
+            n2 = st.number_input("n₂:", min_value=2, step=1)
+            s2 = st.number_input("s₂:", min_value=0.0, value=1.0)
 
-        if st.button("Calculate"):
-            F = (s1**2)/(s2**2)
-            p_val, reject, crit = f_tail_metrics(F, df1, df2, alpha, tails)
+            if st.button("Calculate"):
+                if s2 == 0:
+                    st.error("The second sample standard deviation must be greater than 0.")
+                    return
 
-            st.markdown("### 📝 Result Summary")
-            if tails == "two":
-                st.markdown(
-                    f"• Critical Values (Hypothesis Test): "
-                    f"({crit[0]:.{dec}f}, {crit[1]:.{dec}f})"
-                )
-            else:
-                st.markdown(f"• Critical Value (Hypothesis Test): {crit:.{dec}f}")
+                df1, df2 = n1 - 1, n2 - 1
+                F = (s1**2) / (s2**2)
+                p_val, reject, crit = f_tail_metrics(F, df1, df2, alpha, tails)
 
-            st.markdown(f"• Test Statistic (F): {F:.{dec}f}")
-            st.markdown(f"• P-value: {p_val:.{dec}f}")
-            st.markdown(f"• Decision: {'✅ Reject H₀' if reject else '❌ Do not reject H₀'}")
+                st.markdown("### 📝 Result Summary")
+                if tails == "two":
+                    st.markdown(
+                        f"• Critical Values (Hypothesis Test): "
+                        f"({crit[0]:.{dec}f}, {crit[1]:.{dec}f})"
+                    )
+                else:
+                    st.markdown(f"• Critical Value (Hypothesis Test): {crit:.{dec}f}")
+
+                st.markdown(f"• Test Statistic (F): {F:.{dec}f}")
+                st.markdown(f"• P-value: {p_val:.{dec}f}")
+                st.markdown(f"• Decision: {'✅ Reject H₀' if reject else '❌ Do not reject H₀'}")
 
 # ---------- RUN ----------
 if __name__ == "__main__":
     run_two_sample_tool()
+      
+         
+
+         
