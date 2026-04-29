@@ -135,7 +135,7 @@ def run_simple_regression_tool():
         # Hypotheses
         st.markdown("### 🧩 Hypotheses")
         st.latex(r"H_0: \beta_1 = 0")
-        st.latex(r"H_a: \beta_1 \neq 0")
+        st.latex(r"H_1: \beta_1 \neq 0")
 
         # Step 1: Correlation
         step_box("Step 1: Compute correlation and assess linearity")
