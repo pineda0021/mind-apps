@@ -1,6 +1,6 @@
 # ==========================================================
 # regression_analysis_tool.py
-# Updated for Universal Readability (Dark & Light Mode Safe)
+# Updated for Standard Streamlit Theme (No Forced Dark Mode)
 # Created by Professor Edward Pineda-Castro, Los Angeles City College
 # MIND: Statistics Visualizer Suite
 # ==========================================================
@@ -13,19 +13,12 @@ from scipy import stats
 import statsmodels.api as sm
 
 # ==========================================================
-# UNIVERSAL READABILITY COLORS
+# Standard Accent Color
 # ==========================================================
-BACKGROUND = "#2B2B2B"
-TEXT = "white"
 ACCENT = "#4da3ff"
 
-plt.rcParams.update({
-    "text.color": TEXT,
-    "axes.labelcolor": TEXT,
-    "xtick.color": TEXT,
-    "ytick.color": TEXT,
-    "axes.edgecolor": TEXT,
-})
+# Reset matplotlib to default readable settings
+plt.rcdefaults()
 
 # ==========================================================
 # Helper Step Box
@@ -34,12 +27,12 @@ def step_box(text):
     st.markdown(
         f"""
         <div style="
-            background-color:{BACKGROUND};
+            background-color:#f0f6ff;
             padding:12px;
             border-radius:10px;
             border-left:6px solid {ACCENT};
             margin-bottom:12px;">
-            <p style="color:{TEXT};margin:0;font-weight:bold;">{text}</p>
+            <p style="margin:0;font-weight:bold;color:black;">{text}</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -49,21 +42,13 @@ def step_box(text):
 # SIMPLE LINEAR REGRESSION
 # ==========================================================
 def run_simple_regression_tool():
-    # MAIN HEADER (Option B)
-    st.markdown(
-        f"<h1 style='color:{TEXT};'>🧠 MIND: Regression Analysis — Universal Readability</h1>",
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        f"<h2 style='color:{TEXT};'>📈 Simple Linear Regression</h2>",
-        unsafe_allow_html=True,
-    )
+    st.title("🧠 MIND: Regression Analysis")
+    st.subheader("📈 Simple Linear Regression")
 
     if "simple_reg" not in st.session_state:
         st.session_state.simple_reg = {}
 
-    st.markdown(f"<p style='color:{TEXT};'>This tool estimates the best-fitting line using the Ordinary Least Squares (OLS) method.</p>", unsafe_allow_html=True)
+    st.write("This tool estimates the best-fitting line using the Ordinary Least Squares (OLS) method.")
     st.latex(r"\hat{y} = b_0 + b_1x")
 
     # --- Inputs ---
@@ -80,7 +65,7 @@ def run_simple_regression_tool():
         try:
             df = pd.read_csv(uploaded_file) if uploaded_file.name.endswith(".csv") else pd.read_excel(uploaded_file)
 
-            st.markdown(f"<p style='color:{TEXT};'>📋 Data Preview</p>", unsafe_allow_html=True)
+            st.write("📋 Data Preview")
             st.dataframe(df.head(), use_container_width=True)
 
             num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
@@ -148,7 +133,7 @@ def run_simple_regression_tool():
         st.markdown("---")
 
         # Hypotheses
-        st.markdown(f"<h3 style='color:{TEXT};'>🧩 Hypotheses</h3>", unsafe_allow_html=True)
+        st.markdown("### 🧩 Hypotheses")
         st.latex(r"H_0: \beta_1 = 0")
         st.latex(r"H_a: \beta_1 \neq 0")
 
@@ -172,17 +157,13 @@ def run_simple_regression_tool():
         # Step 2: Regression Equation
         step_box("Step 2: Compute regression coefficients")
         st.latex(r"\hat{y} = b_0 + b_1x")
-        st.markdown(
-            f"<p style='color:{TEXT};'>Estimated model: ŷ = {round(intercept, decimals)} + {round(slope, decimals)}·x</p>",
-            unsafe_allow_html=True,
-        )
+        st.write(f"Estimated model: ŷ = {round(intercept, decimals)} + {round(slope, decimals)}·x")
         st.text(st.session_state.simple_reg["summary"])
 
         # Step 3: Regression Line Plot
         step_box("Step 3: Visualize regression line")
         order = np.argsort(x)
-        fig, ax = plt.subplots(facecolor=BACKGROUND)
-        fig.patch.set_facecolor(BACKGROUND)
+        fig, ax = plt.subplots()
 
         ax.scatter(x, y, color=ACCENT, label="Observed Data")
         ax.plot(x[order], y_pred[order], color="red", label="Regression Line")
@@ -190,21 +171,20 @@ def run_simple_regression_tool():
         ax.set_xlabel("X (Independent Variable)")
         ax.set_ylabel("Y (Dependent Variable)")
         ax.legend()
-        ax.grid(True, color="#555555")
+        ax.grid(True, alpha=0.3)
 
         st.pyplot(fig)
 
         # Step 4: Residual Plot
         step_box("Step 4: Analyze residuals for randomness")
-        fig2, ax2 = plt.subplots(facecolor=BACKGROUND)
-        fig2.patch.set_facecolor(BACKGROUND)
+        fig2, ax2 = plt.subplots()
 
         ax2.scatter(st.session_state.simple_reg["fitted_vals"], residuals, color=ACCENT)
         ax2.axhline(y=0, linestyle="--", color="red")
 
         ax2.set_xlabel("Fitted Values")
         ax2.set_ylabel("Residuals")
-        ax2.grid(True, color="#555555")
+        ax2.grid(True, alpha=0.3)
 
         st.pyplot(fig2)
 
@@ -231,17 +211,9 @@ def run_simple_regression_tool():
 # MULTIPLE REGRESSION
 # ==========================================================
 def run_multiple_regression_tool():
+    st.subheader("📊 Multiple Linear Regression")
 
-    st.markdown(
-        f"<h2 style='color:{TEXT};'>📊 Multiple Linear Regression</h2>",
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        f"<p style='color:{TEXT};'>This tool estimates a multiple regression model using the OLS method.</p>",
-        unsafe_allow_html=True,
-    )
-
+    st.write("This tool estimates a multiple regression model using the OLS method.")
     st.latex(r"\hat{y} = b_0 + b_1x_1 + b_2x_2 + \dots + b_kx_k")
 
     uploaded_file = st.file_uploader("📂 Upload CSV or Excel file", type=["csv", "xlsx"])
@@ -257,7 +229,7 @@ def run_multiple_regression_tool():
             if uploaded_file:
                 df = pd.read_csv(uploaded_file) if uploaded_file.name.endswith(".csv") else pd.read_excel(uploaded_file)
 
-                st.markdown(f"<p style='color:{TEXT};'>📋 Data Preview</p>", unsafe_allow_html=True)
+                st.write("📋 Data Preview")
                 st.dataframe(df.head(), use_container_width=True)
 
                 num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
@@ -286,23 +258,22 @@ def run_multiple_regression_tool():
             X = sm.add_constant(X)
             model = sm.OLS(y, X).fit()
 
-            st.markdown(f"<h3 style='color:{TEXT};'>📄 Regression Summary</h3>", unsafe_allow_html=True)
+            st.markdown("### 📄 Regression Summary")
             st.text(model.summary())
 
             # Residual Plot
-            st.markdown(f"<h3 style='color:{TEXT};'>📉 Residual Plot</h3>", unsafe_allow_html=True)
+            st.markdown("### 📉 Residual Plot")
             residuals = model.resid
             fitted = model.fittedvalues
 
-            fig, ax = plt.subplots(facecolor=BACKGROUND)
-            fig.patch.set_facecolor(BACKGROUND)
+            fig, ax = plt.subplots()
 
             ax.scatter(fitted, residuals, color=ACCENT)
             ax.axhline(0, linestyle="--", color="red")
 
             ax.set_xlabel("Fitted Values")
             ax.set_ylabel("Residuals")
-            ax.grid(True, color="#555555")
+            ax.grid(True, alpha=0.3)
 
             st.pyplot(fig)
 
@@ -312,5 +283,3 @@ def run_multiple_regression_tool():
 # ==========================================================
 # End of Module
 # ==========================================================
-
-
