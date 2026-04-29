@@ -2,13 +2,14 @@
 # chi_square_tests_tool.py
 # Created by Professor Edward Pineda-Castro, Los Angeles City College
 # Part of the MIND: Statistics Visualizer Suite
-# Updated for Dark/Light Mode + Example Preload
+# Updated with 5-Step Hypothesis Testing Format
 # ==========================================================
 
 import streamlit as st
 import numpy as np
-from scipy.stats import chi2
 import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.stats import chi2
 
 # ==========================================================
 # Helper Functions
@@ -38,30 +39,40 @@ def parse_matrix(input_text):
 # ==========================================================
 # Universal Step Box (Dark/Light Safe)
 # ==========================================================
-def step_box(text):
+def themed_box(text):
     st.markdown(
         f"""
-        <div style="
-            background-color:rgba(255,255,255,0.08);
-            padding:12px;
-            border-radius:10px;
-            border-left:5px solid #4aa3ff;
-            margin-bottom:12px;
-            color:inherit;
-        ">
-            <b>{text}</b>
-        </div>
+        <style>
+            .themed-box {{
+                padding: 12px;
+                border-radius: 10px;
+                margin-bottom: 12px;
+                border-left: 5px solid #4aa3ff;
+            }}
+            @media (prefers-color-scheme: light) {{
+                .themed-box {{
+                    background-color: #e6f3ff;
+                    color: black;
+                }}
+            }}
+            @media (prefers-color-scheme: dark) {{
+                .themed-box {{
+                    background-color: #2b2b2b;
+                    color: white;
+                }}
+            }}
+        </style>
+        <div class="themed-box"><b>{text}</b></div>
         """,
         unsafe_allow_html=True
     )
 
 
 # ==========================================================
-# Universal Decision Box (Matches One-Sample Style)
+# Universal Decision Box
 # ==========================================================
 def decision_box(reject: bool):
     if reject:
-        # GREEN ✅ Reject H0
         st.markdown(
             """
             <div style='display:flex; align-items:center; gap:8px;
@@ -74,7 +85,6 @@ def decision_box(reject: bool):
             unsafe_allow_html=True
         )
     else:
-        # RED ❌ Do not reject H0
         st.markdown(
             """
             <div style='display:flex; align-items:center; gap:8px;
@@ -89,15 +99,54 @@ def decision_box(reject: bool):
 
 
 # ==========================================================
+# Plot Helper
+# ==========================================================
+def plot_chi_square_rejection_region(chi2_stat, df, alpha):
+    fig, ax = plt.subplots(figsize=(8, 4))
+
+    reject_color = "#d62728"
+    accept_color = "#2ca02c"
+    curve_color = "black"
+    stat_color = "#1f77b4"
+
+    xmax = max(chi2.ppf(0.995, df), chi2_stat + 3)
+    x = np.linspace(0.001, xmax, 700)
+    y = chi2.pdf(x, df)
+
+    crit = chi2.ppf(1 - alpha, df)
+
+    x_accept = np.linspace(0.001, crit, 350)
+    y_accept = chi2.pdf(x_accept, df)
+    ax.fill_between(x_accept, y_accept, 0, color=accept_color, alpha=0.55, zorder=1)
+
+    x_reject = np.linspace(crit, xmax, 350)
+    y_reject = chi2.pdf(x_reject, df)
+    ax.fill_between(x_reject, y_reject, 0, color=reject_color, alpha=0.75, zorder=2)
+
+    ax.plot(x, y, color=curve_color, linewidth=2, zorder=3)
+    ax.axvline(crit, color="black", linestyle="--", linewidth=2, zorder=4)
+    ax.axvline(chi2_stat, color=stat_color, linestyle="-", linewidth=3, zorder=5)
+
+    ax.set_title(f"Classical Method: Chi-Square Rejection Region (df={df})")
+    ax.set_xlabel(r"$\chi^2$")
+    ax.set_ylabel("Density")
+    ax.grid(alpha=0.2)
+
+    st.pyplot(fig)
+    st.caption("🟥 Red = Reject H₀ region   |   🟩 Green = Do not reject H₀ region")
+
+
+# ==========================================================
 # Report Generator
 # ==========================================================
 def print_report(title, chi2_stat, p_value, crit_val, df, expected_matrix, alpha, decimals, observed=None):
+    reject = p_value <= alpha
 
     st.markdown(f"## {title}")
     st.markdown("---")
 
-    # Hypotheses
-    st.markdown("### 🧩 Hypotheses")
+    # Step 1: Hypotheses
+    themed_box("**Step 1: Hypotheses**")
     if "Goodness-of-Fit" in title:
         st.latex(r"H_0: \text{Observed frequencies follow the expected distribution}")
         st.latex(r"H_a: \text{Observed frequencies differ from the expected distribution}")
@@ -105,87 +154,105 @@ def print_report(title, chi2_stat, p_value, crit_val, df, expected_matrix, alpha
         st.latex(r"H_0: \text{The variables are independent}")
         st.latex(r"H_a: \text{The variables are dependent}")
 
-    # Step 1
-    step_box("**Step 1:** Compute the Chi-Squared Test Statistic")
+    # Step 2: Test Statistic
+    themed_box("**Step 2: Test Statistic**")
     st.latex(r"\chi^2 = \sum \frac{(O - E)^2}{E}")
     st.write(f"χ² = **{round_value(chi2_stat, decimals)}**")
-
-    # Step 2
-    step_box("**Step 2:** Degrees of Freedom")
     st.write(f"df = **{df}**")
 
-    # Step 3
-    step_box("**Step 3:** Critical Value & P-Value")
+    # Step 3: Classical Method
+    themed_box("**Step 3: Classical Method**")
     st.write(f"Critical value: **{round_value(crit_val, decimals)}**")
+    st.markdown(f"Decision rule: Reject H₀ if **χ² > {round_value(crit_val, decimals)}**.")
+    st.markdown(f"Observed test statistic: **χ² = {round_value(chi2_stat, decimals)}**")
+    st.markdown(f"Classical method decision: **{'Reject H₀' if reject else 'Do not reject H₀'}**")
+    plot_chi_square_rejection_region(chi2_stat, df, alpha)
+
+    # Step 4: P-value Approach
+    themed_box("**Step 4: P-value Approach**")
     st.write(f"P-value: **{round_value(p_value, decimals)}**")
+    st.write(f"α = **{round_value(alpha, decimals)}**")
+    st.markdown(f"P-value approach decision: **{'Reject H₀' if reject else 'Do not reject H₀'}**")
+    decision_box(reject=reject)
 
-    # Decision
-    step_box("**Step 4:** Decision Rule")
-    st.markdown(f"If **p ≤ α = {alpha}**, reject H₀.")
-    decision_box(reject=(p_value <= alpha))
+    # Step 5: Conclusion
+    themed_box("**Step 5: Conclusion**")
+    if "Goodness-of-Fit" in title:
+        if reject:
+            st.write("Since the p-value is less than α, we reject H₀. There is sufficient evidence that the observed frequencies do not follow the expected distribution.")
+        else:
+            st.write("Since the p-value is greater than or equal to α, we do not reject H₀. There is not sufficient evidence to conclude that the observed frequencies differ from the expected distribution.")
+    else:
+        if reject:
+            st.write("Since the p-value is less than α, we reject H₀. There is sufficient evidence of an association between the variables.")
+        else:
+            st.write("Since the p-value is greater than or equal to α, we do not reject H₀. There is not sufficient evidence of an association between the variables.")
 
-    # Step 5
-    step_box("**Step 5:** Expected Frequencies")
-    st.dataframe(np.round(expected_matrix, decimals))
+    # Extra instructional tables
+    themed_box("**Expected Frequencies**")
+    st.dataframe(pd.DataFrame(np.round(expected_matrix, decimals)))
 
-    # Step 6
     if observed is not None:
-        step_box("**Step 6:** Observed vs Expected Comparison")
+        themed_box("**Observed vs Expected Comparison**")
         comp = pd.DataFrame({
             "Observed (O)": observed.flatten(),
             "Expected (E)": expected_matrix.flatten(),
             "O−E": np.round(observed.flatten() - expected_matrix.flatten(), decimals),
-            "(O−E)²/E": np.round(((observed - expected_matrix)**2 / expected_matrix).flatten(), decimals)
+            "(O−E)²/E": np.round(((observed - expected_matrix) ** 2 / expected_matrix).flatten(), decimals)
         })
         st.dataframe(comp)
-
-    # Step 7
-    step_box("**Step 7:** Interpretation")
-    if p_value <= alpha:
-        msg = "Evidence suggests a **significant difference** / **association**."
-    else:
-        msg = "There is **not enough evidence** to claim a difference or association."
-    st.success(msg)
 
 
 # ==========================================================
 # Core Test Functions
 # ==========================================================
 def chi_squared_gof(observed, expected_pct, alpha, decimals):
-    observed = np.array(observed)
-    expected = np.array(expected_pct) * np.sum(observed)
-    chi2_stat = np.sum((observed - expected)**2 / expected)
+    observed = np.array(observed, dtype=float)
+    expected = np.array(expected_pct, dtype=float) * np.sum(observed)
+
+    chi2_stat = np.sum((observed - expected) ** 2 / expected)
     df = len(observed) - 1
     p_val = 1 - chi2.cdf(chi2_stat, df)
     crit_val = chi2.ppf(1 - alpha, df)
-    print_report("📊 Chi-Squared Goodness-of-Fit Test (Non-Uniform)",
-                 chi2_stat, p_val, crit_val, df, expected, alpha, decimals, observed)
+
+    print_report(
+        "📊 Chi-Squared Goodness-of-Fit Test (Non-Uniform)",
+        chi2_stat, p_val, crit_val, df, expected, alpha, decimals, observed
+    )
 
 
 def chi_squared_uniform(observed, alpha, decimals):
-    observed = np.array(observed)
+    observed = np.array(observed, dtype=float)
     k = len(observed)
     expected = np.full(k, np.sum(observed) / k)
-    chi2_stat = np.sum((observed - expected)**2 / expected)
+
+    chi2_stat = np.sum((observed - expected) ** 2 / expected)
     df = k - 1
     p_val = 1 - chi2.cdf(chi2_stat, df)
     crit_val = chi2.ppf(1 - alpha, df)
-    print_report("📈 Chi-Squared Goodness-of-Fit Test (Uniform)",
-                 chi2_stat, p_val, crit_val, df, expected, alpha, decimals, observed)
+
+    print_report(
+        "📈 Chi-Squared Goodness-of-Fit Test (Uniform)",
+        chi2_stat, p_val, crit_val, df, expected, alpha, decimals, observed
+    )
 
 
 def chi_squared_independence(matrix, alpha, decimals):
-    observed = np.array(matrix)
+    observed = np.array(matrix, dtype=float)
     row_totals = observed.sum(axis=1)
     col_totals = observed.sum(axis=0)
     total = observed.sum()
+
     expected = np.outer(row_totals, col_totals) / total
-    chi2_stat = np.sum((observed - expected)**2 / expected)
+    chi2_stat = np.sum((observed - expected) ** 2 / expected)
     df = (observed.shape[0] - 1) * (observed.shape[1] - 1)
     p_val = 1 - chi2.cdf(chi2_stat, df)
     crit_val = chi2.ppf(1 - alpha, df)
-    print_report("🔢 Chi-Squared Test of Independence / Homogeneity",
-                 chi2_stat, p_val, crit_val, df, expected, alpha, decimals, observed)
+
+    print_report(
+        "🔢 Chi-Squared Test of Independence / Homogeneity",
+        chi2_stat, p_val, crit_val, df, expected, alpha, decimals, observed
+    )
 
 
 # ==========================================================
@@ -223,10 +290,25 @@ def run():
             try:
                 observed = list(map(float, obs.replace(",", " ").split()))
                 expected = list(map(float, exp.replace(",", " ").split()))
+
+                if len(observed) != len(expected):
+                    st.error("Observed and expected lists must have the same length.")
+                    return
+
                 if not np.isclose(sum(expected), 1.0):
                     st.error("Expected percentages must sum to 1.0.")
-                else:
-                    chi_squared_gof(observed, expected, alpha, decimals)
+                    return
+
+                if any(v <= 0 for v in observed):
+                    st.error("Observed frequencies must be positive.")
+                    return
+
+                if any(v <= 0 for v in expected):
+                    st.error("Expected percentages must all be positive.")
+                    return
+
+                chi_squared_gof(observed, expected, alpha, decimals)
+
             except Exception as e:
                 st.error(str(e))
 
@@ -239,7 +321,13 @@ def run():
         if st.button("▶️ Run Uniform GOF"):
             try:
                 observed = list(map(float, obs.replace(",", " ").split()))
+
+                if any(v <= 0 for v in observed):
+                    st.error("Observed frequencies must be positive.")
+                    return
+
                 chi_squared_uniform(observed, alpha, decimals)
+
             except Exception as e:
                 st.error(str(e))
 
@@ -247,13 +335,21 @@ def run():
     # CHI-SQUARE — INDEPENDENCE
     # ------------------------------------------------------
     elif test_choice == "Chi-Square Test of Independence / Homogeneity":
-        mat = st.text_area("Enter contingency table:", 
-                           value="10, 20, 30\n15, 25, 35")
+        mat = st.text_area(
+            "Enter contingency table:",
+            value="10, 20, 30\n15, 25, 35"
+        )
 
         if st.button("▶️ Run Test of Independence"):
             try:
                 matrix = parse_matrix(mat)
+
+                if np.any(matrix <= 0):
+                    st.error("All observed counts must be positive.")
+                    return
+
                 chi_squared_independence(matrix, alpha, decimals)
+
             except Exception as e:
                 st.error(str(e))
 
@@ -265,4 +361,3 @@ if __name__ == "__main__":
     run()
 
 run_chi_square_tool = run
-
