@@ -98,26 +98,30 @@ def plot_continuous_rejection_region(dist_name, df, stat, alpha, tails, crit_val
         ax.plot(x, y)
         ax.set_title("Classical Method: Rejection Region (Z Distribution)")
 
+        # Green base = do not reject region
+        ax.fill_between(x, y, color="green", alpha=0.15)
+
+        # Red = rejection region
         if tails == "left":
             crit = crit_vals
             xx = np.linspace(-4, crit, 200)
-            ax.fill_between(xx, norm.pdf(xx), alpha=0.3)
+            ax.fill_between(xx, norm.pdf(xx), color="red", alpha=0.35)
             ax.axvline(crit, linestyle="--")
         elif tails == "right":
             crit = crit_vals
             xx = np.linspace(crit, 4, 200)
-            ax.fill_between(xx, norm.pdf(xx), alpha=0.3)
+            ax.fill_between(xx, norm.pdf(xx), color="red", alpha=0.35)
             ax.axvline(crit, linestyle="--")
         else:
             left, right = crit_vals
             xx1 = np.linspace(-4, left, 200)
             xx2 = np.linspace(right, 4, 200)
-            ax.fill_between(xx1, norm.pdf(xx1), alpha=0.3)
-            ax.fill_between(xx2, norm.pdf(xx2), alpha=0.3)
+            ax.fill_between(xx1, norm.pdf(xx1), color="red", alpha=0.35)
+            ax.fill_between(xx2, norm.pdf(xx2), color="red", alpha=0.35)
             ax.axvline(left, linestyle="--")
             ax.axvline(right, linestyle="--")
 
-        ax.axvline(stat, linestyle="-")
+        ax.axvline(stat, linestyle="-", linewidth=2)
         ax.set_xlabel("z")
 
     elif dist_name == "t":
@@ -126,26 +130,30 @@ def plot_continuous_rejection_region(dist_name, df, stat, alpha, tails, crit_val
         ax.plot(x, y)
         ax.set_title(f"Classical Method: Rejection Region (t Distribution, df={df})")
 
+        # Green base = do not reject region
+        ax.fill_between(x, y, color="green", alpha=0.15)
+
+        # Red = rejection region
         if tails == "left":
             crit = crit_vals
             xx = np.linspace(-5, crit, 200)
-            ax.fill_between(xx, t.pdf(xx, df), alpha=0.3)
+            ax.fill_between(xx, t.pdf(xx, df), color="red", alpha=0.35)
             ax.axvline(crit, linestyle="--")
         elif tails == "right":
             crit = crit_vals
             xx = np.linspace(crit, 5, 200)
-            ax.fill_between(xx, t.pdf(xx, df), alpha=0.3)
+            ax.fill_between(xx, t.pdf(xx, df), color="red", alpha=0.35)
             ax.axvline(crit, linestyle="--")
         else:
             left, right = crit_vals
             xx1 = np.linspace(-5, left, 200)
             xx2 = np.linspace(right, 5, 200)
-            ax.fill_between(xx1, t.pdf(xx1, df), alpha=0.3)
-            ax.fill_between(xx2, t.pdf(xx2, df), alpha=0.3)
+            ax.fill_between(xx1, t.pdf(xx1, df), color="red", alpha=0.35)
+            ax.fill_between(xx2, t.pdf(xx2, df), color="red", alpha=0.35)
             ax.axvline(left, linestyle="--")
             ax.axvline(right, linestyle="--")
 
-        ax.axvline(stat, linestyle="-")
+        ax.axvline(stat, linestyle="-", linewidth=2)
         ax.set_xlabel("t")
 
     elif dist_name == "chi2":
@@ -154,29 +162,34 @@ def plot_continuous_rejection_region(dist_name, df, stat, alpha, tails, crit_val
         ax.plot(x, y)
         ax.set_title(f"Classical Method: Rejection Region (Chi-Square Distribution, df={df})")
 
+        # Green base = do not reject region
+        ax.fill_between(x, y, color="green", alpha=0.15)
+
+        # Red = rejection region
         if tails == "left":
             crit = crit_vals
             xx = np.linspace(0, crit, 200)
-            ax.fill_between(xx, chi2.pdf(xx, df), alpha=0.3)
+            ax.fill_between(xx, chi2.pdf(xx, df), color="red", alpha=0.35)
             ax.axvline(crit, linestyle="--")
         elif tails == "right":
             crit = crit_vals
             xx = np.linspace(crit, max(20, stat + 5), 200)
-            ax.fill_between(xx, chi2.pdf(xx, df), alpha=0.3)
+            ax.fill_between(xx, chi2.pdf(xx, df), color="red", alpha=0.35)
             ax.axvline(crit, linestyle="--")
         else:
             left, right = crit_vals
             xx1 = np.linspace(0, left, 200)
             xx2 = np.linspace(right, max(20, stat + 5), 200)
-            ax.fill_between(xx1, chi2.pdf(xx1, df), alpha=0.3)
-            ax.fill_between(xx2, chi2.pdf(xx2, df), alpha=0.3)
+            ax.fill_between(xx1, chi2.pdf(xx1, df), color="red", alpha=0.35)
+            ax.fill_between(xx2, chi2.pdf(xx2, df), color="red", alpha=0.35)
             ax.axvline(left, linestyle="--")
             ax.axvline(right, linestyle="--")
 
-        ax.axvline(stat, linestyle="-")
+        ax.axvline(stat, linestyle="-", linewidth=2)
         ax.set_xlabel(r"$\chi^2$")
 
     st.pyplot(fig)
+    st.caption("🟥 Red = Reject H₀ region   |   🟩 Green = Do not reject H₀ region")
 
 
 def plot_binomial_tail(n, p0, x_obs, tails):
@@ -184,21 +197,32 @@ def plot_binomial_tail(n, p0, x_obs, tails):
     probs = binom.pmf(xs, n, p0)
 
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.bar(xs, probs)
+
+    # Default all bars GREEN
+    colors = ["green"] * len(xs)
+
+    # Rejection region RED
+    if tails == "left":
+        for i in range(len(xs)):
+            if xs[i] <= x_obs:
+                colors[i] = "red"
+    elif tails == "right":
+        for i in range(len(xs)):
+            if xs[i] >= x_obs:
+                colors[i] = "red"
+    else:
+        center_prob = binom.pmf(x_obs, n, p0)
+        for i in range(len(xs)):
+            if probs[i] <= center_prob + 1e-15:
+                colors[i] = "red"
+
+    ax.bar(xs, probs, color=colors)
     ax.set_title("Classical Method / Exact Binomial Picture")
     ax.set_xlabel("x")
     ax.set_ylabel("P(X = x)")
 
-    if tails == "left":
-        mask = xs <= x_obs
-    elif tails == "right":
-        mask = xs >= x_obs
-    else:
-        center_prob = binom.pmf(x_obs, n, p0)
-        mask = probs <= center_prob + 1e-15
-
-    ax.bar(xs[mask], probs[mask])
     st.pyplot(fig)
+    st.caption("🟥 Red = Reject H₀ region   |   🟩 Green = Do not reject H₀ region")
 
 
 # ==========================================================
