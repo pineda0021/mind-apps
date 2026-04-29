@@ -85,109 +85,178 @@ def conclusion_text(reject, context_reject, context_fail):
         return f"Since the p-value is less than α, we reject H₀. {context_reject}"
     return f"Since the p-value is greater than or equal to α, we do not reject H₀. {context_fail}"
 
-
 # ==========================================================
 # Plot Helpers
 # ==========================================================
 def plot_continuous_rejection_region(dist_name, df, stat, alpha, tails, crit_vals):
     fig, ax = plt.subplots(figsize=(8, 4))
 
+    reject_color = "#d62728"      # strong red
+    accept_color = "#2ca02c"      # strong green
+    curve_color = "black"
+    stat_color = "#1f77b4"
+
     if dist_name == "z":
         x = np.linspace(-4, 4, 500)
         y = norm.pdf(x)
-        ax.plot(x, y)
         ax.set_title("Classical Method: Rejection Region (Z Distribution)")
+        ax.set_xlabel("z")
 
-        # Green base = do not reject region
-        ax.fill_between(x, y, color="green", alpha=0.15)
-
-        # Red = rejection region
         if tails == "left":
             crit = crit_vals
-            xx = np.linspace(-4, crit, 200)
-            ax.fill_between(xx, norm.pdf(xx), color="red", alpha=0.35)
-            ax.axvline(crit, linestyle="--")
+
+            x_accept = np.linspace(crit, 4, 300)
+            y_accept = norm.pdf(x_accept)
+            ax.fill_between(x_accept, y_accept, 0, color=accept_color, alpha=0.55, zorder=1)
+
+            x_reject = np.linspace(-4, crit, 300)
+            y_reject = norm.pdf(x_reject)
+            ax.fill_between(x_reject, y_reject, 0, color=reject_color, alpha=0.75, zorder=2)
+
+            ax.axvline(crit, color="black", linestyle="--", linewidth=2, zorder=4)
+
         elif tails == "right":
             crit = crit_vals
-            xx = np.linspace(crit, 4, 200)
-            ax.fill_between(xx, norm.pdf(xx), color="red", alpha=0.35)
-            ax.axvline(crit, linestyle="--")
+
+            x_accept = np.linspace(-4, crit, 300)
+            y_accept = norm.pdf(x_accept)
+            ax.fill_between(x_accept, y_accept, 0, color=accept_color, alpha=0.55, zorder=1)
+
+            x_reject = np.linspace(crit, 4, 300)
+            y_reject = norm.pdf(x_reject)
+            ax.fill_between(x_reject, y_reject, 0, color=reject_color, alpha=0.75, zorder=2)
+
+            ax.axvline(crit, color="black", linestyle="--", linewidth=2, zorder=4)
+
         else:
             left, right = crit_vals
-            xx1 = np.linspace(-4, left, 200)
-            xx2 = np.linspace(right, 4, 200)
-            ax.fill_between(xx1, norm.pdf(xx1), color="red", alpha=0.35)
-            ax.fill_between(xx2, norm.pdf(xx2), color="red", alpha=0.35)
-            ax.axvline(left, linestyle="--")
-            ax.axvline(right, linestyle="--")
 
-        ax.axvline(stat, linestyle="-", linewidth=2)
-        ax.set_xlabel("z")
+            x_reject_left = np.linspace(-4, left, 300)
+            y_reject_left = norm.pdf(x_reject_left)
+            ax.fill_between(x_reject_left, y_reject_left, 0, color=reject_color, alpha=0.75, zorder=2)
+
+            x_accept = np.linspace(left, right, 300)
+            y_accept = norm.pdf(x_accept)
+            ax.fill_between(x_accept, y_accept, 0, color=accept_color, alpha=0.55, zorder=1)
+
+            x_reject_right = np.linspace(right, 4, 300)
+            y_reject_right = norm.pdf(x_reject_right)
+            ax.fill_between(x_reject_right, y_reject_right, 0, color=reject_color, alpha=0.75, zorder=2)
+
+            ax.axvline(left, color="black", linestyle="--", linewidth=2, zorder=4)
+            ax.axvline(right, color="black", linestyle="--", linewidth=2, zorder=4)
+
+        ax.plot(x, y, color=curve_color, linewidth=2, zorder=3)
+        ax.axvline(stat, color=stat_color, linestyle="-", linewidth=3, zorder=5)
 
     elif dist_name == "t":
         x = np.linspace(-5, 5, 500)
         y = t.pdf(x, df)
-        ax.plot(x, y)
         ax.set_title(f"Classical Method: Rejection Region (t Distribution, df={df})")
-
-        # Green base = do not reject region
-        ax.fill_between(x, y, color="green", alpha=0.15)
-
-        # Red = rejection region
-        if tails == "left":
-            crit = crit_vals
-            xx = np.linspace(-5, crit, 200)
-            ax.fill_between(xx, t.pdf(xx, df), color="red", alpha=0.35)
-            ax.axvline(crit, linestyle="--")
-        elif tails == "right":
-            crit = crit_vals
-            xx = np.linspace(crit, 5, 200)
-            ax.fill_between(xx, t.pdf(xx, df), color="red", alpha=0.35)
-            ax.axvline(crit, linestyle="--")
-        else:
-            left, right = crit_vals
-            xx1 = np.linspace(-5, left, 200)
-            xx2 = np.linspace(right, 5, 200)
-            ax.fill_between(xx1, t.pdf(xx1, df), color="red", alpha=0.35)
-            ax.fill_between(xx2, t.pdf(xx2, df), color="red", alpha=0.35)
-            ax.axvline(left, linestyle="--")
-            ax.axvline(right, linestyle="--")
-
-        ax.axvline(stat, linestyle="-", linewidth=2)
         ax.set_xlabel("t")
 
-    elif dist_name == "chi2":
-        x = np.linspace(0, max(20, stat + 5), 500)
-        y = chi2.pdf(x, df)
-        ax.plot(x, y)
-        ax.set_title(f"Classical Method: Rejection Region (Chi-Square Distribution, df={df})")
-
-        # Green base = do not reject region
-        ax.fill_between(x, y, color="green", alpha=0.15)
-
-        # Red = rejection region
         if tails == "left":
             crit = crit_vals
-            xx = np.linspace(0, crit, 200)
-            ax.fill_between(xx, chi2.pdf(xx, df), color="red", alpha=0.35)
-            ax.axvline(crit, linestyle="--")
+
+            x_accept = np.linspace(crit, 5, 300)
+            y_accept = t.pdf(x_accept, df)
+            ax.fill_between(x_accept, y_accept, 0, color=accept_color, alpha=0.55, zorder=1)
+
+            x_reject = np.linspace(-5, crit, 300)
+            y_reject = t.pdf(x_reject, df)
+            ax.fill_between(x_reject, y_reject, 0, color=reject_color, alpha=0.75, zorder=2)
+
+            ax.axvline(crit, color="black", linestyle="--", linewidth=2, zorder=4)
+
         elif tails == "right":
             crit = crit_vals
-            xx = np.linspace(crit, max(20, stat + 5), 200)
-            ax.fill_between(xx, chi2.pdf(xx, df), color="red", alpha=0.35)
-            ax.axvline(crit, linestyle="--")
+
+            x_accept = np.linspace(-5, crit, 300)
+            y_accept = t.pdf(x_accept, df)
+            ax.fill_between(x_accept, y_accept, 0, color=accept_color, alpha=0.55, zorder=1)
+
+            x_reject = np.linspace(crit, 5, 300)
+            y_reject = t.pdf(x_reject, df)
+            ax.fill_between(x_reject, y_reject, 0, color=reject_color, alpha=0.75, zorder=2)
+
+            ax.axvline(crit, color="black", linestyle="--", linewidth=2, zorder=4)
+
         else:
             left, right = crit_vals
-            xx1 = np.linspace(0, left, 200)
-            xx2 = np.linspace(right, max(20, stat + 5), 200)
-            ax.fill_between(xx1, chi2.pdf(xx1, df), color="red", alpha=0.35)
-            ax.fill_between(xx2, chi2.pdf(xx2, df), color="red", alpha=0.35)
-            ax.axvline(left, linestyle="--")
-            ax.axvline(right, linestyle="--")
 
-        ax.axvline(stat, linestyle="-", linewidth=2)
+            x_reject_left = np.linspace(-5, left, 300)
+            y_reject_left = t.pdf(x_reject_left, df)
+            ax.fill_between(x_reject_left, y_reject_left, 0, color=reject_color, alpha=0.75, zorder=2)
+
+            x_accept = np.linspace(left, right, 300)
+            y_accept = t.pdf(x_accept, df)
+            ax.fill_between(x_accept, y_accept, 0, color=accept_color, alpha=0.55, zorder=1)
+
+            x_reject_right = np.linspace(right, 5, 300)
+            y_reject_right = t.pdf(x_reject_right, df)
+            ax.fill_between(x_reject_right, y_reject_right, 0, color=reject_color, alpha=0.75, zorder=2)
+
+            ax.axvline(left, color="black", linestyle="--", linewidth=2, zorder=4)
+            ax.axvline(right, color="black", linestyle="--", linewidth=2, zorder=4)
+
+        ax.plot(x, y, color=curve_color, linewidth=2, zorder=3)
+        ax.axvline(stat, color=stat_color, linestyle="-", linewidth=3, zorder=5)
+
+    elif dist_name == "chi2":
+        xmax = max(20, stat + 5)
+        x = np.linspace(0, xmax, 500)
+        y = chi2.pdf(x, df)
+        ax.set_title(f"Classical Method: Rejection Region (Chi-Square Distribution, df={df})")
         ax.set_xlabel(r"$\chi^2$")
 
+        if tails == "left":
+            crit = crit_vals
+
+            x_reject = np.linspace(0, crit, 300)
+            y_reject = chi2.pdf(x_reject, df)
+            ax.fill_between(x_reject, y_reject, 0, color=reject_color, alpha=0.75, zorder=2)
+
+            x_accept = np.linspace(crit, xmax, 300)
+            y_accept = chi2.pdf(x_accept, df)
+            ax.fill_between(x_accept, y_accept, 0, color=accept_color, alpha=0.55, zorder=1)
+
+            ax.axvline(crit, color="black", linestyle="--", linewidth=2, zorder=4)
+
+        elif tails == "right":
+            crit = crit_vals
+
+            x_accept = np.linspace(0, crit, 300)
+            y_accept = chi2.pdf(x_accept, df)
+            ax.fill_between(x_accept, y_accept, 0, color=accept_color, alpha=0.55, zorder=1)
+
+            x_reject = np.linspace(crit, xmax, 300)
+            y_reject = chi2.pdf(x_reject, df)
+            ax.fill_between(x_reject, y_reject, 0, color=reject_color, alpha=0.75, zorder=2)
+
+            ax.axvline(crit, color="black", linestyle="--", linewidth=2, zorder=4)
+
+        else:
+            left, right = crit_vals
+
+            x_reject_left = np.linspace(0, left, 300)
+            y_reject_left = chi2.pdf(x_reject_left, df)
+            ax.fill_between(x_reject_left, y_reject_left, 0, color=reject_color, alpha=0.75, zorder=2)
+
+            x_accept = np.linspace(left, right, 300)
+            y_accept = chi2.pdf(x_accept, df)
+            ax.fill_between(x_accept, y_accept, 0, color=accept_color, alpha=0.55, zorder=1)
+
+            x_reject_right = np.linspace(right, xmax, 300)
+            y_reject_right = chi2.pdf(x_reject_right, df)
+            ax.fill_between(x_reject_right, y_reject_right, 0, color=reject_color, alpha=0.75, zorder=2)
+
+            ax.axvline(left, color="black", linestyle="--", linewidth=2, zorder=4)
+            ax.axvline(right, color="black", linestyle="--", linewidth=2, zorder=4)
+
+        ax.plot(x, y, color=curve_color, linewidth=2, zorder=3)
+        ax.axvline(stat, color=stat_color, linestyle="-", linewidth=3, zorder=5)
+
+    ax.grid(alpha=0.2)
     st.pyplot(fig)
     st.caption("🟥 Red = Reject H₀ region   |   🟩 Green = Do not reject H₀ region")
 
@@ -196,34 +265,34 @@ def plot_binomial_tail(n, p0, x_obs, tails):
     xs = np.arange(0, n + 1)
     probs = binom.pmf(xs, n, p0)
 
-    fig, ax = plt.subplots(figsize=(8, 4))
+    reject_color = "#d62728"
+    accept_color = "#2ca02c"
 
-    # Default all bars GREEN
-    colors = ["green"] * len(xs)
+    colors = [accept_color] * len(xs)
 
-    # Rejection region RED
     if tails == "left":
         for i in range(len(xs)):
             if xs[i] <= x_obs:
-                colors[i] = "red"
+                colors[i] = reject_color
     elif tails == "right":
         for i in range(len(xs)):
             if xs[i] >= x_obs:
-                colors[i] = "red"
+                colors[i] = reject_color
     else:
         center_prob = binom.pmf(x_obs, n, p0)
         for i in range(len(xs)):
             if probs[i] <= center_prob + 1e-15:
-                colors[i] = "red"
+                colors[i] = reject_color
 
-    ax.bar(xs, probs, color=colors)
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.bar(xs, probs, color=colors, edgecolor="black", linewidth=1.0)
     ax.set_title("Classical Method / Exact Binomial Picture")
     ax.set_xlabel("x")
     ax.set_ylabel("P(X = x)")
+    ax.grid(axis="y", alpha=0.2)
 
     st.pyplot(fig)
     st.caption("🟥 Red = Reject H₀ region   |   🟩 Green = Do not reject H₀ region")
-
 
 # ==========================================================
 # Main App
