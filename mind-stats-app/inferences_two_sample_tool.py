@@ -364,27 +364,18 @@ def run_two_sample_tool():
     )
 
     tails = st.selectbox("Tail type:", ["two", "left", "right"])
+
     show_ci = st.checkbox("Show Confidence Interval (always two-tailed)")
     if show_ci:
-        use_alpha_for_ci = st.checkbox(
-            "Use hypothesis α to determine CI level automatically",
-            value=True
+        ci_conf_level = st.number_input(
+            "Enter Confidence Interval confidence level (0–1):",
+            min_value=0.001,
+            max_value=0.999,
+            value=0.995,
+            step=0.001,
+            format="%.3f"
         )
-
-        if use_alpha_for_ci:
-            ci_alpha = alpha
-            ci_conf_level = 1 - ci_alpha
-            st.caption(f"Confidence level for CI = {ci_conf_level:.3f}")
-        else:
-            ci_conf_level = st.number_input(
-                "Enter Confidence level (0–1):",
-                min_value=0.001,
-                max_value=0.999,
-                value=0.995,
-                step=0.001,
-                format="%.3f"
-            )
-            ci_alpha = 1 - ci_conf_level
+        ci_alpha = 1 - ci_conf_level
 
     show_picture = st.checkbox("Show Classical Method picture", value=True)
 
