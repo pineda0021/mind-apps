@@ -356,6 +356,16 @@ def run_two_sample_tool():
     alpha = st.number_input("Significance level (α):", 0.001, 0.5, 0.05, step=0.01)
     tails = st.selectbox("Tail type:", ["two", "left", "right"])
     show_ci = st.checkbox("Show Confidence Interval (always two-tailed)")
+    if show_ci:
+        ci_conf_level = st.number_input(
+            "Confidence level for CI (0–1):",
+            min_value=0.001,
+            max_value=0.999,
+            value=0.995,
+            step=0.001,
+            format="%.3f"
+        )
+        ci_alpha = 1 - ci_conf_level
     show_picture = st.checkbox("Show Classical Method picture", value=True)
 
     # ==========================================================
@@ -452,12 +462,12 @@ def run_two_sample_tool():
 
             if show_ci:
                 ci_message()
-                zcrit = stats.norm.ppf(1 - alpha / 2)
+                zcrit = stats.norm.ppf(1 - ci_alpha / 2)
                 se_ci = np.sqrt((p1 * (1 - p1) / n1) + (p2 * (1 - p2) / n2))
                 ci_low = (p1 - p2) - zcrit * se_ci
                 ci_high = (p1 - p2) + zcrit * se_ci
                 st.markdown(
-                    f"• Confidence Interval ({100*(1-alpha):.0f}%): "
+                    f"• Confidence Interval ({100*ci_conf_level:.1f}%): "
                     f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
                 )
 
@@ -561,11 +571,11 @@ def run_two_sample_tool():
 
             if show_ci:
                 ci_message()
-                tcrit = stats.t.ppf(1 - alpha / 2, df)
+                tcrit = stats.t.ppf(1 - ci_alpha / 2, df)
                 ci_low = mean_d - tcrit * se
                 ci_high = mean_d + tcrit * se
                 st.markdown(
-                    f"• Confidence Interval ({100*(1-alpha):.0f}%): "
+                    f"• Confidence Interval ({100*ci_conf_level:.1f}%): "
                     f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
                 )
 
@@ -653,11 +663,11 @@ def run_two_sample_tool():
 
             if show_ci:
                 ci_message()
-                tcrit = stats.t.ppf(1 - alpha / 2, df)
+                tcrit = stats.t.ppf(1 - ci_alpha / 2, df)
                 ci_low = mean_d - tcrit * se
                 ci_high = mean_d + tcrit * se
                 st.markdown(
-                    f"• Confidence Interval ({100*(1-alpha):.0f}%): "
+                    f"• Confidence Interval ({100*ci_conf_level:.1f}%): "
                     f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
                 )
 
@@ -764,11 +774,11 @@ def run_two_sample_tool():
 
             if show_ci:
                 ci_message()
-                tcrit = stats.t.ppf(1 - alpha / 2, df)
+                tcrit = stats.t.ppf(1 - ci_alpha / 2, df)
                 ci_low = (m1 - m2) - tcrit * se
                 ci_high = (m1 - m2) + tcrit * se
                 st.markdown(
-                    f"• Confidence Interval ({100*(1-alpha):.0f}%): "
+                    f"• Confidence Interval ({100*ci_conf_level:.1f}%): "
                     f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
                 )
 
@@ -869,11 +879,11 @@ def run_two_sample_tool():
 
             if show_ci:
                 ci_message()
-                tcrit = stats.t.ppf(1 - alpha / 2, df)
+                tcrit = stats.t.ppf(1 - ci_alpha / 2, df)
                 ci_low = (mean1 - mean2) - tcrit * se
                 ci_high = (mean1 - mean2) + tcrit * se
                 st.markdown(
-                    f"• Confidence Interval ({100*(1-alpha):.0f}%): "
+                    f"• Confidence Interval ({100*ci_conf_level:.1f}%): "
                     f"({ci_low:.{dec}f}, {ci_high:.{dec}f})"
                 )
 
