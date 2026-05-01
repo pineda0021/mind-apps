@@ -406,13 +406,22 @@ def run_two_sample_tool():
             h0, h1 = get_tail_hypotheses(r"p_1 - p_2", tails)
 
             st.markdown("### 📘 Step-by-Step Solution")
-
+            if tails == "left":
+                h0 = r"H_0: p_1 = p_2"
+                h1 = r"H_1: p_1 < p_2"
+            elif tails == "right":
+                h0 = r"H_0: p_1 = p_2"
+                h1 = r"H_1: p_1 > p_2"
+            else:
+                h0 = r"H_0: p_1 = p_2"
+                h1 = r"H_1: p_1 \ne p_2"
+            
             themed_box("**Step 1: Hypotheses**")
             st.latex(h0)
             st.latex(h1)
-
+            
             themed_box("**Step 2: Test Statistic**")
-            st.latex(r"z = \frac{(\hat{p}_1 - \hat{p}_2) - 0}{\sqrt{\hat{p}(1-\hat{p})\left(\frac{1}{n_1}+\frac{1}{n_2}\right)}}")
+            st.latex(r"z = \frac{(\hat{p}_1 - \hat{p}_2)}{\sqrt{\hat{p}(1-\hat{p})\left(\frac{1}{n_1}+\frac{1}{n_2}\right)}}")
             st.latex(fr"\hat{{p}}_1 = \frac{{{x1}}}{{{n1}}} = {p1:.{dec}f}")
             st.latex(fr"\hat{{p}}_2 = \frac{{{x2}}}{{{n2}}} = {p2:.{dec}f}")
             st.latex(fr"\hat{{p}} = \frac{{x_1+x_2}}{{n_1+n_2}} = \frac{{{x1}+{x2}}}{{{n1}+{n2}}} = {p_pool:.{dec}f}")
