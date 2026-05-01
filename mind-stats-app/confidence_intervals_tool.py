@@ -3,6 +3,7 @@
 # Created by Professor Edward Pineda-Castro, Los Angeles City College
 # MIND: Statistics Visualizer Suite
 # Updated with Dark/Light Mode Safe Interpretation Boxes
+# Improved Step-by-Step Pedagogical Format
 # ==========================================================
 
 import streamlit as st
@@ -125,25 +126,37 @@ def run():
                 return
 
             p_hat = x / n
+            alpha = 1 - conf
             z = stats.norm.ppf((1 + conf) / 2)
             se = np.sqrt(p_hat * (1 - p_hat) / n)
             moe = z * se
             lower, upper = p_hat - moe, p_hat + moe
 
             st.subheader("Step-by-Step Solution")
-            st.markdown("**Step 1:** Compute sample proportion")
-            st.latex(fr"\hat{{p}} = {p_hat:.{decimal}f}")
 
-            st.markdown("**Step 2:** Find critical value")
+            st.markdown("**Step 1: Identify the confidence interval formula**")
+            st.latex(r"\hat{p} \pm z_{\alpha/2}\sqrt{\frac{\hat{p}(1-\hat{p})}{n}}")
+
+            st.markdown("**Step 2: Compute the sample proportion**")
+            st.latex(fr"\hat{{p}} = \frac{{x}}{{n}} = \frac{{{x}}}{{{n}}} = {p_hat:.{decimal}f}")
+
+            st.markdown("**Step 3: Compute α and the critical value**")
+            st.latex(fr"\alpha = 1 - {conf:.3f} = {alpha:.{decimal}f}")
+            st.latex(fr"\alpha/2 = {alpha/2:.{decimal}f}")
             st.latex(fr"z_{{\alpha/2}} = {z:.{decimal}f}")
 
-            st.markdown("**Step 3:** Standard error")
-            st.latex(fr"SE = {se:.{decimal}f}")
+            st.markdown("**Step 4: Compute the standard error**")
+            st.latex(fr"SE = \sqrt{{\frac{{\hat{{p}}(1-\hat{{p}})}}{{n}}}}")
+            st.latex(
+                fr"SE = \sqrt{{\frac{{({p_hat:.{decimal}f})(1-{p_hat:.{decimal}f})}}{{{n}}}}} = {se:.{decimal}f}"
+            )
 
-            st.markdown("**Step 4:** Margin of error")
-            st.latex(fr"E = {moe:.3f}")
+            st.markdown("**Step 5: Compute the margin of error**")
+            st.latex(fr"E = z_{{\alpha/2}} \cdot SE")
+            st.latex(fr"E = ({z:.{decimal}f})({se:.{decimal}f}) = {moe:.{decimal}f}")
 
-            st.markdown("**Step 5:** Final CI")
+            st.markdown("**Step 6: Construct the confidence interval**")
+            st.latex(fr"\hat{{p}} \pm E = {p_hat:.{decimal}f} \pm {moe:.{decimal}f}")
             st.latex(fr"({lower:.{decimal}f},\; {upper:.{decimal}f})")
 
             interpretation_box(
@@ -168,18 +181,30 @@ def run():
 
         if st.button("👨‍💻 Calculate"):
 
+            alpha = 1 - conf
             z = stats.norm.ppf((1 + conf) / 2)
             n_req = p_est * (1 - p_est) * (z / E) ** 2
             n_round = int(np.ceil(n_req))
 
             st.subheader("Step-by-Step Solution")
-            st.markdown("**Step 1:** Critical value")
-            st.latex(fr"z = {z:.{decimal}f}")
 
-            st.markdown("**Step 2:** Compute required n")
+            st.markdown("**Step 1: Identify the sample size formula**")
+            st.latex(r"n = \hat{p}(1-\hat{p})\left(\frac{z_{\alpha/2}}{E}\right)^2")
+
+            st.markdown("**Step 2: Compute α and the critical value**")
+            st.latex(fr"\alpha = 1 - {conf:.3f} = {alpha:.{decimal}f}")
+            st.latex(fr"\alpha/2 = {alpha/2:.{decimal}f}")
+            st.latex(fr"z_{{\alpha/2}} = {z:.{decimal}f}")
+
+            st.markdown("**Step 3: Substitute the known values**")
+            st.latex(
+                fr"n = ({p_est:.{decimal}f})(1-{p_est:.{decimal}f})\left(\frac{{{z:.{decimal}f}}}{{{E:.{decimal}f}}}\right)^2"
+            )
+
+            st.markdown("**Step 4: Compute the required sample size**")
             st.latex(fr"n = {n_req:.{decimal}f}")
 
-            st.markdown("**Step 3:** Round up")
+            st.markdown("**Step 5: Round up to the next whole number**")
             st.latex(fr"n = {n_round}")
 
             interpretation_box(
@@ -204,22 +229,35 @@ def run():
 
         if st.button("👨‍💻 Calculate"):
 
+            alpha = 1 - conf
             z = stats.norm.ppf((1 + conf) / 2)
             se = sigma / np.sqrt(n)
             moe = z * se
             lower, upper = mean - moe, mean + moe
 
-            st.subheader("Step-by-Step")
-            st.markdown("**Step 1:** Critical z-value")
-            st.latex(fr"z = {z:.{decimal}f}")
+            st.subheader("Step-by-Step Solution")
 
-            st.markdown("**Step 2:** Standard error")
-            st.latex(fr"SE = {se:.{decimal}f}")
+            st.markdown("**Step 1: Identify the confidence interval formula**")
+            st.latex(r"\bar{X} \pm z_{\alpha/2}\left(\frac{\sigma}{\sqrt{n}}\right)")
 
-            st.markdown("**Step 3:** Margin of error")
-            st.latex(fr"E = {moe:.3f}")
+            st.markdown("**Step 2: List the known values**")
+            st.latex(fr"\bar{{x}} = {mean:.{decimal}f}, \quad \sigma = {sigma:.{decimal}f}, \quad n = {n}")
 
-            st.markdown("**Step 4:** Final CI")
+            st.markdown("**Step 3: Compute α and the critical value**")
+            st.latex(fr"\alpha = 1 - {conf:.3f} = {alpha:.{decimal}f}")
+            st.latex(fr"\alpha/2 = {alpha/2:.{decimal}f}")
+            st.latex(fr"z_{{\alpha/2}} = {z:.{decimal}f}")
+
+            st.markdown("**Step 4: Compute the standard error**")
+            st.latex(r"SE = \frac{\sigma}{\sqrt{n}}")
+            st.latex(fr"SE = \frac{{{sigma:.{decimal}f}}}{{\sqrt{{{n}}}}} = {se:.{decimal}f}")
+
+            st.markdown("**Step 5: Compute the margin of error**")
+            st.latex(r"E = z_{\alpha/2}\left(\frac{\sigma}{\sqrt{n}}\right)")
+            st.latex(fr"E = ({z:.{decimal}f})({se:.{decimal}f}) = {moe:.{decimal}f}")
+
+            st.markdown("**Step 6: Construct the confidence interval**")
+            st.latex(fr"\bar{{x}} \pm E = {mean:.{decimal}f} \pm {moe:.{decimal}f}")
             st.latex(fr"({lower:.{decimal}f}, {upper:.{decimal}f})")
 
             interpretation_box(
@@ -245,22 +283,38 @@ def run():
         if st.button("👨‍💻 Calculate"):
 
             df = int(n - 1)
+            alpha = 1 - conf
             tcrit = stats.t.ppf((1 + conf) / 2, df)
             se = s / np.sqrt(n)
             moe = tcrit * se
             lower, upper = mean - moe, mean + moe
 
-            st.subheader("Step-by-Step")
-            st.markdown("**Step 1:** t critical value")
-            st.latex(fr"t_{{df}} = {tcrit:.{decimal}f}")
+            st.subheader("Step-by-Step Solution")
 
-            st.markdown("**Step 2:** Compute SE")
-            st.latex(fr"SE = {se:.{decimal}f}")
+            st.markdown("**Step 1: Identify the confidence interval formula**")
+            st.latex(r"\bar{X} \pm t_{\alpha/2,\,n-1}\left(\frac{s}{\sqrt{n}}\right)")
 
-            st.markdown("**Step 3:** MOE")
-            st.latex(fr"E = {moe:.3f}")
+            st.markdown("**Step 2: List the known values**")
+            st.latex(fr"\bar{{x}} = {mean:.{decimal}f}, \quad s = {s:.{decimal}f}, \quad n = {n}")
 
-            st.markdown("**Step 4:** CI")
+            st.markdown("**Step 3: Compute the degrees of freedom**")
+            st.latex(fr"df = n - 1 = {n} - 1 = {df}")
+
+            st.markdown("**Step 4: Compute α and the critical value**")
+            st.latex(fr"\alpha = 1 - {conf:.3f} = {alpha:.{decimal}f}")
+            st.latex(fr"\alpha/2 = {alpha/2:.{decimal}f}")
+            st.latex(fr"t_{{\alpha/2,{df}}} = {tcrit:.{decimal}f}")
+
+            st.markdown("**Step 5: Compute the standard error**")
+            st.latex(r"SE = \frac{s}{\sqrt{n}}")
+            st.latex(fr"SE = \frac{{{s:.{decimal}f}}}{{\sqrt{{{n}}}}} = {se:.{decimal}f}")
+
+            st.markdown("**Step 6: Compute the margin of error**")
+            st.latex(r"E = t_{\alpha/2,\,n-1}\left(\frac{s}{\sqrt{n}}\right)")
+            st.latex(fr"E = ({tcrit:.{decimal}f})({se:.{decimal}f}) = {moe:.{decimal}f}")
+
+            st.markdown("**Step 7: Construct the confidence interval**")
+            st.latex(fr"\bar{{x}} \pm E = {mean:.{decimal}f} \pm {moe:.{decimal}f}")
             st.latex(fr"({lower:.{decimal}f}, {upper:.{decimal}f})")
 
             interpretation_box(
@@ -299,24 +353,45 @@ def run():
             df = n - 1
             mean = np.mean(data)
             s = np.std(data, ddof=1)
+            alpha = 1 - conf
             tcrit = stats.t.ppf((1 + conf) / 2, df)
             se = s / np.sqrt(n)
             moe = tcrit * se
             lower, upper = mean - moe, mean + moe
 
-            st.subheader("Step-by-Step")
-            st.markdown("**Step 1:** Summary stats")
-            st.write(f"n={n}, x̄={mean:.{decimal}f}, s={s:.{decimal}f}")
+            st.subheader("Step-by-Step Solution")
 
-            st.markdown("**Step 2:** Critical value")
-            st.latex(fr"t = {tcrit:.{decimal}f}")
+            st.markdown("**Step 1: Identify the confidence interval formula**")
+            st.latex(r"\bar{X} \pm t_{\alpha/2,\,n-1}\left(\frac{s}{\sqrt{n}}\right)")
 
-            st.markdown("**Step 3:** Compute CI")
+            st.markdown("**Step 2: Compute the sample statistics**")
+            st.latex(fr"n = {n}")
+            st.latex(fr"\bar{{x}} = {mean:.{decimal}f}")
+            st.latex(fr"s = {s:.{decimal}f}")
+
+            st.markdown("**Step 3: Compute the degrees of freedom**")
+            st.latex(fr"df = n - 1 = {n} - 1 = {df}")
+
+            st.markdown("**Step 4: Compute α and find the critical value**")
+            st.latex(fr"\alpha = 1 - {conf:.3f} = {alpha:.{decimal}f}")
+            st.latex(fr"\alpha/2 = {alpha/2:.{decimal}f}")
+            st.latex(fr"t_{{\alpha/2,{df}}} = {tcrit:.{decimal}f}")
+
+            st.markdown("**Step 5: Compute the standard error**")
+            st.latex(r"SE = \frac{s}{\sqrt{n}}")
+            st.latex(fr"SE = \frac{{{s:.{decimal}f}}}{{\sqrt{{{n}}}}} = {se:.{decimal}f}")
+
+            st.markdown("**Step 6: Compute the margin of error**")
+            st.latex(r"E = t_{\alpha/2,\,n-1}\left(\frac{s}{\sqrt{n}}\right)")
+            st.latex(fr"E = ({tcrit:.{decimal}f})({se:.{decimal}f}) = {moe:.{decimal}f}")
+
+            st.markdown("**Step 7: Construct the confidence interval**")
+            st.latex(fr"\bar{{x}} \pm E = {mean:.{decimal}f} \pm {moe:.{decimal}f}")
             st.latex(fr"({lower:.{decimal}f}, {upper:.{decimal}f})")
 
             interpretation_box(
-                f"We are <b>{conf*100:.3f}% confident</b> that μ lies between "
-                f"<b>{lower:.{decimal}f}</b> and <b>{upper:.{decimal}f}</b>."
+                f"We are <b>{conf*100:.3f}% confident</b> that the population mean μ "
+                f"lies between <b>{lower:.{decimal}f}</b> and <b>{upper:.{decimal}f}</b>."
             )
 
     # ==========================================================
@@ -334,13 +409,28 @@ def run():
 
         if st.button("👨‍💻 Calculate"):
 
+            alpha = 1 - conf
             z = stats.norm.ppf((1 + conf) / 2)
             n_req = (z * sigma / E) ** 2
             n_round = int(np.ceil(n_req))
 
-            st.subheader("Step-by-Step")
-            st.latex(fr"z = {z:.{decimal}f}")
+            st.subheader("Step-by-Step Solution")
+
+            st.markdown("**Step 1: Identify the sample size formula**")
+            st.latex(r"n = \left(\frac{z_{\alpha/2}\sigma}{E}\right)^2")
+
+            st.markdown("**Step 2: Compute α and the critical value**")
+            st.latex(fr"\alpha = 1 - {conf:.3f} = {alpha:.{decimal}f}")
+            st.latex(fr"\alpha/2 = {alpha/2:.{decimal}f}")
+            st.latex(fr"z_{{\alpha/2}} = {z:.{decimal}f}")
+
+            st.markdown("**Step 3: Substitute the known values**")
+            st.latex(fr"n = \left(\frac{{({z:.{decimal}f})({sigma:.{decimal}f})}}{{{E:.{decimal}f}}}\right)^2")
+
+            st.markdown("**Step 4: Compute the required sample size**")
             st.latex(fr"n = {n_req:.{decimal}f}")
+
+            st.markdown("**Step 5: Round up to the next whole number**")
             st.latex(fr"n = {n_round}")
 
             interpretation_box(
@@ -379,6 +469,7 @@ def run():
         if st.button("👨‍💻 Calculate"):
 
             df = int(n - 1)
+            alpha = 1 - conf
             chi_lower = stats.chi2.ppf((1 - conf) / 2, df)
             chi_upper = stats.chi2.ppf(1 - (1 - conf) / 2, df)
 
@@ -388,17 +479,31 @@ def run():
             sd_lower = np.sqrt(var_lower)
             sd_upper = np.sqrt(var_upper)
 
-            st.subheader("Step-by-Step")
-            st.latex(fr"χ^2_{{lower}} = {chi_lower:.{decimal}f}")
-            st.latex(fr"χ^2_{{upper}} = {chi_upper:.{decimal}f}")
-            st.latex(fr"\text{{Var CI}} = ({var_lower:.{decimal}f}, {var_upper:.{decimal}f})")
-            st.latex(fr"\text{{SD CI}} = ({sd_lower:.{decimal}f}, {sd_upper:.{decimal}f})")
+            st.subheader("Step-by-Step Solution")
+
+            st.markdown("**Step 1: Identify the variance confidence interval formula**")
+            st.latex(r"\left(\frac{(n-1)s^2}{\chi^2_{upper}},\; \frac{(n-1)s^2}{\chi^2_{lower}}\right)")
+
+            st.markdown("**Step 2: List the known values**")
+            st.latex(fr"n = {n}, \quad df = n-1 = {df}, \quad s^2 = {s2:.{decimal}f}")
+
+            st.markdown("**Step 3: Compute α and the chi-square critical values**")
+            st.latex(fr"\alpha = 1 - {conf:.3f} = {alpha:.{decimal}f}")
+            st.latex(fr"\alpha/2 = {alpha/2:.{decimal}f}")
+            st.latex(fr"\chi^2_{{lower}} = {chi_lower:.{decimal}f}")
+            st.latex(fr"\chi^2_{{upper}} = {chi_upper:.{decimal}f}")
+
+            st.markdown("**Step 4: Compute the confidence interval for variance**")
+            st.latex(fr"\text{{Variance CI}} = \left({var_lower:.{decimal}f},\; {var_upper:.{decimal}f}\right)")
+
+            st.markdown("**Step 5: Compute the confidence interval for standard deviation**")
+            st.latex(fr"\text{{SD CI}} = \left({sd_lower:.{decimal}f},\; {sd_upper:.{decimal}f}\right)")
 
             interpretation_box(
-                f"Variance is between <b>{var_lower:.{decimal}f}</b> and "
-                f"<b>{var_upper:.{decimal}f}</b>. "
-                f"Standard deviation is between <b>{sd_lower:.{decimal}f}</b> and "
-                f"<b>{sd_upper:.{decimal}f}</b>."
+                f"We are <b>{conf*100:.3f}% confident</b> that the population variance "
+                f"lies between <b>{var_lower:.{decimal}f}</b> and <b>{var_upper:.{decimal}f}</b>, "
+                f"and that the population standard deviation lies between "
+                f"<b>{sd_lower:.{decimal}f}</b> and <b>{sd_upper:.{decimal}f}</b>."
             )
 
     # ==========================================================
@@ -432,6 +537,7 @@ def run():
             df = n - 1
             s2 = np.var(data, ddof=1)
             s = np.sqrt(s2)
+            alpha = 1 - conf
 
             chi_lower = stats.chi2.ppf((1 - conf) / 2, df)
             chi_upper = stats.chi2.ppf(1 - (1 - conf) / 2, df)
@@ -441,19 +547,31 @@ def run():
             sd_lower = np.sqrt(var_lower)
             sd_upper = np.sqrt(var_upper)
 
-            st.subheader("Step-by-Step")
-            st.write(f"n={n}, s²={s2:.{decimal}f}, s={s:.{decimal}f}")
+            st.subheader("Step-by-Step Solution")
 
-            st.latex(fr"χ^2_{{lower}} = {chi_lower:.{decimal}f}")
-            st.latex(fr"χ^2_{{upper}} = {chi_upper:.{decimal}f}")
-            st.latex(fr"\text{{Variance CI}} = ({var_lower:.{decimal}f}, {var_upper:.{decimal}f})")
-            st.latex(fr"\text{{SD CI}} = ({sd_lower:.{decimal}f}, {sd_upper:.{decimal}f})")
+            st.markdown("**Step 1: Compute the sample statistics**")
+            st.latex(fr"n = {n}")
+            st.latex(fr"df = n - 1 = {df}")
+            st.latex(fr"s^2 = {s2:.{decimal}f}")
+            st.latex(fr"s = {s:.{decimal}f}")
+
+            st.markdown("**Step 2: Compute α and the chi-square critical values**")
+            st.latex(fr"\alpha = 1 - {conf:.3f} = {alpha:.{decimal}f}")
+            st.latex(fr"\alpha/2 = {alpha/2:.{decimal}f}")
+            st.latex(fr"\chi^2_{{lower}} = {chi_lower:.{decimal}f}")
+            st.latex(fr"\chi^2_{{upper}} = {chi_upper:.{decimal}f}")
+
+            st.markdown("**Step 3: Compute the confidence interval for variance**")
+            st.latex(fr"\text{{Variance CI}} = \left({var_lower:.{decimal}f},\; {var_upper:.{decimal}f}\right)")
+
+            st.markdown("**Step 4: Compute the confidence interval for standard deviation**")
+            st.latex(fr"\text{{SD CI}} = \left({sd_lower:.{decimal}f},\; {sd_upper:.{decimal}f}\right)")
 
             interpretation_box(
                 f"We are <b>{conf*100:.3f}% confident</b> that the population "
                 f"variance lies between <b>{var_lower:.{decimal}f}</b> and "
-                f"<b>{var_upper:.{decimal}f}</b>, and deviation between "
-                f"<b>{sd_lower:.{decimal}f}</b> and <b>{sd_upper:.{decimal}f}</b>."
+                f"<b>{var_upper:.{decimal}f}</b>, and that the population standard deviation "
+                f"lies between <b>{sd_lower:.{decimal}f}</b> and <b>{sd_upper:.{decimal}f}</b>."
             )
 
 
