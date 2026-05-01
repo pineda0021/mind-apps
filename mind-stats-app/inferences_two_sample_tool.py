@@ -388,7 +388,7 @@ def run_two_sample_tool():
         x2 = st.number_input("x₂ (successes in Sample 2):", min_value=0, step=1)
         n2 = st.number_input("n₂ (size of Sample 2):", min_value=1, step=1)
 
-        if st.button("Calculate"):
+        if st.button("🧑‍💻 Calculate"):
             if x1 > n1 or x2 > n2:
                 st.error("Each number of successes must be less than or equal to its sample size.")
                 return
