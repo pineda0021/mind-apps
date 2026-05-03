@@ -388,7 +388,7 @@ def run_two_sample_tool():
         x2 = st.number_input("x₂ (successes in Sample 2):", min_value=0, step=1)
         n2 = st.number_input("n₂ (size of Sample 2):", min_value=1, step=1)
 
-        if st.button("🧑‍💻 Calculate"):
+        if st.button("▶️ Run Test"):
             if x1 > n1 or x2 > n2:
                 st.error("Each number of successes must be less than or equal to its sample size.")
                 return
@@ -500,7 +500,7 @@ def run_two_sample_tool():
         s1 = st.text_area("Sample 1:", "1,2,3")
         s2 = st.text_area("Sample 2:", "1,2,3")
 
-        if st.button("Calculate"):
+        if st.button("▶️ Run Test"):
             x1 = parse_sample_text(s1)
             x2 = parse_sample_text(s2)
 
@@ -609,7 +609,7 @@ def run_two_sample_tool():
         mean_d = st.number_input("Mean of differences (d̄):", value=0.0)
         sd_d = st.number_input("Standard deviation of differences (s_d):", min_value=0.0, value=1.0)
 
-        if st.button("Calculate"):
+        if st.button("▶️ Run Test"):
             if sd_d == 0:
                 st.error("The standard deviation of differences must be greater than 0.")
                 return
@@ -700,7 +700,7 @@ def run_two_sample_tool():
         a = st.text_area("Sample 1:", "1,2,3")
         b = st.text_area("Sample 2:", "4,5,6")
 
-        if st.button("Calculate"):
+        if st.button("▶️ Run Test"):
             x1 = parse_sample_text(a)
             x2 = parse_sample_text(b)
 
@@ -816,7 +816,7 @@ def run_two_sample_tool():
         mean2 = st.number_input("x̄₂:", value=0.0)
         s2 = st.number_input("s₂:", min_value=0.0, value=1.0)
 
-        if st.button("Calculate"):
+        if st.button("▶️ Run Test"):
             if s1 == 0 and s2 == 0:
                 st.error("At least one sample standard deviation must be greater than 0.")
                 return
@@ -917,7 +917,7 @@ def run_two_sample_tool():
             a = st.text_area("Sample 1:", "1,2,3")
             b = st.text_area("Sample 2:", "4,5,6")
 
-            if st.button("Calculate"):
+            if st.button("▶️ Run Test"):
                 x1 = parse_sample_text(a)
                 x2 = parse_sample_text(b)
 
@@ -1004,7 +1004,7 @@ def run_two_sample_tool():
             n2 = st.number_input("n₂:", min_value=2, step=1)
             s2 = st.number_input("s₂:", min_value=0.0, value=1.0)
 
-            if st.button("Calculate"):
+            if st.button("▶️ Run Test"):
                 if s2 == 0:
                     st.error("The second sample standard deviation must be greater than 0.")
                     return
