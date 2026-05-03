@@ -318,7 +318,7 @@ def run():
     elif test_choice == "Goodness-of-Fit Test (uniform distribution)":
         obs = st.text_area("Observed frequencies", value="10, 15, 20, 15, 10")
 
-        if st.button("▶️ Run Uniform GOF"):
+        if st.button("▶️ Run Test"):
             try:
                 observed = list(map(float, obs.replace(",", " ").split()))
 
@@ -340,7 +340,7 @@ def run():
             value="10, 20, 30\n15, 25, 35"
         )
 
-        if st.button("▶️ Run Test of Independence"):
+        if st.button("▶️ Run Test"):
             try:
                 matrix = parse_matrix(mat)
 
