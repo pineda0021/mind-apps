@@ -349,7 +349,7 @@ def run_hypothesis_tool():
         n = st.number_input("Sample size (n)", min_value=1, step=1)
         p0 = st.number_input("Null proportion (p₀)", min_value=0.0, max_value=1.0, format="%.6f")
 
-        if st.button("👨‍💻 Calculate"):
+        if st.button("▶️ Run Test"):
             if x > n:
                 st.error("x cannot be greater than n.")
                 return
@@ -534,7 +534,7 @@ def run_hypothesis_tool():
 
         mu0 = st.number_input("Null hypothesis mean (μ₀)", format="%.6f")
 
-        if st.button("👨‍💻 Calculate"):
+        if st.button("▶️ Run Test"):
             if test_choice == "t-test for population mean (raw data)":
                 if uploaded_data is not None:
                     data = uploaded_data
@@ -664,7 +664,7 @@ def run_hypothesis_tool():
 
         sigma0 = st.number_input("Population standard deviation (σ₀)", min_value=0.000001, format="%.6f")
 
-        if st.button("👨‍💻 Calculate"):
+        if st.button("▶️ Run Test"):
             if test_choice == "Chi-squared test for std dev (raw data)":
                 if uploaded_data is not None:
                     data = uploaded_data
