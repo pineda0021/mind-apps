@@ -824,7 +824,7 @@ def one_way_anova(
 def run():
 
     st.header(
-        "📊 One-Way ANOVA Test (Enhanced Version)"
+        "📊 One-Way ANOVA Test"
     )
 
     st.markdown(
