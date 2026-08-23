@@ -59,7 +59,7 @@ def run():
         x_input = st.text_input("Values of X (comma-separated):", "0,1,2,3")
         p_input = st.text_input("Probabilities P(X) (comma-separated):", "1/8,3/8,3/8,1/8")
 
-        if st.button("📊 Calculate Discrete Distribution"):
+        if st.button("👨‍💻 Calculate Discrete Distribution"):
 
             try:
                 X = np.array([float(x.strip()) for x in x_input.split(",")])
@@ -155,7 +155,7 @@ def run():
         elif "Full Table" not in calc:
             x = st.number_input("Enter x:", min_value=0, max_value=int(n))
 
-        if st.button("📊 Calculate Binomial"):
+        if st.button("👨‍💻 Calculate Binomial"):
 
             if calc == "Exactly: P(X = x)":
                 prob = binom.pmf(x, n, p)
@@ -246,7 +246,7 @@ def run():
         elif "Full Table" not in calc:
             x = st.number_input("Enter x:", min_value=0, max_value=int(x_max))
 
-        if st.button("📊 Calculate Poisson"):
+        if st.button("👨‍💻 Calculate Poisson"):
 
             if calc == "Exactly: P(X = x)":
                 st.success(f"P(X = {x}) = {round(poisson.pmf(x, lam), decimals)}")
