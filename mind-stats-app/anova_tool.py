@@ -129,25 +129,6 @@ def decision_box(reject: bool):
 
 
 # ==========================================================
-# Accessibility Function
-# ==========================================================
-def accessibility_summary(groups, decimals):
-    st.markdown("### ♿ Accessibility Summary (Text-Only Interpretation)")
-    for i, g in enumerate(groups):
-        st.markdown(
-            f"""
-**Group {i+1} Summary**
-- n = {len(g)}
-- Min = {np.min(g):.{decimals}f}
-- Q1 = {np.percentile(g, 25):.{decimals}f}
-- Median = {np.median(g):.{decimals}f}
-- Q3 = {np.percentile(g, 75):.{decimals}f}
-- Max = {np.max(g):.{decimals}f}
-"""
-        )
-
-
-# ==========================================================
 # Plot Helpers
 # ==========================================================
 def plot_horizontal_boxplots(groups):
