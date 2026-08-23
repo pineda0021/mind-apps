@@ -8,11 +8,6 @@
 import streamlit as st
 from math import comb, perm
 
-# ---------- Dark/Light Universal Styles ----------
-BACKGROUND = "#2B2B2B"       # Neutral dark gray background
-TEXT_COLOR = "white"          # Universal readable text
-ACCENT = "#4da3ff"            # Soft blue accent for borders
-
 
 # ---------- Helper for step display ----------
 def step_box(text):
