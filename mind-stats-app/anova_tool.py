@@ -16,34 +16,38 @@ from scipy.stats import f
 # Helper Functions
 # ==========================================================
 def themed_box(text):
+
+    # Remove Markdown ** symbols inside HTML box
+    text = text.replace("**", "")
+
     st.markdown(
         f"""
-        <style>
-            .themed-box {{
-                padding: 12px;
-                border-radius: 10px;
-                margin-bottom: 12px;
-                border-left: 5px solid #007acc;
-            }}
+<style>
+.themed-box {{
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    border-left: 5px solid #007acc;
+}}
 
-            @media (prefers-color-scheme: light) {{
-                .themed-box {{
-                    background-color: #e6f3ff;
-                    color: black;
-                }}
-            }}
+@media (prefers-color-scheme: light) {{
+    .themed-box {{
+        background-color: #e6f3ff;
+        color: black;
+    }}
+}}
 
-            @media (prefers-color-scheme: dark) {{
-                .themed-box {{
-                    background-color: #2b2b2b;
-                    color: white;
-                }}
-            }}
-        </style>
+@media (prefers-color-scheme: dark) {{
+    .themed-box {{
+        background-color: #2b2b2b;
+        color: white;
+    }}
+}}
+</style>
 
-        <div class="themed-box">
-            <b>{text}</b>
-        </div>
+<div class="themed-box">
+<b>{text}</b>
+</div>
         """,
         unsafe_allow_html=True,
     )
@@ -69,6 +73,7 @@ def parse_groups(input_text):
         ]
 
     except Exception as e:
+
         st.error(
             f"Error parsing groups: {e}"
         )
@@ -90,17 +95,10 @@ def load_uploaded_data():
     try:
 
         if uploaded_file.name.endswith(".csv"):
-
-            df = pd.read_csv(
-                uploaded_file
-            )
+            df = pd.read_csv(uploaded_file)
 
         else:
-
-            df = pd.read_excel(
-                uploaded_file
-            )
-
+            df = pd.read_excel(uploaded_file)
 
         st.write(
             "### 📄 Preview of Uploaded Data"
@@ -110,13 +108,12 @@ def load_uploaded_data():
             df.head()
         )
 
-
         lower_cols = [
             str(c).lower()
             for c in df.columns
         ]
 
-
+        # Long format
         if (
             df.shape[1] == 2
             and "group" in lower_cols
@@ -131,82 +128,54 @@ def load_uploaded_data():
                 lower_cols.index("value")
             ]
 
-
             groups = [
-
-                grp[value_col]
-                .dropna()
-                .tolist()
-
-                for _, grp
-                in df.groupby(group_col)
-
+                grp[value_col].dropna().tolist()
+                for _, grp in df.groupby(group_col)
             ]
 
-
             st.success(
-                "✅ Detected long format with "
-                "'Group' and 'Value' columns."
+                "✅ Detected long format with 'Group' and 'Value' columns."
             )
-
 
             return groups
 
-
+        # Wide format
         elif df.shape[1] >= 2:
 
             numeric_cols = [
-
                 col
                 for col in df.columns
-
-                if pd.api.types.is_numeric_dtype(
-                    df[col]
-                )
-
+                if pd.api.types.is_numeric_dtype(df[col])
             ]
-
 
             if len(numeric_cols) < 2:
 
                 st.error(
-                    "⚠️ Need at least two numeric "
-                    "columns for wide format."
+                    "⚠️ Need at least two numeric columns for wide format."
                 )
 
                 return None
 
-
             groups = [
-
-                df[col]
-                .dropna()
-                .tolist()
-
-                for col
-                in numeric_cols
-
+                df[col].dropna().tolist()
+                for col in numeric_cols
             ]
-
 
             st.success(
                 "✅ Detected wide format "
                 "(each numeric column = one group)."
             )
 
-
             return groups
-
 
         else:
 
             st.error(
-                "⚠️ File must contain at least two numeric "
-                "columns or a 'Group'-'Value' pair."
+                "⚠️ File must contain at least two numeric columns "
+                "or a 'Group'-'Value' pair."
             )
 
             return None
-
 
     except Exception as e:
 
@@ -217,73 +186,53 @@ def load_uploaded_data():
         return None
 
 
+# ==========================================================
+# Decision Box
+# ==========================================================
 def decision_box(reject: bool):
 
     if reject:
 
-        st.markdown(
-            """
-            <div style='
-                display:flex;
-                align-items:center;
-                gap:8px;
-                padding:10px;
-                border-radius:8px;
-                background-color:#c8f7c5;
-                margin:10px 0;
-            '>
-
-                <span style='
-                    font-size:22px;
-                    color:#2ecc71;
-                '>
-                    ✅
-                </span>
-
-                <span style='
-                    font-size:18px;
-                    color:black;
-                '>
-                    <b>Decision: Reject H₀</b>
-                </span>
-
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        html = """
+<div style="
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:14px;
+    border-radius:10px;
+    background-color:#c8f7c5;
+    margin:10px 0;
+">
+<span style="font-size:22px;">✅</span>
+<span style="font-size:18px; color:black;">
+<b>Decision: Reject H₀</b>
+</span>
+</div>
+"""
 
     else:
 
-        st.markdown(
-            """
-            <div style='
-                display:flex;
-                align-items:center;
-                gap:8px;
-                padding:10px;
-                border-radius:8px;
-                background-color:#f7c5c5;
-                margin:10px 0;
-            '>
+        html = """
+<div style="
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:14px;
+    border-radius:10px;
+    background-color:#f7c5c5;
+    margin:10px 0;
+">
+<span style="font-size:22px;">❌</span>
+<span style="font-size:18px; color:black;">
+<b>Decision: Do not reject H₀</b>
+</span>
+</div>
+"""
 
-                <span style='
-                    font-size:22px;
-                    color:#e74c3c;
-                '>
-                    ❌
-                </span>
-
-                <span style='
-                    font-size:18px;
-                    color:black;
-                '>
-                    <b>Decision: Do not reject H₀</b>
-                </span>
-
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+    st.markdown(
+        html,
+        unsafe_allow_html=True
+    )
 
 
 # ==========================================================
@@ -293,33 +242,23 @@ def plot_horizontal_boxplots(groups):
 
     fig = go.Figure()
 
-
     for i, group in enumerate(groups):
 
         fig.add_trace(
-
             go.Box(
                 x=group,
                 name=f"Group {i+1}",
                 orientation="h",
                 boxmean=True
             )
-
         )
 
-
     fig.update_layout(
-
         title="Horizontal Boxplots of Groups",
-
         xaxis_title="Values",
-
         yaxis_title="Groups",
-
         template="plotly_white"
-
     )
-
 
     st.plotly_chart(
         fig,
@@ -335,19 +274,14 @@ def plot_f_rejection_region(
 ):
 
     xmax = max(
-
         6,
-
         f.ppf(
             0.995,
             df_between,
             df_within
         ),
-
         f_stat + 2
-
     )
-
 
     x = np.linspace(
         0.001,
@@ -355,13 +289,11 @@ def plot_f_rejection_region(
         700
     )
 
-
     y = f.pdf(
         x,
         df_between,
         df_within
     )
-
 
     crit = f.ppf(
         1 - alpha,
@@ -369,17 +301,14 @@ def plot_f_rejection_region(
         df_within
     )
 
-
     # ------------------------------------------------------
     # Do Not Reject Region
     # ------------------------------------------------------
-
     x_accept = np.linspace(
         0.001,
         crit,
         350
     )
-
 
     y_accept = f.pdf(
         x_accept,
@@ -387,17 +316,14 @@ def plot_f_rejection_region(
         df_within
     )
 
-
     # ------------------------------------------------------
     # Reject Region
     # ------------------------------------------------------
-
     x_reject = np.linspace(
         crit,
         xmax,
         350
     )
-
 
     y_reject = f.pdf(
         x_reject,
@@ -405,16 +331,10 @@ def plot_f_rejection_region(
         df_within
     )
 
-
     fig = go.Figure()
 
-
-    # ------------------------------------------------------
     # F Distribution Curve
-    # ------------------------------------------------------
-
     fig.add_trace(
-
         go.Scatter(
             x=x,
             y=y,
@@ -425,16 +345,10 @@ def plot_f_rejection_region(
                 width=3
             )
         )
-
     )
 
-
-    # ------------------------------------------------------
     # Do Not Reject Region
-    # ------------------------------------------------------
-
     fig.add_trace(
-
         go.Scatter(
             x=x_accept,
             y=y_accept,
@@ -446,16 +360,10 @@ def plot_f_rejection_region(
             ),
             fillcolor="rgba(44,160,44,0.45)"
         )
-
     )
 
-
-    # ------------------------------------------------------
     # Reject Region
-    # ------------------------------------------------------
-
     fig.add_trace(
-
         go.Scatter(
             x=x_reject,
             y=y_reject,
@@ -467,79 +375,43 @@ def plot_f_rejection_region(
             ),
             fillcolor="rgba(214,39,40,0.55)"
         )
-
     )
 
-
-    # ------------------------------------------------------
-    # Critical Value
-    # ------------------------------------------------------
-
+    # Critical F Value
     fig.add_vline(
-
         x=crit,
-
         line_dash="dash",
-
         line_width=2,
-
         line_color="black",
-
-        annotation_text=(
-            f"Critical F = {crit:.4f}"
-        ),
-
+        annotation_text=f"Critical F = {crit:.4f}",
         annotation_position="top"
-
     )
 
-
-    # ------------------------------------------------------
     # Observed F Statistic
-    # ------------------------------------------------------
-
     fig.add_vline(
-
         x=f_stat,
-
         line_width=3,
-
         line_color="blue",
-
-        annotation_text=(
-            f"Observed F = {f_stat:.4f}"
-        ),
-
+        annotation_text=f"Observed F = {f_stat:.4f}",
         annotation_position="top right"
-
     )
-
 
     fig.update_layout(
-
         title=(
             "Classical Method: "
             "F Rejection Region "
-            f"(df1={df_between}, "
-            f"df2={df_within})"
+            f"(df1={df_between}, df2={df_within})"
         ),
-
         xaxis_title="F",
-
         yaxis_title="Density",
-
         template="plotly_white",
-
         hovermode="x unified"
-
     )
-
 
     st.plotly_chart(
         fig,
         use_container_width=True
     )
-
 
     st.caption(
         "🟥 Red = Reject H₀ region   |   "
@@ -562,109 +434,78 @@ def one_way_anova(
 
     st.markdown("---")
 
-
+    # ------------------------------------------------------
+    # Basic Calculations
+    # ------------------------------------------------------
     all_values = np.concatenate(
         groups
     )
 
-
     group_means = [
-
         np.mean(g)
-
-        for g
-        in groups
-
+        for g in groups
     ]
 
-
     group_vars = [
-
         np.var(
             g,
             ddof=1
         )
-
-        for g
-        in groups
-
+        for g in groups
     ]
-
 
     group_sizes = [
-
         len(g)
-
-        for g
-        in groups
-
+        for g in groups
     ]
-
 
     overall_mean = np.mean(
         all_values
     )
 
-
+    # Sum of Squares Between
     ssb = sum(
-
-        n
-        * (m - overall_mean) ** 2
-
+        n * (m - overall_mean) ** 2
         for n, m
         in zip(
             group_sizes,
             group_means
         )
-
     )
 
-
+    # Sum of Squares Within
     ssw = sum(
-
         sum(
-
             (x - m) ** 2
-
-            for x
-            in g
-
+            for x in g
         )
-
         for g, m
         in zip(
             groups,
             group_means
         )
-
     )
-
 
     df_between = (
         len(groups) - 1
     )
-
 
     df_within = (
         sum(group_sizes)
         - len(groups)
     )
 
-
     msb = (
         ssb / df_between
     )
-
 
     msw = (
         ssw / df_within
     )
 
-
     f_stat = (
         msb / msw
     )
-
 
     p_value = (
         1
@@ -675,13 +516,11 @@ def one_way_anova(
         )
     )
 
-
     critical_value = f.ppf(
         1 - alpha,
         df_between,
         df_within
     )
-
 
     reject = (
         p_value <= alpha
@@ -691,16 +530,13 @@ def one_way_anova(
     # ======================================================
     # Step 1
     # ======================================================
-
     themed_box(
-        "**Step 1: Hypotheses**"
+        "Step 1: Hypotheses"
     )
-
 
     st.latex(
         r"H_0: \mu_1 = \mu_2 = \dots = \mu_k"
     )
-
 
     st.latex(
         r"H_a: \text{At least one population mean differs}"
@@ -710,24 +546,17 @@ def one_way_anova(
     # ======================================================
     # Step 2
     # ======================================================
-
     themed_box(
-        "**Step 2: Test Statistic Components**"
+        "Step 2: Test Statistic Components"
     )
-
 
     summary_df = pd.DataFrame(
         {
-
             "Group": [
-
                 f"Group {i+1}"
-
-                for i
-                in range(
+                for i in range(
                     len(groups)
                 )
-
             ],
 
             "n": group_sizes,
@@ -741,82 +570,68 @@ def one_way_anova(
                 group_vars,
                 decimals
             )
-
         }
     )
 
-
     st.dataframe(
-        summary_df
+        summary_df,
+        use_container_width=True
     )
-
 
     st.latex(
         r"SSB = \sum n_i(\bar{x}_i - \bar{x})^2"
     )
 
-
     st.latex(
         r"SSW = \sum \sum (x_{ij} - \bar{x}_i)^2"
     )
-
 
     st.latex(
         r"MSB = \frac{SSB}{df_{\text{between}}}"
     )
 
-
     st.latex(
         r"MSW = \frac{SSW}{df_{\text{within}}}"
     )
 
-
     st.latex(
         r"F = \frac{MSB}{MSW}"
     )
-
 
     st.write(
         f"Overall Mean = "
         f"**{overall_mean:.{decimals}f}**"
     )
 
-
     st.write(
         f"SSB = "
         f"**{ssb:.{decimals}f}**"
     )
-
 
     st.write(
         f"SSW = "
         f"**{ssw:.{decimals}f}**"
     )
 
-
     st.write(
         f"df between = "
         f"**{df_between}**"
     )
-
 
     st.write(
         f"df within = "
         f"**{df_within}**"
     )
 
-
     st.write(
         f"MSB = "
         f"**{msb:.{decimals}f}**"
     )
 
-
     st.write(
         f"MSW = "
         f"**{msw:.{decimals}f}**"
     )
-
 
     st.write(
         f"F statistic = "
@@ -827,12 +642,9 @@ def one_way_anova(
     # ======================================================
     # Step 2A
     # ======================================================
-
     themed_box(
-        "**Step 2A: Visualize Groups "
-        "(Horizontal Boxplots)**"
+        "Step 2A: Visualize Groups (Horizontal Boxplots)"
     )
-
 
     plot_horizontal_boxplots(
         groups
@@ -842,35 +654,29 @@ def one_way_anova(
     # ======================================================
     # Step 3
     # ======================================================
-
     themed_box(
-        "**Step 3: Classical Method**"
+        "Step 3: Classical Method"
     )
-
 
     st.write(
         f"Critical value = "
         f"**{critical_value:.{decimals}f}**"
     )
 
-
     st.markdown(
         f"Decision rule: Reject H₀ if "
         f"**F > {critical_value:.{decimals}f}**."
     )
-
 
     st.markdown(
         f"Observed test statistic: "
         f"**F = {f_stat:.{decimals}f}**"
     )
 
-
     st.markdown(
         f"Classical method decision: "
         f"**{'Reject H₀' if reject else 'Do not reject H₀'}**"
     )
-
 
     plot_f_rejection_region(
         f_stat,
@@ -883,29 +689,24 @@ def one_way_anova(
     # ======================================================
     # Step 4
     # ======================================================
-
     themed_box(
-        "**Step 4: P-value Approach**"
+        "Step 4: P-value Approach"
     )
-
 
     st.write(
         f"P-value = "
         f"**{p_value:.{decimals}f}**"
     )
 
-
     st.write(
         f"α = "
         f"**{alpha:.{decimals}f}**"
     )
 
-
     st.markdown(
         f"P-value approach decision: "
         f"**{'Reject H₀' if reject else 'Do not reject H₀'}**"
     )
-
 
     decision_box(
         reject
@@ -915,48 +716,31 @@ def one_way_anova(
     # ======================================================
     # Step 5
     # ======================================================
-
     themed_box(
-        "**Step 5: Conclusion**"
+        "Step 5: Conclusion"
     )
 
-
     interpretation = (
-
         "Since the p-value is "
-
         + (
             "less than"
             if reject
             else "greater than or equal to"
         )
-
         + f" α = {alpha}, "
-
         + (
             "we reject "
             if reject
             else "we do not reject "
         )
-
         + "H₀. "
-
         + (
-
-            "There is sufficient evidence "
-            "that at least one group mean differs."
-
+            "There is sufficient evidence that at least one group mean differs."
             if reject
-
             else
-
-            "There is not sufficient evidence "
-            "to conclude that the group means differ."
-
+            "There is not sufficient evidence to conclude that the group means differ."
         )
-
     )
-
 
     st.write(
         interpretation
@@ -966,15 +750,12 @@ def one_way_anova(
     # ======================================================
     # ANOVA Table
     # ======================================================
-
     themed_box(
-        "**ANOVA Table**"
+        "ANOVA Table"
     )
-
 
     anova_df = pd.DataFrame(
         {
-
             "Source": [
                 "Between Groups",
                 "Within Groups",
@@ -982,7 +763,6 @@ def one_way_anova(
             ],
 
             "SS": [
-
                 round(
                     ssb,
                     decimals
@@ -997,7 +777,6 @@ def one_way_anova(
                     ssb + ssw,
                     decimals
                 )
-
             ],
 
             "df": [
@@ -1007,7 +786,6 @@ def one_way_anova(
             ],
 
             "MS": [
-
                 round(
                     msb,
                     decimals
@@ -1019,11 +797,9 @@ def one_way_anova(
                 ),
 
                 ""
-
             ],
 
             "F": [
-
                 round(
                     f_stat,
                     decimals
@@ -1032,15 +808,13 @@ def one_way_anova(
                 "",
 
                 ""
-
             ]
-
         }
     )
 
-
     st.dataframe(
-        anova_df
+        anova_df,
+        use_container_width=True
     )
 
 
@@ -1053,7 +827,6 @@ def run():
         "📊 One-Way ANOVA Test (Enhanced Version)"
     )
 
-
     st.markdown(
         """
 This tool tests whether **three or more group means are equal** using the F-test.
@@ -1065,7 +838,6 @@ This tool tests whether **three or more group means are equal** using the F-test
 """
     )
 
-
     input_method = st.radio(
         "Choose data input method:",
         [
@@ -1074,10 +846,11 @@ This tool tests whether **three or more group means are equal** using the F-test
         ]
     )
 
-
     groups = []
 
-
+    # ======================================================
+    # Manual Entry
+    # ======================================================
     if input_method == "📋 Manual Entry":
 
         mode = st.radio(
@@ -1088,11 +861,10 @@ This tool tests whether **three or more group means are equal** using the F-test
             ]
         )
 
-
-        if mode == (
-            "Enter all group data in one line "
-            "(semicolon-separated)"
-        ):
+        # --------------------------------------------------
+        # One-line input
+        # --------------------------------------------------
+        if mode == "Enter all group data in one line (semicolon-separated)":
 
             input_text = st.text_area(
                 "Enter group data:",
@@ -1103,14 +875,15 @@ This tool tests whether **three or more group means are equal** using the F-test
                 )
             )
 
-
             if input_text:
 
                 groups = parse_groups(
                     input_text
                 )
 
-
+        # --------------------------------------------------
+        # Separate Groups
+        # --------------------------------------------------
         else:
 
             num_groups = st.number_input(
@@ -1118,7 +891,6 @@ This tool tests whether **three or more group means are equal** using the F-test
                 min_value=2,
                 step=1
             )
-
 
             for i in range(
                 num_groups
@@ -1129,24 +901,18 @@ This tool tests whether **three or more group means are equal** using the F-test
                     key=f"group_{i}"
                 )
 
-
                 if group_text:
 
                     try:
 
                         groups.append(
-
                             list(
-
                                 map(
                                     float,
-                                    group_text.strip().split(',')
+                                    group_text.strip().split(",")
                                 )
-
                             )
-
                         )
-
 
                     except Exception:
 
@@ -1156,11 +922,17 @@ This tool tests whether **three or more group means are equal** using the F-test
                         )
 
 
+    # ======================================================
+    # Upload CSV / Excel
+    # ======================================================
     elif input_method == "📂 Upload CSV/Excel File":
 
         groups = load_uploaded_data()
 
 
+    # ======================================================
+    # Settings
+    # ======================================================
     alpha = st.number_input(
         "Significance level (α)",
         min_value=0.001,
@@ -1168,19 +940,20 @@ This tool tests whether **three or more group means are equal** using the F-test
         value=0.05
     )
 
-
     decimals = st.number_input(
         "Decimal places for rounding",
-        1,
-        10,
-        4
+        min_value=1,
+        max_value=10,
+        value=4
     )
 
 
+    # ======================================================
+    # Run ANOVA Button
+    # ======================================================
     if st.button(
         "▶️ Run ANOVA Test"
     ):
-
 
         if not groups or len(groups) < 2:
 
@@ -1189,7 +962,6 @@ This tool tests whether **three or more group means are equal** using the F-test
             )
 
             return
-
 
         if any(
             len(g) < 2
@@ -1201,7 +973,6 @@ This tool tests whether **three or more group means are equal** using the F-test
             )
 
             return
-
 
         one_way_anova(
             groups,
