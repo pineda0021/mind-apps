@@ -52,40 +52,25 @@ def get_summary_stats(data, decimals=2):
         )
     )
 
-    range_val = round(
-        maximum - minimum,
-        decimals
-    )
+    range_val = round(maximum - minimum, decimals)
 
     pop_var = round(
-        np.var(
-            data,
-            ddof=0
-        ),
+        np.var(data, ddof=0),
         decimals
     )
 
     pop_std = round(
-        np.std(
-            data,
-            ddof=0
-        ),
+        np.std(data, ddof=0),
         decimals
     )
 
     samp_var = round(
-        np.var(
-            data,
-            ddof=1
-        ),
+        np.var(data, ddof=1),
         decimals
     )
 
     samp_std = round(
-        np.std(
-            data,
-            ddof=1
-        ),
+        np.std(data, ddof=1),
         decimals
     )
 
@@ -96,18 +81,9 @@ def get_summary_stats(data, decimals=2):
         "Q3": q3,
         "Maximum": maximum,
         "IQR": iqr,
-        "Lower Bound": round(
-            lower_bound,
-            decimals
-        ),
-        "Upper Bound": round(
-            upper_bound,
-            decimals
-        ),
-        "Outliers":
-            outliers
-            if outliers
-            else "None",
+        "Lower Bound": round(lower_bound, decimals),
+        "Upper Bound": round(upper_bound, decimals),
+        "Outliers": outliers if outliers else "None",
         "Mean": mean,
         "Mode": mode,
         "Range": range_val,
@@ -122,10 +98,7 @@ def parse_intervals(interval_text):
 
     intervals = []
 
-    pattern = (
-        r"\[(\s*\d+\.?\d*\s*),"
-        r"(\s*\d+\.?\d*\s*)\]"
-    )
+    pattern = r"\[(\s*\d+\.?\d*\s*),(\s*\d+\.?\d*\s*)\]"
 
     matches = re.findall(
         pattern,
@@ -135,22 +108,12 @@ def parse_intervals(interval_text):
     for match in matches:
 
         try:
-
-            low = float(
-                match[0]
-            )
-
-            high = float(
-                match[1]
-            )
+            low = float(match[0])
+            high = float(match[1])
 
             if low < high:
-
                 intervals.append(
-                    (
-                        low,
-                        high
-                    )
+                    (low, high)
                 )
 
         except:
@@ -159,56 +122,35 @@ def parse_intervals(interval_text):
     return intervals
 
 
-def compute_frequency_table(
-    data,
-    intervals
-):
+def compute_frequency_table(data, intervals):
 
     freq = [
         np.sum(
-            (data >= low)
-            &
+            (data >= low) &
             (data <= high)
         )
-        for low, high
-        in intervals
+        for low, high in intervals
     ]
 
-    total = np.sum(
-        freq
-    )
+    total = np.sum(freq)
 
     rel_freq = [
-        round(
-            f / total,
-            4
-        )
+        round(f / total, 4)
         if total > 0
         else 0
         for f in freq
     ]
 
-    cum_freq = np.cumsum(
-        freq
-    )
+    cum_freq = np.cumsum(freq)
 
     df = pd.DataFrame({
-
         "Class Interval": [
             f"[{int(low)},{int(high)}]"
-            for low, high
-            in intervals
+            for low, high in intervals
         ],
-
-        "Frequency":
-            freq,
-
-        "Relative Freq":
-            rel_freq,
-
-        "Cumulative Freq":
-            cum_freq
-
+        "Frequency": freq,
+        "Relative Freq": rel_freq,
+        "Cumulative Freq": cum_freq
     })
 
     return df
@@ -218,29 +160,19 @@ def compute_frequency_table(
 # Quantitative Analyzer
 # ==========================================================
 
-def run_quantitative(
-    df_uploaded=None
-):
+def run_quantitative(df_uploaded=None):
 
-    st.subheader(
-        "📊 Quantitative Data Analyzer"
-    )
+    st.subheader("📊 Quantitative Data Analyzer")
 
     q_type = st.radio(
         "Select Data Type:",
-        [
-            "Discrete",
-            "Continuous"
-        ],
+        ["Discrete", "Continuous"],
         horizontal=True
     )
 
     input_mode = st.radio(
         "Data Input Mode:",
-        [
-            "Upload File",
-            "Manual Entry"
-        ],
+        ["Upload File", "Manual Entry"],
         horizontal=True
     )
 
@@ -249,30 +181,15 @@ def run_quantitative(
     if input_mode == "Upload File":
 
         if df_uploaded is None:
-
-            st.warning(
-                "Upload a dataset first."
-            )
-
+            st.warning("Upload a dataset first.")
             return
 
-        numeric_cols = (
-            df_uploaded
-            .select_dtypes(
-                include=[
-                    np.number
-                ]
-            )
-            .columns
-            .tolist()
-        )
+        numeric_cols = df_uploaded.select_dtypes(
+            include=[np.number]
+        ).columns.tolist()
 
         if not numeric_cols:
-
-            st.error(
-                "No numeric columns found."
-            )
-
+            st.error("No numeric columns found.")
             return
 
         col = st.selectbox(
@@ -293,11 +210,7 @@ def run_quantitative(
 
     else:
 
-        example = (
-            "728,730,726,698,"
-            "721,722,700,720,"
-            "729,678"
-        )
+        example = "728,730,726,698,721,722,700,720,729,678"
 
         raw_data = st.text_area(
             "Enter comma-separated numeric values:",
@@ -307,11 +220,8 @@ def run_quantitative(
         try:
 
             data = np.array([
-                float(
-                    x.strip()
-                )
-                for x
-                in raw_data.split(",")
+                float(x.strip())
+                for x in raw_data.split(",")
                 if x.strip()
             ])
 
@@ -321,10 +231,7 @@ def run_quantitative(
 
         except:
 
-            st.error(
-                "Invalid numeric input."
-            )
-
+            st.error("Invalid numeric input.")
             return
 
 
@@ -346,30 +253,20 @@ def run_quantitative(
             )
 
             freq_df = pd.DataFrame({
-
-                "Value":
-                    counts.index,
-
-                "Frequency":
-                    counts.values,
-
+                "Value": counts.index,
+                "Frequency": counts.values,
                 "Relative Frequency":
                     np.round(
-                        counts.values
-                        / len(data),
+                        counts.values / len(data),
                         4
                     )
-
             })
 
             freq_df[
                 "Cumulative Frequency"
-            ] = (
-                freq_df[
-                    "Frequency"
-                ]
-                .cumsum()
-            )
+            ] = freq_df[
+                "Frequency"
+            ].cumsum()
 
             st.markdown(
                 "### Frequency Table"
@@ -382,11 +279,7 @@ def run_quantitative(
 
             fig = px.histogram(
                 x=data,
-                nbins=len(
-                    np.unique(
-                        data
-                    )
-                )
+                nbins=len(np.unique(data))
             )
 
             fig.update_layout(
@@ -412,38 +305,27 @@ def run_quantitative(
             np.max(data)
         )
 
-        n = len(
-            data
-        )
+        n = len(data)
 
         k = int(
             np.ceil(
-                1
-                + 3.322
-                * np.log10(n)
+                1 + 3.322 * np.log10(n)
             )
         )
 
         class_width = np.ceil(
-            (
-                max_val
-                - min_val
-            )
-            / k
+            (max_val - min_val) / k
         )
 
         auto_intervals = []
 
-        start = np.floor(
-            min_val
-        )
+        start = np.floor(min_val)
 
         for i in range(k):
 
             low = (
                 start
-                + i
-                * class_width
+                + i * class_width
             )
 
             high = (
@@ -453,18 +335,12 @@ def run_quantitative(
             )
 
             auto_intervals.append(
-                (
-                    low,
-                    high
-                )
+                (low, high)
             )
 
-        default_intervals_text = (
-            ", ".join(
-                f"[{int(l)},{int(h)}]"
-                for l, h
-                in auto_intervals
-            )
+        default_intervals_text = ", ".join(
+            f"[{int(l)},{int(h)}]"
+            for l, h in auto_intervals
         )
 
         st.info(
@@ -502,11 +378,9 @@ def run_quantitative(
             intervals = auto_intervals
 
 
-        df_freq = (
-            compute_frequency_table(
-                data,
-                intervals
-            )
+        df_freq = compute_frequency_table(
+            data,
+            intervals
         )
 
         st.markdown(
@@ -531,37 +405,18 @@ def run_quantitative(
         if plot_option == "Histogram":
 
             fig = go.Figure(
-
                 go.Histogram(
-
                     x=data,
-
                     xbins=dict(
-
-                        start=
-                            intervals[
-                                0
-                            ][0],
-
-                        end=
-                            intervals[
-                                -1
-                            ][1],
-
+                        start=intervals[0][0],
+                        end=intervals[-1][1],
                         size=(
-                            intervals[
-                                0
-                            ][1]
-                            - intervals[
-                                0
-                            ][0]
+                            intervals[0][1]
+                            - intervals[0][0]
                             + 1
                         )
-
                     )
-
                 )
-
             )
 
             fig.update_layout(
@@ -581,101 +436,49 @@ def run_quantitative(
             fig = go.Figure()
 
             fig.add_trace(
-
                 go.Histogram(
-
                     x=data,
-
                     xbins=dict(
-
-                        start=
-                            intervals[
-                                0
-                            ][0],
-
-                        end=
-                            intervals[
-                                -1
-                            ][1],
-
+                        start=intervals[0][0],
+                        end=intervals[-1][1],
                         size=(
-                            intervals[
-                                0
-                            ][1]
-                            - intervals[
-                                0
-                            ][0]
+                            intervals[0][1]
+                            - intervals[0][0]
                             + 1
                         )
-
                     ),
-
                     name="Frequency"
-
                 )
-
             )
 
             upper_bounds = [
                 high
-                for _, high
-                in intervals
+                for _, high in intervals
             ]
 
-            cum_freq = (
-                df_freq[
-                    "Cumulative Freq"
-                ]
-                .values
-            )
+            cum_freq = df_freq[
+                "Cumulative Freq"
+            ].values
 
             fig.add_trace(
-
                 go.Scatter(
-
-                    x=
-                        upper_bounds,
-
-                    y=
-                        cum_freq,
-
-                    mode=
-                        "lines+markers",
-
-                    name=
-                        "Cumulative Frequency",
-
-                    yaxis=
-                        "y2"
-
+                    x=upper_bounds,
+                    y=cum_freq,
+                    mode="lines+markers",
+                    name="Cumulative Frequency",
+                    yaxis="y2"
                 )
-
             )
 
             fig.update_layout(
-
-                title=
-                    "📊 Histogram + Ogive",
-
-                xaxis_title=
-                    "Values",
-
-                yaxis_title=
-                    "Frequency",
-
+                title="📊 Histogram + Ogive",
+                xaxis_title="Values",
+                yaxis_title="Frequency",
                 yaxis2=dict(
-
-                    overlaying=
-                        "y",
-
-                    side=
-                        "right",
-
-                    title=
-                        "Cumulative Frequency"
-
+                    overlaying="y",
+                    side="right",
+                    title="Cumulative Frequency"
                 )
-
             )
 
             st.plotly_chart(
@@ -705,9 +508,7 @@ def run_quantitative(
 # QUALITATIVE ANALYZER
 # ==========================================================
 
-def run_qualitative(
-    df_uploaded=None
-):
+def run_qualitative(df_uploaded=None):
 
     st.subheader(
         "🎨 Qualitative (Categorical) Analyzer"
@@ -719,8 +520,13 @@ def run_qualitative(
             "Upload File",
             "Manual Entry"
         ],
-        horizontal=True
+        horizontal=True,
+        key="qualitative_input_mode"
     )
+
+    # ======================================================
+    # GET DATA
+    # ======================================================
 
     if input_mode == "Upload File":
 
@@ -738,11 +544,10 @@ def run_qualitative(
                 include="object"
             )
             .columns
+            .tolist()
         )
 
-        if not len(
-            text_cols
-        ):
+        if not text_cols:
 
             st.error(
                 "No categorical columns found."
@@ -752,44 +557,63 @@ def run_qualitative(
 
         col = st.selectbox(
             "Select column:",
-            text_cols
+            text_cols,
+            key="qualitative_column"
         )
 
         data = (
             df_uploaded[col]
             .dropna()
             .astype(str)
-            .values
+            .tolist()
         )
 
     else:
 
         raw_data = st.text_area(
             "Categories:",
-            "Red, Blue, Red, Green, Yellow"
+            "Red, Blue, Red, Green, Yellow",
+            key="qualitative_manual_data"
         )
 
         data = [
             x.strip()
-            for x
-            in raw_data.split(",")
+            for x in raw_data.split(",")
             if x.strip()
         ]
 
+    if len(data) == 0:
+
+        st.warning(
+            "Please enter categorical data."
+        )
+
+        return
+
 
     # ======================================================
-    # CHART TYPE
+    # CALCULATE FREQUENCIES
     # ======================================================
 
-    chart_type = st.radio(
-        "Choose chart:",
-        [
-            "Bar Chart",
-            "Pie Chart"
-        ],
-        horizontal=True,
-        key="qualitative_chart_type"
+    counts = (
+        pd.Series(data)
+        .value_counts()
     )
+
+    freq_df = pd.DataFrame({
+        "Category":
+            counts.index.astype(str),
+
+        "Frequency":
+            counts.values,
+
+        "Relative Freq":
+            np.round(
+                counts.values
+                / counts.values.sum(),
+                4
+            )
+    })
 
 
     # ======================================================
@@ -801,58 +625,22 @@ def run_qualitative(
         key="qualitative_calculate"
     ):
 
-        counts = (
-            pd.Series(
-                data
-            )
-            .value_counts()
-        )
-
-        freq_df = pd.DataFrame({
-
-            "Category":
-                counts.index,
-
-            "Frequency":
-                counts.values,
-
-            "Relative Freq":
-                np.round(
-                    counts.values
-                    / len(data),
-                    4
-                )
-
-        })
-
         st.session_state[
-            "qualitative_counts"
-        ] = counts
-
-        st.session_state[
-            "qualitative_freq_df"
-        ] = freq_df
+            "show_qualitative_results"
+        ] = True
 
 
     # ======================================================
     # DISPLAY RESULTS
     # ======================================================
 
-    if (
-        "qualitative_counts"
-        in st.session_state
+    if st.session_state.get(
+        "show_qualitative_results",
+        False
     ):
 
-        counts = (
-            st.session_state[
-                "qualitative_counts"
-            ]
-        )
-
-        freq_df = (
-            st.session_state[
-                "qualitative_freq_df"
-            ]
+        st.markdown(
+            "### Frequency Table"
         )
 
         st.dataframe(
@@ -860,43 +648,78 @@ def run_qualitative(
             use_container_width=True
         )
 
+        # ==================================================
+        # CHOOSE CHART
+        # ==================================================
+
+        chart_type = st.radio(
+            "Choose chart:",
+            [
+                "Bar Chart",
+                "Pie Chart"
+            ],
+            horizontal=True,
+            key="qualitative_chart_type"
+        )
+
+
+        # ==================================================
+        # BAR CHART
+        # ==================================================
+
         if chart_type == "Bar Chart":
 
             fig = px.bar(
-                x=counts.index,
-                y=counts.values
+                freq_df,
+                x="Category",
+                y="Frequency",
+                title="🎨 Bar Chart"
             )
 
             fig.update_layout(
-                title="🎨 Bar Chart",
                 xaxis_title="Category",
                 yaxis_title="Frequency"
             )
 
             st.plotly_chart(
                 fig,
-                use_container_width=True
+                use_container_width=True,
+                key="qualitative_bar_chart"
             )
 
-        else:
+
+        # ==================================================
+        # PIE CHART
+        # ==================================================
+
+        elif chart_type == "Pie Chart":
 
             fig = px.pie(
-                names=counts.index,
-                values=counts.values
+                freq_df,
+                names="Category",
+                values="Frequency",
+                title="🥧 Pie Chart"
             )
 
             fig.update_traces(
                 textposition="inside",
-                textinfo="percent+label"
+                textinfo="label+percent",
+                hovertemplate=(
+                    "<b>%{label}</b><br>"
+                    "Frequency: %{value}<br>"
+                    "Percent: %{percent}"
+                    "<extra></extra>"
+                )
             )
 
             fig.update_layout(
-                title="🥧 Pie Chart"
+                showlegend=True
             )
 
             st.plotly_chart(
                 fig,
-                use_container_width=True
+                use_container_width=True,
+                key="qualitative_pie_chart"
             )
 
 
@@ -904,9 +727,7 @@ def run_qualitative(
 # SUMMARY STATS + BOX PLOTS
 # ==========================================================
 
-def run_summary(
-    df_uploaded=None
-):
+def run_summary(df_uploaded=None):
 
     st.subheader(
         "📊 Summary Statistics & Boxplots"
@@ -938,11 +759,8 @@ def run_summary(
         ):
 
             data = np.array([
-                float(
-                    x.strip()
-                )
-                for x
-                in raw.split(",")
+                float(x.strip())
+                for x in raw.split(",")
                 if x.strip()
             ])
 
@@ -994,8 +812,7 @@ def run_summary(
 
             blocks = [
                 b.strip()
-                for b
-                in raw.split(";")
+                for b in raw.split(";")
                 if b.strip()
             ]
 
@@ -1009,33 +826,22 @@ def run_summary(
                 data_dict[
                     f"Dataset {i}"
                 ] = np.array([
-                    float(
-                        x.strip()
-                    )
-                    for x
-                    in block.split(",")
+                    float(x.strip())
+                    for x in block.split(",")
                     if x.strip()
                 ])
 
             combined = pd.DataFrame()
 
-            for name, d in (
-                data_dict.items()
-            ):
+            for name, d in data_dict.items():
 
                 stats_dict = (
-                    get_summary_stats(
-                        d
-                    )
+                    get_summary_stats(d)
                 )
 
-                df_stats = (
-                    pd.DataFrame(
-                        stats_dict,
-                        index=[
-                            name
-                        ]
-                    )
+                df_stats = pd.DataFrame(
+                    stats_dict,
+                    index=[name]
                 )
 
                 combined = pd.concat([
@@ -1050,22 +856,14 @@ def run_summary(
 
             fig = go.Figure()
 
-            for name, d in (
-                data_dict.items()
-            ):
+            for name, d in data_dict.items():
 
                 fig.add_trace(
-
                     go.Box(
-
                         x=d,
-
                         name=name,
-
                         orientation="h"
-
                     )
-
                 )
 
             fig.update_layout(
@@ -1090,13 +888,9 @@ def run():
     )
 
     categories = [
-
         "Qualitative (Categorical)",
-
         "Quantitative (Discrete or Continuous)",
-
         "Summary Statistics & Boxplot"
-
     ]
 
     choice = st.selectbox(
@@ -1126,22 +920,17 @@ def run():
         try:
 
             df_uploaded = (
-
                 pd.read_csv(
                     uploaded_file
                 )
 
-                if (
-                    uploaded_file.name
-                    .endswith(
-                        ".csv"
-                    )
+                if uploaded_file.name.endswith(
+                    ".csv"
                 )
 
                 else pd.read_excel(
                     uploaded_file
                 )
-
             )
 
             st.success(
@@ -1155,6 +944,7 @@ def run():
             )
 
             return
+
 
     if choice == "Qualitative (Categorical)":
 
@@ -1178,3 +968,5 @@ def run():
 if __name__ == "__main__":
 
     run()
+
+
