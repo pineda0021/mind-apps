@@ -135,7 +135,10 @@ export default function({parentElement, data, key, setStateValue}) {
   });
   root.querySelector('.analyze').onclick = () => {
     try {
-      const latex = fields.map(f => f.input.value);
+      const latex = fields.map(f => String(f.input.value ?? '').trim());
+      if (latex.length !== 2 || latex.some(value => !value)) {
+        throw Error('Enter both boundary functions before selecting Analyze.');
+      }
       const asts = latex.map(parseLatex);
       setStateValue('value', {latex, asts});
       status.textContent = 'Expression submitted.';
@@ -586,8 +589,14 @@ def exact_volume(pieces, variable):
         for left, right, density in pieces:
             if sp.count_ops(density) > 80: return None
             value = sp.integrate(density.rewrite(sp.Piecewise), (variable, left, right))
-            if value.has(sp.Integral) or not finite_real(value) or value.is_nonnegative is not True:
+            if value.has(sp.Integral) or not finite_real(value):
                 return None
+            if value.is_nonnegative is not True:
+                try:
+                    if float(sp.N(value, 17)) < -1e-12:
+                        return None
+                except (TypeError, ValueError, OverflowError):
+                    return None
             values.append(value)
         total = sp.simplify(sum(values, sp.S.Zero))
         return total if finite_real(total) and total.is_nonnegative is True else None
@@ -731,9 +740,18 @@ def run():
         st.code("x^2\nx**2\n\\sqrt{1-x^2}\n\\sin(x)\n\\frac{1}{1+x^2}", language="latex")
         st.write("Use the selected variable x or y. Supports fractions, powers, square roots, absolute value, sin, cos, tan, exp, ln, log, e, and π. Trig uses radians; ln is natural log and log is base 10. Noninteger powers use nonnegative bases, or positive bases when required. Indexed roots and piecewise input are not supported.")
     st.caption("Type / for a fraction and ^ for a power. Select Analyze after changing either function. When y is required, enter y rather than x.")
-    result = get_editor()(data={"labels": [f"First boundary: {dependent} = f({variable_name})", f"Second boundary: {dependent} = g({variable_name})"],
-                               "initial": [variable_name, variable_name+"^2"]},
-                          key=f"solid_equations_{variable_name}", on_value_change=lambda: None)
+    result = get_editor()(
+        data={
+            "labels": [
+                f"First boundary: {dependent} = f({variable_name})",
+                f"Second boundary: {dependent} = g({variable_name})",
+            ],
+            "initial": [variable_name, variable_name + "^2"],
+        },
+        default={"value": None},
+        key=f"solid_equations_{variable_name}",
+        on_value_change=lambda: None,
+    )
     if result.value is None:
         st.info("Select Analyze above to begin.")
         return
