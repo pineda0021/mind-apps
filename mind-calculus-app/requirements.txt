@@ -3,7 +3,3 @@ numpy
 matplotlib
 sympy
 plotly
-streamlit>=1.51,<2
-numpy>=1.26,<3
-plotly>=5.24,<7
-sympy>=1.13,<2
