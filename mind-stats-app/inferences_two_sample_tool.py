@@ -959,8 +959,8 @@ def run_two_sample_tool():
                 show_confidence_interval(
                     m1-m2, se, tcrit,
                     ci_conf_level, dec,
-                    r"(\bar x_1-\bar x_2)\pm"
-                    r"t_{\alpha/2,df}"
+                    r"(\bar{x}_1-\bar{x}_2)"
+                    r"\pm t_{\alpha/2,df}"
                     r"\sqrt{\frac{s_1^2}{n_1}"
                     r"+\frac{s_2^2}{n_2}}",
                     fr"({m1:.{dec}f}-{m2:.{dec}f})"
