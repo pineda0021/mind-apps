@@ -123,5 +123,5 @@
 
 # ---------- RUN ----------
 if __name__ == "__main__":
-    run_two_sample_tool()
+    inferences_two_sample_tool()
          
