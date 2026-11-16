@@ -672,7 +672,7 @@ def run_two_sample_tool():
                 show_confidence_interval(
                     p1-p2, se_ci, zcrit,
                     ci_conf_level, dec,
-                    r"(\hat p_1-\hat p_2)\pm"
+                    r"(\hat{p}_1-\hat{p}_2)\pm "
                     r"z_{\alpha/2}"
                     r"\sqrt{\frac{\hat p_1(1-\hat p_1)}{n_1}"
                     r"+\frac{\hat p_2(1-\hat p_2)}{n_2}}",
