@@ -22,7 +22,7 @@ import multiple_regression_advanced_tool  # ✅ Advanced version
 import ti84                # ✅ TI-84 embedded calculator
 import RStudio              # ✅ RStudio module
 import Python               # ✅ New Python module
-import excel                # ✅ New Excel module'
+import excel                # ✅ New Excel module
 
 # ---------- App Configuration ----------
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
