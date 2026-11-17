@@ -149,10 +149,15 @@ def print_report(title, chi2_stat, p_value, crit_val, df, expected_matrix, alpha
     themed_box("**Step 1: Hypotheses**")
     if "Goodness-of-Fit" in title:
         st.latex(r"H_0: \text{Observed frequencies follow the expected distribution}")
-        st.latex(r"H_a: \text{Observed frequencies differ from the expected distribution}")
+        st.latex(r"H_1: \text{Observed frequencies differ from the expected distribution}")
     else:
         st.latex(r"H_0: \text{The variables are independent}")
-        st.latex(r"H_a: \text{The variables are dependent}")
+        st.latex(r"H_1: \text{The variables are dependent}")
+
+        st.latex(r"\text{or}")
+
+        st.latex(r"H_0: p_1 = p_2 = p_3 = \cdots = p_n")
+        st.latex(r"H_1: \text{At least one proportion is different}")
 
     # Step 2: Test Statistic
     themed_box("**Step 2: Test Statistic**")
