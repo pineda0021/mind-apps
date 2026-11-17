@@ -22,6 +22,7 @@ import multiple_regression_advanced_tool  # ✅ Advanced version
 import ti84                # ✅ TI-84 embedded calculator
 import RStudio              # ✅ RStudio module
 import Python               # ✅ New Python module
+import excel                # ✅ New Excel module'
 
 # ---------- App Configuration ----------
 st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
@@ -46,6 +47,7 @@ tool = st.sidebar.radio(
         "TI-84 Calculator",
         "RStudio",
         "Python"  # 👈 Added Python launcher
+        "Excel"  # 👈 Added Python launcher
     ]
 )
 
@@ -91,6 +93,9 @@ elif tool == "RStudio":
 
 elif tool == "Python":
     Python.run()
+    
+elif tool == "Excel":
+    excel.run()
 
 # ---------- Footer ----------
 st.markdown("""
