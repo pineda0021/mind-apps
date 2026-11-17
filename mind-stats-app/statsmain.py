@@ -5,6 +5,12 @@
 
 import streamlit as st
 
+# ---------- App Configuration ----------
+st.set_page_config(
+    page_title="MIND: Statistics Visualizer",
+    layout="wide"
+)
+
 # ---------- Import All Modules ----------
 import descriptive_tool
 import probability_tool
@@ -18,18 +24,18 @@ import inferences_two_sample_tool
 import chi_square_tests_tool
 import anova_tool
 import regression_analysis_tool
-import multiple_regression_advanced_tool  # ✅ Advanced version
-import ti84                # ✅ TI-84 embedded calculator
-import RStudio              # ✅ RStudio module
-import Python               # ✅ New Python module
-import excel                # ✅ New Excel module
+import multiple_regression_advanced_tool
+import ti84
+import RStudio
+import Python
+import excel
 
-# ---------- App Configuration ----------
-st.set_page_config(page_title="MIND: Statistics Visualizer", layout="wide")
+# ---------- App Title ----------
 st.title("🧠 MIND: Statistics Visualizer Suite")
 
 # ---------- Sidebar Navigation ----------
 st.sidebar.header("📚 Select a Concept")
+
 tool = st.sidebar.radio(
     "Choose a tool:",
     [
@@ -43,11 +49,11 @@ tool = st.sidebar.radio(
         "Chi-Square Tests",
         "One-Way ANOVA",
         "Simple Regression",
-        "Multiple Regression (Advanced)",  # ✅ Only advanced version
+        "Multiple Regression (Advanced)",
         "TI-84 Calculator",
         "RStudio",
-        "Python"  # 👈 Added Python launcher
-        "Excel"  # 👈 Added Python launcher
+        "Python",
+        "Excel",
     ]
 )
 
@@ -93,7 +99,7 @@ elif tool == "RStudio":
 
 elif tool == "Python":
     Python.run()
-    
+
 elif tool == "Excel":
     excel.run()
 
@@ -105,9 +111,6 @@ st.markdown("""
 👨‍🏫 **About the Creator:**  
 Professor Edward Pineda-Castro  
 Department of Mathematics, Los Angeles City College  
-
-📧 [pinedaem@lacitycollege.edu](mailto:pinedaem@lacitycollege.edu)  
-📞 (323) 953-4000 ext. 2827  
 
 *Founder of* **MIND** — *Making Inference Digestible*
 """)
