@@ -12,7 +12,7 @@ def run():
 
     sheet_url = (
         "https://docs.google.com/spreadsheets/d/"
-        "1HJFJHeY4pinkHCuJFn-rv-q-YCzVm9bxI8APlJG0Tuw"
+        "1YkDzA_ED9vT5L2EL16QOFWBdPY3z7j33k3fn7MBUYP8"
         "/edit?usp=sharing"
     )
 
