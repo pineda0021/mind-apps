@@ -28,7 +28,7 @@ import multiple_regression_advanced_tool
 import ti84
 import RStudio
 import Python
-import excel
+import Excel as excel
 
 # ---------- App Title ----------
 st.title("🧠 MIND: Statistics Visualizer Suite")
